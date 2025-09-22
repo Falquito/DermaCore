@@ -100,9 +100,10 @@ carelink/
 
 1. Fork el proyecto
 2. Crea una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit tus cambios (`git commit -m 'Agrega nueva funcionalidad'`)
-4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
-5. Abre un Pull Request
+3. Agrega los cambios que haras commit (`git add .` (el punto agrega todos los cambios))
+4. Commit tus cambios (`git commit -m 'Agrega nueva funcionalidad'`)
+5. Push a la rama (`git push origin feature/nueva-funcionalidad`)
+6. Abre un Pull Request
 
 ## 📄 Licencia
 
