@@ -68,6 +68,13 @@ npm run dev
 
 La aplicación estará disponible en `http://localhost:3000`.
 
+Credenciales de prueba (seed):
+
+- Profesional: profesional@carelink.com / admin123
+- Mesa de entrada: mesa@carelink.com / admin123
+- Gerente: gerente@carelink.com / admin123
+
+
 ## 📁 Scripts disponibles
 
 - `npm run dev` - Inicia el servidor de desarrollo

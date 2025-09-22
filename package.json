@@ -10,10 +10,11 @@
     "prisma:migrate": "prisma migrate dev --name init",
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
-  "db:seed": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" prisma/seed.ts"
+    "db:seed": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.15.0",
+    "bcryptjs": "^3.0.2",
     "next": "15.5.2",
     "react": "19.1.0",
     "react-dom": "19.1.0"

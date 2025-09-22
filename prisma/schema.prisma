@@ -8,13 +8,35 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Modelo básico de ejemplo
+// Roles de usuario del sistema
+enum Role {
+  PROFESIONAL
+  MESA_ENTRADA
+  GERENTE
+}
+
+// Modelo de usuario con autenticación básica y rol
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String
+  role          Role      @default(MESA_ENTRADA)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
 
   @@map("users")
+}
+
+// Sesiones simples basadas en token para manejo de login
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@map("sessions")
 }
