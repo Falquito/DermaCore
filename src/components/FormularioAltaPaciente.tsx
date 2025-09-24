@@ -1,22 +1,21 @@
 'use client'
 
 import { useState } from 'react'
-import { ObraSocial } from '@prisma/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { DatePicker } from '@/components/ui/date-picker'
 import { PatientFormData } from '@/types/patient'
 
 interface FormularioAltaPacienteProps {
-  obrasSociales: ObraSocial[]
   onSubmit: (data: PatientFormData) => Promise<void>
   onCancel: () => void
   isLoading?: boolean
 }
 
-export default function FormularioAltaPaciente({ obrasSociales, onSubmit, onCancel, isLoading: externalLoading }: FormularioAltaPacienteProps) {
+export default function FormularioAltaPaciente({ onSubmit, onCancel, isLoading: externalLoading }: FormularioAltaPacienteProps) {
   const [internalLoading, setInternalLoading] = useState(false)
   const isLoading = externalLoading || internalLoading
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -24,7 +23,7 @@ export default function FormularioAltaPaciente({ obrasSociales, onSubmit, onCanc
     nombre: '',
     apellido: '',
     dni: '',
-    fechaNacimiento: '',
+    fechaNacimiento: undefined as Date | undefined,
     genero: '',
     telefono: '',
     celular: '',
@@ -33,8 +32,6 @@ export default function FormularioAltaPaciente({ obrasSociales, onSubmit, onCanc
     ciudad: '',
     provincia: '',
     codigoPostal: '',
-    obraSocialId: '',
-    numeroAfiliado: '',
     contactoEmergenciaNombre: '',
     contactoEmergenciaTelefono: '',
     contactoEmergenciaRelacion: '',
@@ -63,6 +60,13 @@ export default function FormularioAltaPaciente({ obrasSociales, onSubmit, onCanc
     }
   }
 
+  const handleDateChange = (date: Date | undefined) => {
+    setFormData(prev => ({ ...prev, fechaNacimiento: date }))
+    if (errors.fechaNacimiento) {
+      setErrors(prev => ({ ...prev, fechaNacimiento: '' }))
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setInternalLoading(true)
@@ -85,7 +89,17 @@ export default function FormularioAltaPaciente({ obrasSociales, onSubmit, onCanc
     }
 
     try {
-      await onSubmit(formData)
+      // Asegurar que fechaNacimiento no sea undefined
+      if (!formData.fechaNacimiento) {
+        setErrors({ fechaNacimiento: 'La fecha de nacimiento es obligatoria' })
+        setInternalLoading(false)
+        return
+      }
+
+      await onSubmit({
+        ...formData,
+        fechaNacimiento: formData.fechaNacimiento
+      })
     } catch (error) {
       console.error('Error al crear paciente:', error)
       setErrors({ general: error instanceof Error ? error.message : 'Error al crear el paciente. Intente nuevamente.' })
@@ -159,13 +173,12 @@ export default function FormularioAltaPaciente({ obrasSociales, onSubmit, onCanc
                 <Label htmlFor="fechaNacimiento">
                   Fecha de Nacimiento <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  id="fechaNacimiento"
-                  type="date"
-                  value={formData.fechaNacimiento}
-                  onChange={(e) => handleInputChange('fechaNacimiento', e.target.value)}
-                  className={errors.fechaNacimiento ? 'border-red-500' : ''}
+                <DatePicker
+                  date={formData.fechaNacimiento}
+                  onDateChange={handleDateChange}
+                  placeholder="Seleccionar fecha de nacimiento"
                   disabled={isLoading}
+                  className={errors.fechaNacimiento ? 'border-red-500' : ''}
                 />
                 {errors.fechaNacimiento && <p className="text-red-500 text-xs mt-1">{errors.fechaNacimiento}</p>}
               </div>
@@ -273,39 +286,6 @@ export default function FormularioAltaPaciente({ obrasSociales, onSubmit, onCanc
                   placeholder="1414"
                   value={formData.codigoPostal}
                   onChange={(e) => handleInputChange('codigoPostal', e.target.value)}
-                  disabled={isLoading}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Obra Social */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Obra Social</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="obraSocialId">Obra Social</Label>
-                <Select value={formData.obraSocialId} onValueChange={(value) => handleInputChange('obraSocialId', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar obra social" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {obrasSociales.map((obra) => (
-                      <SelectItem key={obra.id} value={obra.id}>
-                        {obra.nombre}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="numeroAfiliado">Número de Afiliado</Label>
-                <Input
-                  id="numeroAfiliado"
-                  placeholder="123456789"
-                  value={formData.numeroAfiliado}
-                  onChange={(e) => handleInputChange('numeroAfiliado', e.target.value)}
                   disabled={isLoading}
                 />
               </div>

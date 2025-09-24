@@ -8,32 +8,24 @@ export default async function MesaEntradaPage() {
   if (!user) redirect('/login')
   if (user.role !== 'MESA_ENTRADA') redirect(roleToPath(user.role))
 
-  // Cargar datos necesarios directamente con Prisma
-  const [obrasSociales, patients] = await Promise.all([
-    prisma.obraSocial.findMany({
-      where: { activa: true },
-      orderBy: { nombre: 'asc' }
-    }),
-    prisma.patient.findMany({
-      include: {
-        obraSocial: true,
-        creator: {
-          select: {
-            name: true,
-            email: true
-          }
+  // Cargar pacientes
+  const patients = await prisma.patient.findMany({
+    include: {
+      creator: {
+        select: {
+          name: true,
+          email: true
         }
-      },
-      orderBy: [
-        { apellido: 'asc' },
-        { nombre: 'asc' }
-      ]
-    })
-  ])
+      }
+    },
+    orderBy: [
+      { apellido: 'asc' },
+      { nombre: 'asc' }
+    ]
+  })
 
   return (
     <MesaEntradaContent 
-      obrasSociales={obrasSociales}
       initialPatients={patients}
     />
   )

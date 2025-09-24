@@ -54,7 +54,6 @@ model ObraSocial {
   activa      Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  pacientes   Patient[]
 
   @@map("obras_sociales")
 }
@@ -77,11 +76,6 @@ model Patient {
   ciudad          String?
   provincia       String?
   codigoPostal    String?
-  
-  // Obra social
-  obraSocialId    String?
-  obraSocial      ObraSocial? @relation(fields: [obraSocialId], references: [id])
-  numeroAfiliado  String?
   
   // Contacto de emergencia
   contactoEmergenciaNombre    String?
@@ -119,6 +113,14 @@ model Appointment {
   observaciones String?
   estado        AppointmentStatus @default(PROGRAMADO)
   
+  // TODO: Campos para obra social específicos del turno
+  // Estos campos se agregarán cuando se implemente la funcionalidad de turnos:
+  // obraSocialId         String?          // Obra social al momento del turno
+  // numeroAfiliado       String?          // Número de afiliado al momento del turno  
+  // tipoConsulta         String?          // Particular, Obra Social, etc.
+  // copago              Decimal?         // Monto de copago si aplica
+  // autorizacion        String?          // Número de autorización de obra social
+  
   // Relaciones
   pacienteId    String
   paciente      Patient          @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
@@ -126,6 +128,9 @@ model Appointment {
   profesional   User             @relation("ProfesionalAppointments", fields: [profesionalId], references: [id])
   createdBy     String           // Usuario que creó el turno (mesa de entrada)
   creator       User             @relation("CreatorAppointments", fields: [createdBy], references: [id])
+  
+  // TODO: Relación con obra social cuando se implementen los campos arriba
+  // obraSocial           ObraSocial?      @relation(fields: [obraSocialId], references: [id])
   
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt

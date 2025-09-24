@@ -3,7 +3,7 @@ export interface PatientFormData {
   nombre: string
   apellido: string
   dni: string
-  fechaNacimiento: string
+  fechaNacimiento: Date
   genero: string
   telefono: string
   celular: string
@@ -12,8 +12,6 @@ export interface PatientFormData {
   ciudad: string
   provincia: string
   codigoPostal: string
-  obraSocialId: string
-  numeroAfiliado: string
   contactoEmergenciaNombre: string
   contactoEmergenciaTelefono: string
   contactoEmergenciaRelacion: string

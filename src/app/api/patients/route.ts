@@ -12,7 +12,7 @@ const createPatientSchema = z.object({
     .min(7, 'El DNI debe tener al menos 7 dígitos')
     .max(8, 'El DNI no puede tener más de 8 dígitos')
     .regex(/^\d+$/, 'El DNI solo debe contener números'),
-  fechaNacimiento: z.string().min(1, 'La fecha de nacimiento es obligatoria'),
+  fechaNacimiento: z.date({ message: 'La fecha de nacimiento es obligatoria' }),
   genero: z.enum(['M', 'F', 'Otro'], { message: 'El género es obligatorio' }),
   
   // Datos de contacto (opcionales)
@@ -25,10 +25,6 @@ const createPatientSchema = z.object({
   ciudad: z.string().optional(),
   provincia: z.string().optional(),
   codigoPostal: z.string().optional(),
-  
-  // Obra social (opcional)
-  obraSocialId: z.string().optional().or(z.literal('')),
-  numeroAfiliado: z.string().optional(),
   
   // Contacto de emergencia (opcional)
   contactoEmergenciaNombre: z.string().optional(),
@@ -61,7 +57,6 @@ export async function GET(request: NextRequest) {
         ]
       } : undefined,
       include: {
-        obraSocial: true,
         creator: {
           select: {
             name: true,
@@ -109,24 +104,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Ya existe un paciente con este DNI' }, { status: 400 })
     }
 
-    // Verificar que la obra social existe si se proporcionó
-    if (validatedData.obraSocialId) {
-      const obraSocial = await prisma.obraSocial.findUnique({
-        where: { id: validatedData.obraSocialId }
-      })
-      
-      if (!obraSocial) {
-        return NextResponse.json({ error: 'La obra social seleccionada no existe' }, { status: 400 })
-      }
-    }
-
     // Crear el paciente
     const patient = await prisma.patient.create({
       data: {
         nombre: validatedData.nombre,
         apellido: validatedData.apellido,
         dni: validatedData.dni,
-        fechaNacimiento: new Date(validatedData.fechaNacimiento),
+        fechaNacimiento: validatedData.fechaNacimiento,
         genero: validatedData.genero,
         telefono: validatedData.telefono || null,
         celular: validatedData.celular || null,
@@ -135,15 +119,12 @@ export async function POST(request: NextRequest) {
         ciudad: validatedData.ciudad || null,
         provincia: validatedData.provincia || null,
         codigoPostal: validatedData.codigoPostal || null,
-        obraSocialId: validatedData.obraSocialId || null,
-        numeroAfiliado: validatedData.numeroAfiliado || null,
         contactoEmergenciaNombre: validatedData.contactoEmergenciaNombre || null,
         contactoEmergenciaTelefono: validatedData.contactoEmergenciaTelefono || null,
         contactoEmergenciaRelacion: validatedData.contactoEmergenciaRelacion || null,
         createdBy: currentUser.id,
       },
       include: {
-        obraSocial: true,
         creator: {
           select: {
             name: true,

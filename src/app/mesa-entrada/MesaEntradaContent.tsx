@@ -1,14 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { ObraSocial, Patient } from '@prisma/client'
+import { Patient } from '@prisma/client'
 import FormularioAltaPaciente from '@/components/FormularioAltaPaciente'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PatientFormData } from '@/types/patient'
 
-interface PatientWithObraSocial extends Patient {
-  obraSocial: ObraSocial | null
+interface PatientWithCreator extends Patient {
   creator: {
     name: string | null
     email: string
@@ -16,12 +15,10 @@ interface PatientWithObraSocial extends Patient {
 }
 
 interface MesaEntradaContentProps {
-  obrasSociales: ObraSocial[]
-  initialPatients: PatientWithObraSocial[]
+  initialPatients: PatientWithCreator[]
 }
 
 export default function MesaEntradaContent({ 
-  obrasSociales, 
   initialPatients 
 }: MesaEntradaContentProps) {
   const [showFormulario, setShowFormulario] = useState(false)
@@ -148,12 +145,6 @@ export default function MesaEntradaContent({
                         {patient.email && (
                           <span>✉️ {patient.email}</span>
                         )}
-                        {patient.obraSocial && (
-                          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                            {patient.obraSocial.nombre}
-                            {patient.numeroAfiliado && ` - ${patient.numeroAfiliado}`}
-                          </span>
-                        )}
                       </div>
                       
                       {(patient.direccion || patient.ciudad) && (
@@ -188,7 +179,6 @@ export default function MesaEntradaContent({
       {/* Modal del formulario */}
       {showFormulario && (
         <FormularioAltaPaciente
-          obrasSociales={obrasSociales}
           onSubmit={handleCreatePatient}
           onCancel={() => setShowFormulario(false)}
           isLoading={isLoading}
