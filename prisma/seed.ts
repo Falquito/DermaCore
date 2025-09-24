@@ -14,11 +14,40 @@ async function main() {
   for (const u of users) {
     await prisma.user.upsert({
       where: { email: u.email },
-  update: { passwordHash: u.passwordHash, role: u.role, name: u.name },
+      update: { passwordHash: u.passwordHash, role: u.role, name: u.name },
       create: { email: u.email, name: u.name, role: u.role, passwordHash: u.passwordHash },
     })
   }
-  console.log('🌱 Seed completed: users created')
+
+  // Crear obras sociales argentinas más comunes
+  const obrasSociales = [
+    { nombre: 'OSDE', codigo: 'OSDE' },
+    { nombre: 'Swiss Medical', codigo: 'SWISS' },
+    { nombre: 'Galeno', codigo: 'GALENO' },
+    { nombre: 'IOMA', codigo: 'IOMA' },
+    { nombre: 'PAMI', codigo: 'PAMI' },
+    { nombre: 'UOM', codigo: 'UOM' },
+    { nombre: 'OSECAC', codigo: 'OSECAC' },
+    { nombre: 'DOSAC', codigo: 'DOSAC' },
+    { nombre: 'MEDICUS', codigo: 'MEDICUS' },
+    { nombre: 'IPS', codigo: 'IPS' },
+    { nombre: 'OSMATA', codigo: 'OSMATA' },
+    { nombre: 'OSPRERA', codigo: 'OSPRERA' },
+    { nombre: 'OSPLAD', codigo: 'OSPLAD' },
+    { nombre: 'OSTUFF', codigo: 'OSTUFF' },
+    { nombre: 'OSUTHGRA', codigo: 'OSUTHGRA' },
+    { nombre: 'Particular', codigo: 'PARTICULAR' }
+  ]
+
+  for (const obra of obrasSociales) {
+    await prisma.obraSocial.upsert({
+      where: { codigo: obra.codigo },
+      update: {},
+      create: obra
+    })
+  }
+
+  console.log('🌱 Seed completed: users and obras sociales created')
 }
 
 main()
