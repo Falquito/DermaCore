@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
-import { z } from 'zod'
+import { z, ZodIssue } from 'zod'
 
 // Esquema de validación para actualizar usuario
 const updateUserSchema = z.object({
@@ -112,7 +112,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(
         { 
           error: 'Datos inválidos',
-          details: error.issues.map((err: any) => ({
+          details: error.issues.map((err: ZodIssue) => ({
             field: err.path.join('.'),
             message: err.message
           }))

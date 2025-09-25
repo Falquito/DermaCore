@@ -5,10 +5,8 @@ import GerenciaSidebar from '@/components/ui/gerencia-sidebar';
 import GerenciaTopbar from '@/components/ui/gerencia-topbar';
 import { 
   Users, 
-  Plus, 
   Search, 
   Edit, 
-  MoreVertical,
   Shield,
   UserCheck,
   AlertCircle
@@ -21,7 +19,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Select,
