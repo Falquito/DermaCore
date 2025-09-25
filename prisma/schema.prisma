@@ -17,20 +17,24 @@ enum Role {
 
 // Modelo de usuario con autenticación básica y rol
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String?
-  passwordHash  String
-  role          Role?     // Optional, assigned after creation
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  sessions      Session[]
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String?
+  passwordHash String
+  role         Role? // Optional, assigned after creation
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  sessions     Session[]
 
   // Relaciones con pacientes y turnos
-  createdPatients     Patient[]      @relation("PatientCreator")
+  createdPatients          Patient[]     @relation("PatientCreator")
   professionalAppointments Appointment[] @relation("ProfesionalAppointments")
   createdAppointments      Appointment[] @relation("CreatorAppointments")
 
+  // --- Auditoría de Especialidad (agregado) ---
+  especialidadesCreadas      Especialidad[] @relation("EspecialidadCreatedBy")
+  especialidadesActualizadas Especialidad[] @relation("EspecialidadUpdatedBy")
+  especialidadesDesactivadas Especialidad[] @relation("EspecialidadDeactivatedBy")
 
   @@map("users")
 }
@@ -49,12 +53,12 @@ model Session {
 
 // Obras sociales disponibles en Argentina
 model ObraSocial {
-  id          String    @id @default(cuid())
-  nombre      String    @unique
-  codigo      String?   @unique
-  activa      Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id        String   @id @default(cuid())
+  nombre    String   @unique
+  codigo    String?  @unique
+  activa    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relación con turnos
   appointments Appointment[]
@@ -64,37 +68,37 @@ model ObraSocial {
 
 // Modelo de paciente con campos específicos para Argentina
 model Patient {
-  id              String      @id @default(cuid())
+  id              String   @id @default(cuid())
   // Datos personales
   nombre          String
   apellido        String
-  dni             String      @unique
+  dni             String   @unique
   fechaNacimiento DateTime
-  genero          String      // M, F, Otro
+  genero          String // M, F, Otro
   telefono        String?
   celular         String?
   email           String?
-  
+
   // Dirección
-  direccion       String?
-  ciudad          String?
-  provincia       String?
-  codigoPostal    String?
-  
+  direccion    String?
+  ciudad       String?
+  provincia    String?
+  codigoPostal String?
+
   // Contacto de emergencia
-  contactoEmergenciaNombre    String?
-  contactoEmergenciaTelefono  String?
-  contactoEmergenciaRelacion  String?
-  
+  contactoEmergenciaNombre   String?
+  contactoEmergenciaTelefono String?
+  contactoEmergenciaRelacion String?
+
   // Sistema
-  activo          Boolean     @default(true) // Estado del paciente (Activo/Inactivo)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  createdBy       String      // ID del usuario que creó el paciente
-  creator         User        @relation("PatientCreator", fields: [createdBy], references: [id])
-  
+  activo    Boolean  @default(true) // Estado del paciente (Activo/Inactivo)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String // ID del usuario que creó el paciente
+  creator   User     @relation("PatientCreator", fields: [createdBy], references: [id])
+
   // Turnos
-  appointments    Appointment[]
+  appointments Appointment[]
 
   @@map("patients")
 }
@@ -123,27 +127,49 @@ model Appointment {
   motivo        String?
   observaciones String?
   estado        AppointmentStatus @default(PROGRAMADO)
-  
+
   // Campos para obra social específicos del turno
-  obraSocialId         String?          // Obra social al momento del turno
-  numeroAfiliado       String?          // Número de afiliado al momento del turno  
-  tipoConsulta         TipoConsulta     @default(OBRA_SOCIAL) // Particular, Obra Social
-  copago              Decimal?         // Monto de copago o precio particular
-  autorizacion        String?          // Número de autorización de obra social
-  
+  obraSocialId   String? // Obra social al momento del turno
+  numeroAfiliado String? // Número de afiliado al momento del turno  
+  tipoConsulta   TipoConsulta @default(OBRA_SOCIAL) // Particular, Obra Social
+  copago         Decimal? // Monto de copago o precio particular
+  autorizacion   String? // Número de autorización de obra social
+
   // Relaciones
   pacienteId    String
-  paciente      Patient          @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  paciente      Patient @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
   profesionalId String
-  profesional   User             @relation("ProfesionalAppointments", fields: [profesionalId], references: [id])
-  createdBy     String           // Usuario que creó el turno (mesa de entrada)
-  creator       User             @relation("CreatorAppointments", fields: [createdBy], references: [id])
-  
+  profesional   User    @relation("ProfesionalAppointments", fields: [profesionalId], references: [id])
+  createdBy     String // Usuario que creó el turno (mesa de entrada)
+  creator       User    @relation("CreatorAppointments", fields: [createdBy], references: [id])
+
   // Relación con obra social
-  obraSocial           ObraSocial?      @relation(fields: [obraSocialId], references: [id])
-  
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  obraSocial ObraSocial? @relation(fields: [obraSocialId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("appointments")
+}
+
+// ================== Especialidad (agregado) ==================
+model Especialidad {
+  id          String   @id @default(cuid())
+  nombre      String   @unique
+  descripcion String?
+  activa      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Auditoría
+  createdById     String?
+  updatedById     String?
+  deactivatedById String?
+  deactivatedAt   DateTime?
+
+  createdBy     User? @relation("EspecialidadCreatedBy", fields: [createdById], references: [id])
+  updatedBy     User? @relation("EspecialidadUpdatedBy", fields: [updatedById], references: [id])
+  deactivatedBy User? @relation("EspecialidadDeactivatedBy", fields: [deactivatedById], references: [id])
+
+  @@map("especialidades")
 }
