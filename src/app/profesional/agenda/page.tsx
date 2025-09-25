@@ -1,4 +1,3 @@
-
 'use client'
 
 import React, { useEffect, useMemo, useState, useLayoutEffect, useRef } from 'react'
@@ -70,7 +69,11 @@ function minutesSinceStartOfGrid(date: Date) {
 }
 // removed percent-based totalGridMinutes; using px-based layout now
 
+import ProfesionalSidebar from '@/components/ui/profesional-sidebar'
+import ProfesionalTopbar from '@/components/ui/profesional-topbar'
+
 export default function AgendaPage() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [view, setView] = useState<View>('week')
   const [date, setDate] = useState<Date>(new Date())
   const [loading, setLoading] = useState(false)
@@ -178,10 +181,8 @@ export default function AgendaPage() {
   }
 
   function navigateToAppointment(a: Appointment) {
-    // Placeholder: replace with actual navigation when detail page exists
-    console.log('navigate to appointment', a.id)
-    // Example future route:
-    // router.push(`/profesional/turnos/${a.id}`)
+    // Redirige a la nueva página de consulta
+    window.location.href = `/profesional/agenda/consulta?id=${a.id}`;
   }
 
   function byDay(d: Date) {
@@ -219,135 +220,146 @@ export default function AgendaPage() {
   }, [appointments, statusFilter, search])
 
   return (
-    <div className="min-h-screen bg-emerald-50">
-      <header className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-4">
-          <h1 className="text-xl md:text-2xl font-semibold text-gray-900">Agenda</h1>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-6 lg:px-8 py-6 space-y-4">
-        <div className="flex flex-col gap-3">
-          <div className={`flex flex-wrap items-center gap-2 bg-white ${styles.borderAgenda} rounded-lg p-3 shadow-sm`}>
-            <div className="flex items-center gap-2">
-              <button onClick={goPrev} className={`inline-flex items-center rounded-md bg-white px-2.5 py-1.5 text-xs md:text-sm hover:bg-emerald-50 ${styles.borderCtrl} ${styles.textAgenda}`} aria-label="Anterior">‹</button>
-              <button onClick={goToday} className={`inline-flex items-center rounded-md bg-white px-2.5 py-1.5 text-xs md:text-sm hover:bg-emerald-50 ${styles.borderCtrl} ${styles.textAgenda}`}>Hoy</button>
-              <button onClick={goNext} className={`inline-flex items-center rounded-md bg-white px-2.5 py-1.5 text-xs md:text-sm hover:bg-emerald-50 ${styles.borderCtrl} ${styles.textAgenda}`} aria-label="Siguiente">›</button>
-            </div>
-            <span className={`text-sm font-medium ml-1 ${styles.textAgenda}`}>{periodLabel}</span>
-            <div className={`inline-flex rounded-lg border ${styles.borderCtrl} overflow-hidden ml-auto`}>
-              <button className={view === 'day' ? styles.viewActiveTail : styles.viewBtnTail} onClick={() => setView('day')}><span >Día</span></button>
-              <button className={view === 'week' ? styles.viewActiveTail : styles.viewBtnTail} onClick={() => setView('week')}><span >Semana</span></button>
-              <button className={view === 'month' ? styles.viewActiveTail : styles.viewBtnTail} onClick={() => setView('month')}><span >Mes</span></button>
-            </div>
-          </div>
-          <div className={`flex flex-col gap-2 bg-white ${styles.borderAgenda} rounded-lg p-3 shadow-sm`}>
-            <div className="flex flex-wrap gap-2 items-center">
-              <div className="flex gap-1 flex-wrap items-center">
-                {(['PENDING','WAITING','COMPLETED','CANCELED'] as AppointmentStatus[]).map(s => {
-                  const active = statusFilter.includes(s)
-                  return (
-                    <button key={s} type="button" onClick={() => toggleStatus(s)}
-                      className={`px-2.5 py-1 text-xs md:text-sm rounded-md border ${active ? 'bg-emerald-600 text-white border-emerald-600' : `bg-white ${styles.textAgenda} ${styles.borderCtrl} hover:bg-emerald-50`}`}
-                    ><span >{STATUS_LABELS[s]}</span></button>
-                  )
-                })}
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <ProfesionalSidebar 
+        userRole="PROFESIONAL" 
+        collapsed={sidebarCollapsed}
+        onCollapsedChange={setSidebarCollapsed}
+      />
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Topbar */}
+        <ProfesionalTopbar 
+          userName="Dr. Profesional"
+          userEmail="doctor@carelink.com"
+          sidebarCollapsed={sidebarCollapsed}
+          setSidebarCollapsed={setSidebarCollapsed}
+        />
+        {/* Agenda Content */}
+  <main className="px-6 lg:px-8 py-6 space-y-4 w-full">
+          <div className="flex flex-col gap-3">
+            <div className={`flex flex-wrap items-center gap-2 bg-white ${styles.borderAgenda} rounded-lg p-3 shadow-sm`}>
+              <div className="flex items-center gap-2">
+                <button onClick={goPrev} className={`inline-flex items-center rounded-md bg-white px-2.5 py-1.5 text-xs md:text-sm hover:bg-emerald-50 ${styles.borderCtrl} ${styles.textAgenda}`} aria-label="Anterior">‹</button>
+                <button onClick={goToday} className={`inline-flex items-center rounded-md bg-white px-2.5 py-1.5 text-xs md:text-sm hover:bg-emerald-50 ${styles.borderCtrl} ${styles.textAgenda}`}>Hoy</button>
+                <button onClick={goNext} className={`inline-flex items-center rounded-md bg-white px-2.5 py-1.5 text-xs md:text-sm hover:bg-emerald-50 ${styles.borderCtrl} ${styles.textAgenda}`} aria-label="Siguiente">›</button>
               </div>
-              <div className="flex items-center gap-2 ml-auto w-full md:w-auto">
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Buscar (paciente, título, nota)" 
-                  className={`flex-1 md:flex-none md:w-64 rounded-md border ${styles.borderCtrl} px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 ${styles.textAgenda}`}
-                />
-                {(statusFilter.length > 0 || search.trim()) && (
-                  <button onClick={clearFilters} className={`text-xs hover:underline ${styles.textAgenda}`}>Limpiar</button>
-                )}
+              <span className={`text-sm font-medium ml-1 ${styles.textAgenda}`}>{periodLabel}</span>
+              <div className={`inline-flex rounded-lg border ${styles.borderCtrl} overflow-hidden ml-auto`}>
+                <button className={view === 'day' ? styles.viewActiveTail : styles.viewBtnTail} onClick={() => setView('day')}><span >Día</span></button>
+                <button className={view === 'week' ? styles.viewActiveTail : styles.viewBtnTail} onClick={() => setView('week')}><span >Semana</span></button>
+                <button className={view === 'month' ? styles.viewActiveTail : styles.viewBtnTail} onClick={() => setView('month')}><span >Mes</span></button>
               </div>
             </div>
-            <div className={`text-[11px] md:text-xs flex flex-wrap gap-3 ${styles.textAgenda}`}>
-              <span>Filtrando: {statusFilter.length ? statusFilter.map(s=>STATUS_LABELS[s]).join(', ') : 'Todos los estados'}</span>
-              {search && <span>Búsqueda: “{search}”</span>}
-              <span>Total: {filteredAppointments.length}</span>
+            <div className={`flex flex-col gap-2 bg-white ${styles.borderAgenda} rounded-lg p-3 shadow-sm`}>
+              <div className="flex flex-wrap gap-2 items-center">
+                <div className="flex gap-1 flex-wrap items-center">
+                  {(['PENDING','WAITING','COMPLETED','CANCELED'] as AppointmentStatus[]).map(s => {
+                    const active = statusFilter.includes(s)
+                    return (
+                      <button key={s} type="button" onClick={() => toggleStatus(s)}
+                        className={`px-2.5 py-1 text-xs md:text-sm rounded-md border ${active ? 'bg-emerald-600 text-white border-emerald-600' : `bg-white ${styles.textAgenda} ${styles.borderCtrl} hover:bg-emerald-50`}`}
+                      ><span >{STATUS_LABELS[s]}</span></button>
+                    )
+                  })}
+                </div>
+                <div className="flex items-center gap-2 ml-auto w-full md:w-auto">
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Buscar (paciente, título, nota)" 
+                    className={`flex-1 md:flex-none md:w-64 rounded-md border ${styles.borderCtrl} px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 ${styles.textAgenda}`}
+                  />
+                  {(statusFilter.length > 0 || search.trim()) && (
+                    <button onClick={clearFilters} className={`text-xs hover:underline ${styles.textAgenda}`}>Limpiar</button>
+                  )}
+                </div>
+              </div>
+              <div className={`text-[11px] md:text-xs flex flex-wrap gap-3 ${styles.textAgenda}`}>
+                <span>Filtrando: {statusFilter.length ? statusFilter.map(s=>STATUS_LABELS[s]).join(', ') : 'Todos los estados'}</span>
+                {search && <span>Búsqueda: “{search}”</span>}
+                <span>Total: {filteredAppointments.length}</span>
+              </div>
             </div>
+            <StatusLegend />
           </div>
-          <StatusLegend />
-        </div>
 
-        {loading && <div className="text-sm text-emerald-700">Cargando…</div>}
+          {loading && <div className="text-sm text-emerald-700">Cargando…</div>}
 
-        {view === 'day' && <DayView date={date} items={byDay(date).filter(a => filteredAppointments.includes(a))} onOpen={(a, el, point) => {
-          // Hover delay (200ms)
-          if (lastHoverIdRef.current !== a.id) {
-            if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
-            lastHoverIdRef.current = a.id
-          }
-          const doOpen = () => {
-            setActive(a)
-            setAnchorEl(el)
-            const rect = el.getBoundingClientRect()
-            setAnchorRect(rect)
-            if (point) {
-              setAnchorOffset({ dx: point.x - rect.left, dy: point.y - rect.top })
-            } else {
-              setAnchorOffset(null)
+          {view === 'day' && <DayView date={date} items={byDay(date).filter(a => filteredAppointments.includes(a))} onOpen={(a, el, point) => {
+            // Hover delay (200ms)
+            if (lastHoverIdRef.current !== a.id) {
+              if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
+              lastHoverIdRef.current = a.id
             }
-          }
-          if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
-          hoverTimerRef.current = window.setTimeout(doOpen, 400)
-        }} onHoverLeave={() => { if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current) }} onClickOpen={(a: Appointment) => navigateToAppointment(a)} />}
-        {view === 'week' && <WeekView days={weekDays} items={filteredAppointments} onOpen={(a, el) => {
-          if (lastHoverIdRef.current !== a.id) {
-            if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
-            lastHoverIdRef.current = a.id
-          }
-          const doOpen = () => {
-            setActive(a)
-            setAnchorEl(el)
-            setAnchorRect(el.getBoundingClientRect())
-            setAnchorOffset(null)
-          }
-          if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
-          hoverTimerRef.current = window.setTimeout(doOpen, 400)
-        }} onHoverLeave={() => { if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current) }} onClickOpen={(a: Appointment) => navigateToAppointment(a)} />} 
-        {view === 'month' && (
-          <MonthView
-            date={date}
-            items={filteredAppointments}
-            onSelectDay={(d) => {
-              setDate(d)
-              setView('day')
-            }}
-            onOpen={(a, el) => {
-              if (lastHoverIdRef.current !== a.id) {
-                if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
-                lastHoverIdRef.current = a.id
-              }
-              const doOpen = () => {
-                setActive(a)
-                setAnchorEl(el)
-                setAnchorRect(el.getBoundingClientRect())
+            const doOpen = () => {
+              setActive(a)
+              setAnchorEl(el)
+              const rect = el.getBoundingClientRect()
+              setAnchorRect(rect)
+              if (point) {
+                setAnchorOffset({ dx: point.x - rect.left, dy: point.y - rect.top })
+              } else {
                 setAnchorOffset(null)
               }
+            }
+            if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
+            hoverTimerRef.current = window.setTimeout(doOpen, 400)
+          }} onHoverLeave={() => { if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current) }} onClickOpen={(a: Appointment) => navigateToAppointment(a)} />}
+          {view === 'week' && <WeekView days={weekDays} items={filteredAppointments} onOpen={(a, el) => {
+            if (lastHoverIdRef.current !== a.id) {
               if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
-              hoverTimerRef.current = window.setTimeout(doOpen, 400)
+              lastHoverIdRef.current = a.id
+            }
+            const doOpen = () => {
+              setActive(a)
+              setAnchorEl(el)
+              setAnchorRect(el.getBoundingClientRect())
+              setAnchorOffset(null)
+            }
+            if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
+            hoverTimerRef.current = window.setTimeout(doOpen, 400)
+          }} onHoverLeave={() => { if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current) }} onClickOpen={(a: Appointment) => navigateToAppointment(a)} />} 
+          {view === 'month' && (
+            <MonthView
+              date={date}
+              items={filteredAppointments}
+              onSelectDay={(d) => {
+                setDate(d)
+                setView('day')
+              }}
+              onOpen={(a, el) => {
+                if (lastHoverIdRef.current !== a.id) {
+                  if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
+                  lastHoverIdRef.current = a.id
+                }
+                const doOpen = () => {
+                  setActive(a)
+                  setAnchorEl(el)
+                  setAnchorRect(el.getBoundingClientRect())
+                  setAnchorOffset(null)
+                }
+                if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
+                hoverTimerRef.current = window.setTimeout(doOpen, 400)
+              }}
+              onHoverLeave={() => { if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current) }}
+              onClickOpen={(a: Appointment) => navigateToAppointment(a)}
+            />
+          )}
+          <AppointmentPopover
+            appointment={active}
+            anchorRect={anchorRect}
+            anchorOffset={anchorOffset}
+            onClose={() => {
+              setActive(null)
+              setAnchorRect(null)
+              setAnchorEl(null)
+              setAnchorOffset(null)
             }}
-            onHoverLeave={() => { if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current) }}
-            onClickOpen={(a: Appointment) => navigateToAppointment(a)}
           />
-        )}
-        <AppointmentPopover
-          appointment={active}
-          anchorRect={anchorRect}
-          anchorOffset={anchorOffset}
-          onClose={() => {
-            setActive(null)
-            setAnchorRect(null)
-            setAnchorEl(null)
-            setAnchorOffset(null)
-          }}
-        />
-      </main>
+        </main>
+      </div>
     </div>
   )
 }
@@ -369,7 +381,11 @@ function DayView({ date, items, onOpen, onHoverLeave, onClickOpen }: { date: Dat
   const hours = Array.from({ length: getHoursRange().endHour - getHoursRange().startHour + 1 }, (_, i) => getHoursRange().startHour + i)
   const hourHeight = 56 // px per hour
   return (
-    <div className={styles.dayContainer} aria-label={`Agenda del ${date.toLocaleDateString()}`}>
+    <div
+      className={styles.dayContainer}
+      aria-label={`Agenda del ${date.toLocaleDateString()}`}
+      style={{ ['--hour-height']: `${hourHeight}px`, ['--hours-count']: hours.length } as React.CSSProperties}
+    >
       <div className={styles.dayHeader}>
         <div className={styles.timeCol} />
         <div className={styles.headerCell}>
@@ -415,6 +431,8 @@ function DayView({ date, items, onOpen, onHoverLeave, onClickOpen }: { date: Dat
               {hours.map((h) => (
                 <div key={h} className={styles.hourLine} />
               ))}
+              {/* Dedicated bottom border for last row */}
+              <div className={styles.hourLineBottom} />
             </div>
           </div>
         </div>
@@ -435,7 +453,10 @@ function WeekView({ days, items, onOpen, onHoverLeave, onClickOpen }: { days: Da
   }
 
   return (
-    <div className={styles.weekGrid}>
+    <div
+      className={styles.weekGrid}
+      style={{ ['--hour-height']: `${hourHeight}px`, ['--hours-count']: hours.length } as React.CSSProperties}
+    >
       <div className={styles.gridHeader}>
         <div className={styles.cornerCell} />
         {days.map((d) => (
@@ -483,6 +504,8 @@ function WeekView({ days, items, onOpen, onHoverLeave, onClickOpen }: { days: Da
               {hours.map((h) => (
                 <div key={h} className={styles.hourLine} />
               ))}
+              {/* Dedicated bottom border for last row */}
+              <div className={styles.hourLineBottom} />
             </div>
           </div>
         ))}

@@ -15,6 +15,8 @@ import { Button } from '@/components/ui/button'
 interface TopbarProps {
   userName: string | null
   userEmail: string
+  sidebarCollapsed: boolean
+  setSidebarCollapsed: (collapsed: boolean) => void
 }
 
 const pathTitles: Record<string, string> = {
@@ -29,7 +31,7 @@ const pathTitles: Record<string, string> = {
   '/profesional/configuracion': 'Configuración'
 }
 
-export default function ProfesionalTopbar({ userName, userEmail }: TopbarProps) {
+export default function ProfesionalTopbar({ userName, userEmail, sidebarCollapsed, setSidebarCollapsed }: TopbarProps) {
   const pathname = usePathname()
   const currentTitle = pathTitles[pathname] || 'CareLink'
   
@@ -60,22 +62,34 @@ export default function ProfesionalTopbar({ userName, userEmail }: TopbarProps) 
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
+        {/* Sidebar collapsed button (quick fix) */}
+        {sidebarCollapsed && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mr-4"
+            onClick={() => setSidebarCollapsed(false)}
+            title="Abrir menú"
+          >
+            <ChevronRight className="h-5 w-5 text-emerald-600" />
+          </Button>
+        )}
         {/* Left section - Breadcrumb y título */}
-        <div className="flex items-center space-x-4">
+  <div className="flex items-center">
           <div className="flex items-center text-sm text-gray-500">
             <span>Profesional</span>
             <ChevronRight className="h-4 w-4 mx-2" />
-            <span className="text-gray-900 font-medium">{currentTitle}</span>
+            <span className="text-gray-900 font-medium space-x-2">{currentTitle}</span>
           </div>
         </div>
 
-        {/* Center section - Fecha y hora */}
-        <div className="hidden md:flex items-center space-x-6 text-sm text-gray-600">
-          <div className="flex items-center space-x-2">
+  {/* Center section - Fecha y hora (never wraps, hides if would wrap) */}
+  <div className="hidden xl:flex items-center space-x-4 text-sm text-gray-600 whitespace-nowrap">
+          <div className="flex items-center space-x-2 ml-2">
             <Calendar className="h-4 w-4 text-emerald-600" />
             <span className="capitalize">{currentDate}</span>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 mr-2">
             <Clock className="h-4 w-4 text-emerald-600" />
             <span>{currentTime}</span>
           </div>

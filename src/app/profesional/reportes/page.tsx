@@ -23,6 +23,8 @@ export default function ReportesPage() {
         <ProfesionalTopbar 
           userName="Dr. Profesional"
           userEmail="doctor@carelink.com"
+          sidebarCollapsed={sidebarCollapsed}
+          setSidebarCollapsed={setSidebarCollapsed}
         />
         
         {/* Content */}
