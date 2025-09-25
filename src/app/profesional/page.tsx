@@ -1,84 +1,68 @@
-import { redirect } from 'next/navigation'
-import { getCurrentUser, roleToPath, signOut } from '@/lib/auth'
-import { Construction, Clock, Wrench, Stethoscope } from 'lucide-react'
+"use client";
 
-async function signOutAction() {
-  'use server'
-  await signOut()
-  redirect('/login')
-}
+import { useState } from 'react';
+import ProfesionalSidebar from '@/components/ui/profesional-sidebar';
+import ProfesionalTopbar from '@/components/ui/profesional-topbar';
+import { Construction, Clock, Wrench } from 'lucide-react';
 
-export default async function ProfesionalPage() {
-  const user = await getCurrentUser()
-  if (!user) redirect('/login')
-  if (user.role !== 'PROFESIONAL') redirect(roleToPath(user.role))
+export default function ProfesionalPage() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
-              <Stethoscope className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl md:text-2xl font-semibold text-gray-900">CareLink</h1>
-              <p className="text-sm text-gray-500">Panel del Profesional</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-4">
-            <p className="text-sm text-gray-600">
-              Bienvenido, <span className="font-medium">{user.name || user.email}</span>
-            </p>
-            <form action={signOutAction}>
-              <button className="inline-flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-100">
-                Cerrar sesión
-              </button>
-            </form>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <ProfesionalSidebar 
+        userRole="PROFESIONAL" 
+        collapsed={sidebarCollapsed}
+        onCollapsedChange={setSidebarCollapsed}
+      />
       
-      <main className="max-w-7xl mx-auto px-6 lg:px-8 py-8 flex items-center justify-center">
-        <div className="max-w-md w-full text-center">
-          <div className="bg-white rounded-lg shadow-lg p-8 border-l-4 border-l-emerald-500">
-            <div className="flex justify-center mb-4">
-              <div className="bg-emerald-100 p-4 rounded-full">
-                <Construction className="h-12 w-12 text-emerald-600" />
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Topbar */}
+        <ProfesionalTopbar 
+          userName="Dr. Profesional"
+          userEmail="doctor@carelink.com"
+        />
+        
+        {/* Content */}
+        <div className="flex-1 p-8 overflow-auto">
+          <div className="max-w-4xl mx-auto">
+            {/* Construction Message */}
+            <div className="text-center py-16">
+              <div className="mb-8">
+                <Construction className="mx-auto h-24 w-24 text-emerald-500" />
               </div>
-            </div>
-            
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Panel en Construcción
-            </h2>
-            
-            <p className="text-gray-600 mb-6">
-              Estamos trabajando en el panel del profesional. Esta funcionalidad estará disponible próximamente.
-            </p>
-            
-            <div className="text-sm text-gray-500 mb-4">
-              <p className="font-medium mb-2">Funcionalidades planificadas:</p>
-              <ul className="space-y-1 text-left">
-                <li>• Agenda de turnos personalizada</li>
-                <li>• Historial clínico de pacientes</li>
-                <li>• Prescripciones médicas</li>
-                <li>• Reportes de consultas</li>
-              </ul>
-            </div>
-            
-            <div className="flex items-center justify-center space-x-6 text-sm text-gray-500">
-              <div className="flex items-center">
-                <Clock className="h-4 w-4 mr-1 text-emerald-600" />
-                En desarrollo
+              <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                En Construcción
+              </h1>
+              <p className="text-xl text-gray-600 mb-8">
+                El módulo de Profesionales está siendo desarrollado
+              </p>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6 mb-8">
+                <h2 className="text-lg font-semibold text-emerald-800 mb-3 flex items-center justify-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Funcionalidades en Desarrollo
+                </h2>
+                <div className="space-y-2 text-emerald-700">
+                  <p>• Agenda médica personalizada</p>
+                  <p>• Gestión de pacientes y consultas</p>
+                  <p>• Historias clínicas digitales</p>
+                  <p>• Prescripciones y recetas</p>
+                  <p>• Órdenes de estudios médicos</p>
+                  <p>• Reportes profesionales</p>
+                </div>
               </div>
-              <div className="flex items-center">
-                <Wrench className="h-4 w-4 mr-1 text-emerald-600" />
-                Próximamente
+              <div className="flex items-center justify-center gap-2 text-emerald-600">
+                <Wrench className="h-5 w-5" />
+                <span className="text-lg font-medium">
+                  Pronto disponible
+                </span>
               </div>
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
-  )
+  );
 }

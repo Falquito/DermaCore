@@ -6,7 +6,9 @@ import {
   Bell, 
   ChevronRight,
   LogOut,
-  User
+  User,
+  Calendar,
+  Clock
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -16,55 +18,67 @@ interface TopbarProps {
 }
 
 const pathTitles: Record<string, string> = {
-  '/gerente': 'Dashboard',
-  '/gerente/usuarios': 'Usuarios',
-  '/gerente/reportes': 'Reportes', 
-  '/gerente/auditoria': 'Auditoría',
-  '/gerente/organizacion': 'Organización',
-  '/gerente/configuracion': 'Configuración',
+  '/profesional': 'Dashboard',
+  '/profesional/agenda': 'Agenda',
+  '/profesional/pacientes': 'Pacientes',
+  '/profesional/consultas': 'Consultas del Día',
+  '/profesional/historias-clinicas': 'Historias Clínicas',
+  '/profesional/prescripciones': 'Prescripciones',
+  '/profesional/estudios': 'Estudios Médicos',
+  '/profesional/reportes': 'Reportes',
+  '/profesional/configuracion': 'Configuración'
 }
 
-export default function GerenciaTopbar({ userName, userEmail }: TopbarProps) {
+export default function ProfesionalTopbar({ userName, userEmail }: TopbarProps) {
   const pathname = usePathname()
-  const currentTitle = pathTitles[pathname] || 'Gerencia'
+  const currentTitle = pathTitles[pathname] || 'CareLink'
+  
+  // Obtener fecha y hora actual
+  const now = new Date()
+  const currentDate = now.toLocaleDateString('es-AR', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+  const currentTime = now.toLocaleTimeString('es-AR', {
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 
-  const handleSignOut = async (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    
+  const handleLogout = async () => {
     try {
-      console.log('Iniciando proceso de logout...')
-      const response = await fetch('/api/auth/logout', {
+      await fetch('/api/auth/logout', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
       })
-      
-      console.log('Respuesta del logout:', response.status)
-      
-      if (response.ok) {
-        console.log('Logout exitoso, redirigiendo a login...')
-        // Forzar redirección completa en lugar de usar router.push
-        window.location.href = '/login'
-      } else {
-        console.error('Error al cerrar sesión:', response.status)
-        alert('Error al cerrar sesión. Por favor, intenta de nuevo.')
-      }
+      window.location.href = '/login'
     } catch (error) {
       console.error('Error al cerrar sesión:', error)
-      alert('Error de conexión. Por favor, verifica tu conexión e intenta de nuevo.')
     }
   }
 
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
-        {/* Breadcrumbs */}
-        <div className="flex items-center space-x-2">
-          <span className="text-sm text-gray-500">Gerencia</span>
-          <ChevronRight className="w-4 h-4 text-gray-400" />
-          <span className="text-sm font-medium text-gray-900">{currentTitle}</span>
+        {/* Left section - Breadcrumb y título */}
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center text-sm text-gray-500">
+            <span>Profesional</span>
+            <ChevronRight className="h-4 w-4 mx-2" />
+            <span className="text-gray-900 font-medium">{currentTitle}</span>
+          </div>
+        </div>
+
+        {/* Center section - Fecha y hora */}
+        <div className="hidden md:flex items-center space-x-6 text-sm text-gray-600">
+          <div className="flex items-center space-x-2">
+            <Calendar className="h-4 w-4 text-emerald-600" />
+            <span className="capitalize">{currentDate}</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Clock className="h-4 w-4 text-emerald-600" />
+            <span>{currentTime}</span>
+          </div>
         </div>
 
         {/* Right section - Search, notifications, user */}
@@ -74,7 +88,7 @@ export default function GerenciaTopbar({ userName, userEmail }: TopbarProps) {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Buscar..."
+              placeholder="Buscar pacientes..."
               className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm 
                 focus:ring-2 focus:ring-emerald-500 focus:border-transparent
                 bg-gray-50 hover:bg-white transition-colors"
@@ -85,7 +99,7 @@ export default function GerenciaTopbar({ userName, userEmail }: TopbarProps) {
           <Button variant="ghost" size="sm" className="relative">
             <Bell className="h-5 w-5 text-gray-600" />
             <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-              2
+              3
             </span>
           </Button>
 
@@ -93,7 +107,7 @@ export default function GerenciaTopbar({ userName, userEmail }: TopbarProps) {
           <div className="flex items-center space-x-3">
             <div className="hidden sm:block text-right">
               <p className="text-sm font-medium text-gray-900">
-                {userName || 'Administrador'}
+                {userName || 'Dr. Profesional'}
               </p>
               <p className="text-xs text-gray-500">
                 {userEmail}
@@ -114,18 +128,17 @@ export default function GerenciaTopbar({ userName, userEmail }: TopbarProps) {
                   <span>Mi Perfil</span>
                 </button>
                 <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2">
-                  <Bell className="h-4 w-4" />
-                  <span>Configuración</span>
+                  <Calendar className="h-4 w-4" />
+                  <span>Mi Agenda</span>
                 </button>
               </div>
             </div>
 
             {/* Logout Button */}
             <Button 
-              type="button"
               variant="ghost" 
               size="sm" 
-              onClick={handleSignOut}
+              onClick={handleLogout}
               className="flex items-center space-x-2 text-red-600 hover:text-red-700 hover:bg-red-50"
             >
               <LogOut className="h-4 w-4" />

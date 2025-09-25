@@ -1,114 +1,126 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import { 
+  Calendar, 
   Users, 
-  BarChart3, 
-  Settings,
-  FileText,
-  Shield,
-  Building,
-  ChevronLeft,
+  FileText, 
+  Activity, 
+  Settings, 
+  ChevronLeft, 
   ChevronRight,
   Stethoscope,
-  User,
-  Clock
+  Clock,
+  UserCheck,
+  Pill,
+  ClipboardList
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 
-interface SidebarProps {
+interface ProfesionalSidebarProps {
   userRole: string
   collapsed?: boolean
   onCollapsedChange?: (collapsed: boolean) => void
 }
 
-const sidebarItems = [
-  { 
-    id: 'dashboard', 
-    name: 'Dashboard', 
-    icon: BarChart3, 
-    href: '/gerente',
-    description: 'Panel principal de control' 
+const menuItems = [
+  {
+    title: 'Agenda',
+    icon: Calendar,
+    href: '/profesional/agenda',
+    description: 'Gestionar agenda y turnos'
   },
-  { 
-    id: 'usuarios', 
-    name: 'Usuarios', 
-    icon: Users, 
-    href: '/gerente/usuarios',
-    description: 'Gestión de usuarios del sistema' 
+  {
+    title: 'Pacientes',
+    icon: Users,
+    href: '/profesional/pacientes',
+    description: 'Historial de pacientes'
   },
-  { 
-    id: 'reportes', 
-    name: 'Reportes', 
-    icon: FileText, 
-    href: '/gerente/reportes',
-    description: 'Reportes ejecutivos y análisis' 
+  {
+    title: 'Consultas',
+    icon: UserCheck,
+    href: '/profesional/consultas',
+    description: 'Consultas del día'
   },
-  { 
-    id: 'auditoria', 
-    name: 'Auditoría', 
-    icon: Shield, 
-    href: '/gerente/auditoria',
-    description: 'Registro de actividades del sistema' 
+  {
+    title: 'Historias Clínicas',
+    icon: FileText,
+    href: '/profesional/historias-clinicas',
+    description: 'Historiales médicos'
   },
-  { 
-    id: 'organizacion', 
-    name: 'Organización', 
-    icon: Building, 
-    href: '/gerente/organizacion',
-    description: 'Configuración de la clínica' 
+  {
+    title: 'Prescripciones',
+    icon: Pill,
+    href: '/profesional/prescripciones',
+    description: 'Recetas médicas'
   },
-  { 
-    id: 'configuracion', 
-    name: 'Configuración', 
-    icon: Settings, 
-    href: '/gerente/configuracion',
-    description: 'Configuración avanzada del sistema' 
+  {
+    title: 'Estudios',
+    icon: Activity,
+    href: '/profesional/estudios',
+    description: 'Órdenes de estudios'
   },
+  {
+    title: 'Reportes',
+    icon: ClipboardList,
+    href: '/profesional/reportes',
+    description: 'Reportes médicos'
+  },
+  {
+    title: 'Configuración',
+    icon: Settings,
+    href: '/profesional/configuracion',
+    description: 'Configuración personal'
+  }
 ]
 
-export default function GerenciaSidebar({ 
+export default function ProfesionalSidebar({ 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   userRole, 
-  collapsed: externalCollapsed, 
+  collapsed = false, 
   onCollapsedChange 
-}: SidebarProps) {
-  const [internalCollapsed, setInternalCollapsed] = useState(false)
+}: ProfesionalSidebarProps) {
   const pathname = usePathname()
-  
-  const collapsed = externalCollapsed !== undefined ? externalCollapsed : internalCollapsed
-  
-  const handleCollapsedChange = (newCollapsed: boolean) => {
-    if (onCollapsedChange) {
-      onCollapsedChange(newCollapsed)
-    } else {
-      setInternalCollapsed(newCollapsed)
-    }
+  const router = useRouter()
+  const [isCollapsed, setIsCollapsed] = useState(collapsed)
+
+  useEffect(() => {
+    setIsCollapsed(collapsed)
+  }, [collapsed])
+
+  const toggleCollapse = () => {
+    const newCollapsed = !isCollapsed
+    setIsCollapsed(newCollapsed)
+    onCollapsedChange?.(newCollapsed)
+  }
+
+  const handleNavigation = (href: string) => {
+    router.push(href)
   }
 
   return (
-    <aside className={cn(
-      "bg-white border-r border-gray-200 flex flex-col min-h-screen transition-all duration-300",
-      collapsed ? "w-16" : "w-64"
-    )}>
+    <div className={`
+      bg-white border-r border-gray-200 
+      transition-all duration-300 ease-in-out
+      ${isCollapsed ? 'w-16' : 'w-64'}
+      flex flex-col min-h-screen
+    `}>
       {/* Header */}
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
-          {!collapsed && (
+          {!isCollapsed && (
             <div className="flex items-center space-x-3">
               <div className="bg-emerald-100 p-2 rounded-lg">
                 <Stethoscope className="h-6 w-6 text-emerald-600" />
               </div>
               <div>
                 <h2 className="font-semibold text-gray-900">CareLink</h2>
-                <p className="text-xs text-emerald-600 font-medium">Gerencia</p>
+                <p className="text-xs text-emerald-600 font-medium">Profesional</p>
               </div>
             </div>
           )}
-          {collapsed && (
+          {isCollapsed && (
             <div className="bg-emerald-100 p-2 rounded-lg mx-auto">
               <Stethoscope className="h-6 w-6 text-emerald-600" />
             </div>
@@ -117,10 +129,10 @@ export default function GerenciaSidebar({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => handleCollapsedChange(!collapsed)}
+            onClick={toggleCollapse}
             className="p-1 hover:bg-gray-100"
           >
-            {collapsed ? (
+            {isCollapsed ? (
               <ChevronRight className="h-4 w-4" />
             ) : (
               <ChevronLeft className="h-4 w-4" />
@@ -132,14 +144,14 @@ export default function GerenciaSidebar({
       {/* Navigation Menu */}
       <nav className="flex-1 p-4">
         <div className="space-y-2">
-          {sidebarItems.map((item) => {
+          {menuItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
             
             return (
-              <Link
-                key={item.id}
-                href={item.href}
+              <button
+                key={item.href}
+                onClick={() => handleNavigation(item.href)}
                 className={`
                   w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg
                   transition-all duration-200 text-left
@@ -147,27 +159,27 @@ export default function GerenciaSidebar({
                     ? 'bg-emerald-100 text-emerald-700 shadow-sm border border-emerald-200'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }
-                  ${collapsed ? 'justify-center' : ''}
+                  ${isCollapsed ? 'justify-center' : ''}
                 `}
-                title={collapsed ? item.name : ''}
+                title={isCollapsed ? item.title : ''}
               >
                 <Icon className={`
                   ${isActive ? 'text-emerald-600' : 'text-gray-500'}
-                  ${collapsed ? 'h-5 w-5' : 'h-5 w-5'}
+                  ${isCollapsed ? 'h-5 w-5' : 'h-5 w-5'}
                   flex-shrink-0
                 `} />
                 
-                {!collapsed && (
+                {!isCollapsed && (
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">
-                      {item.name}
+                      {item.title}
                     </p>
                     <p className="text-xs text-gray-500 truncate">
                       {item.description}
                     </p>
                   </div>
                 )}
-              </Link>
+              </button>
             )
           })}
         </div>
@@ -175,29 +187,29 @@ export default function GerenciaSidebar({
 
       {/* User Info Footer */}
       <div className="p-4 border-t border-gray-200">
-        <div className={`flex items-center ${collapsed ? 'justify-center' : 'space-x-3'}`}>
+        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'}`}>
           <div className="bg-emerald-100 p-2 rounded-full">
-            <User className="h-4 w-4 text-emerald-600" />
+            <UserCheck className="h-4 w-4 text-emerald-600" />
           </div>
-          {!collapsed && (
+          {!isCollapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">
-                Administrador
+                Dr. Profesional
               </p>
               <p className="text-xs text-gray-500">
-                Gerente General
+                Médico General
               </p>
             </div>
           )}
         </div>
         
-        {!collapsed && (
+        {!isCollapsed && (
           <div className="mt-3 flex items-center text-xs text-gray-500">
             <Clock className="h-3 w-3 mr-1" />
             Conectado
           </div>
         )}
       </div>
-    </aside>
+    </div>
   )
 }
