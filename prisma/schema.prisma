@@ -56,6 +56,9 @@ model ObraSocial {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  // Relación con turnos
+  appointments Appointment[]
+
   @@map("obras_sociales")
 }
 
@@ -105,6 +108,12 @@ enum AppointmentStatus {
   NO_ASISTIO
 }
 
+// Tipos de consulta
+enum TipoConsulta {
+  OBRA_SOCIAL
+  PARTICULAR
+}
+
 // Modelo de turnos/citas
 model Appointment {
   id            String            @id @default(cuid())
@@ -114,13 +123,12 @@ model Appointment {
   observaciones String?
   estado        AppointmentStatus @default(PROGRAMADO)
   
-  // TODO: Campos para obra social específicos del turno
-  // Estos campos se agregarán cuando se implemente la funcionalidad de turnos:
-  // obraSocialId         String?          // Obra social al momento del turno
-  // numeroAfiliado       String?          // Número de afiliado al momento del turno  
-  // tipoConsulta         String?          // Particular, Obra Social, etc.
-  // copago              Decimal?         // Monto de copago si aplica
-  // autorizacion        String?          // Número de autorización de obra social
+  // Campos para obra social específicos del turno
+  obraSocialId         String?          // Obra social al momento del turno
+  numeroAfiliado       String?          // Número de afiliado al momento del turno  
+  tipoConsulta         TipoConsulta     @default(OBRA_SOCIAL) // Particular, Obra Social
+  copago              Decimal?         // Monto de copago o precio particular
+  autorizacion        String?          // Número de autorización de obra social
   
   // Relaciones
   pacienteId    String
@@ -130,8 +138,8 @@ model Appointment {
   createdBy     String           // Usuario que creó el turno (mesa de entrada)
   creator       User             @relation("CreatorAppointments", fields: [createdBy], references: [id])
   
-  // TODO: Relación con obra social cuando se implementen los campos arriba
-  // obraSocial           ObraSocial?      @relation(fields: [obraSocialId], references: [id])
+  // Relación con obra social
+  obraSocial           ObraSocial?      @relation(fields: [obraSocialId], references: [id])
   
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
