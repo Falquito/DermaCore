@@ -1,10 +1,11 @@
 'use client'
-
+import ProfesionalSidebar from '@/components/ui/profesional-sidebar'
+import ProfesionalTopbar from '@/components/ui/profesional-topbar'
 import React, { useEffect, useMemo, useState, useLayoutEffect, useRef } from 'react'
 import styles from './agenda.module.css'
+import { AppointmentStatus } from '@prisma/client'
 
-type AppointmentStatus = 'PENDING' | 'WAITING' | 'COMPLETED' | 'CANCELED'
-
+// UI-specific appointment type (transformed from Prisma Appointment)
 type Appointment = {
   id: string
   professionalId: string
@@ -19,10 +20,12 @@ type Appointment = {
 type View = 'day' | 'week' | 'month'
 
 const STATUS_LABELS: Record<AppointmentStatus, string> = {
-  PENDING: 'Pendiente',
-  WAITING: 'En sala de espera',
-  COMPLETED: 'Finalizado',
-  CANCELED: 'Cancelado',
+  PROGRAMADO: 'Programado',
+  CONFIRMADO: 'Confirmado',
+  EN_SALA_DE_ESPERA: 'En sala de espera',
+  COMPLETADO: 'Completado',
+  CANCELADO: 'Cancelado',
+  NO_ASISTIO: 'No asistió',
 }
 
 function startOfDay(d: Date) {
@@ -69,8 +72,7 @@ function minutesSinceStartOfGrid(date: Date) {
 }
 // removed percent-based totalGridMinutes; using px-based layout now
 
-import ProfesionalSidebar from '@/components/ui/profesional-sidebar'
-import ProfesionalTopbar from '@/components/ui/profesional-topbar'
+
 
 export default function AgendaPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -255,7 +257,7 @@ export default function AgendaPage() {
             <div className={`flex flex-col gap-2 bg-white ${styles.borderAgenda} rounded-lg p-3 shadow-sm`}>
               <div className="flex flex-wrap gap-2 items-center">
                 <div className="flex gap-1 flex-wrap items-center">
-                  {(['PENDING','WAITING','COMPLETED','CANCELED'] as AppointmentStatus[]).map(s => {
+                  {(Object.values(AppointmentStatus) as AppointmentStatus[]).map(s => {
                     const active = statusFilter.includes(s)
                     return (
                       <button key={s} type="button" onClick={() => toggleStatus(s)}
@@ -367,7 +369,7 @@ export default function AgendaPage() {
 function StatusLegend() {
   return (
     <div className={styles.legend}> 
-      {(['PENDING', 'WAITING', 'COMPLETED', 'CANCELED'] as AppointmentStatus[]).map((s) => (
+      {(Object.values(AppointmentStatus) as AppointmentStatus[]).map((s) => (
         <div key={s} className={styles.legendItem}>
           <span className={`${styles.badge} ${styles[`status_${s}`]}`} />
           <span>{STATUS_LABELS[s]}</span>
@@ -555,10 +557,9 @@ function WeekView({ days, items, onOpen, onHoverLeave, onClickOpen }: { days: Da
           </div>
           {(() => {
             const itemsFor = itemsForDay(d)
-            const dense = itemsFor.length > 3
-            const max = dense ? 6 : 4
+            const max = 3;
             return (
-              <div className={`${styles.monthEvents} ${dense ? styles.monthEventsDense : ''}`}>
+              <div className={styles.monthEvents}>
                 {itemsFor.slice(0, max).map((a) => (
                   <div key={a.id} className={`${styles.monthEvent} ${styles[`status_${a.status}`]} status_${a.status}`}
                     onMouseEnter={(e) => { e.stopPropagation(); onOpen(a, e.currentTarget as HTMLElement) }}

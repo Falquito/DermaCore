@@ -10,6 +10,9 @@ export default async function MesaEntradaLayout({
 }) {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
+  if (!user.role) {
+    redirect('/')
+  }
   if (user.role !== 'MESA_ENTRADA') redirect(roleToPath(user.role))
 
   return (

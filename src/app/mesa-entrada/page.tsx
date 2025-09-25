@@ -6,6 +6,7 @@ import MesaEntradaContent from './MesaEntradaContent'
 export default async function MesaEntradaPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
+  if (user.role === null) redirect('/login')
   if (user.role !== 'MESA_ENTRADA') redirect(roleToPath(user.role))
 
   // Cargar pacientes

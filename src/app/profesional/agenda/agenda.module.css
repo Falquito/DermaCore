@@ -15,17 +15,22 @@
 .legendItem { display: flex; gap: 8px; align-items: center; font-size: 12px; color: #2a5545; }
 .badge { width: 10px; height: 10px; border-radius: 999px; display: inline-block; border: 1px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.05) inset; }
 
-/* Status colors */
-.status_PENDING { background: #ffd666; }
-.status_WAITING { background: #66b3ff; }
-.status_COMPLETED { background: #27ae60; color: #fff; }
-.status_CANCELED { background: #ff6b6b; color: #fff; }
+/* Status colors (6 states from Prisma) */
+/* Base badges/dots */
+.status_PROGRAMADO { background: #93c5fd; /* blue-300 */ }
+.status_CONFIRMADO { background: #5eead4; /* teal-300 */ }
+.status_EN_SALA_DE_ESPERA { background: #fbbf24; /* amber-400 */ }
+.status_COMPLETADO { background: #22c55e; /* green-500 */ color: #fff; }
+.status_CANCELADO { background: #ef4444; /* red-500 */ color: #fff; }
+.status_NO_ASISTIO { background: #9ca3af; /* gray-400 */ }
 
-/* Ensure event status overrides base event background */
-.event.status_PENDING { background: #ffe38f; }
-.event.status_WAITING { background: #8ac8ff; }
-.event.status_COMPLETED { background: #27ae60; color: #fff; }
-.event.status_CANCELED { background: #ff6b6b; color: #fff; }
+/* Event blocks in day/week/month */
+.event.status_PROGRAMADO { background: #dbeafe; color: #0f172a; border-color: rgba(0,0,0,0.06); }
+.event.status_CONFIRMADO { background: #ccfbf1; color: #04332c; border-color: rgba(0,0,0,0.06); }
+.event.status_EN_SALA_DE_ESPERA { background: #fef3c7; color: #7c2d12; border-color: rgba(0,0,0,0.06); }
+.event.status_COMPLETADO { background: #22c55e; color: #fff; border-color: rgba(0,0,0,0.06); }
+.event.status_CANCELADO { background: #ef4444; color: #fff; border-color: rgba(0,0,0,0.06); }
+.event.status_NO_ASISTIO { background: #e5e7eb; color: #111827; border-color: rgba(0,0,0,0.06); }
 
 /* Toggle buttons (tailwind-like in module) */
 .viewBtnTail { padding: 6px 10px; background: #ffffff; color: #047857; border: none; cursor: pointer; }
@@ -63,6 +68,12 @@
 .gridBody .dayCol:first-of-type { border-left: none; }
 
 /* Month dense mode */
+
+.monthEventsDense {
+	max-height: 48px;
+	overflow-y: auto;
+	/* Prevent cell from growing vertically */
+}
 .monthEventsDense .monthEvent { padding: 2px 4px; font-size: 10px; border-radius: 4px; }
 .monthEventsDense .monthEventDot { width: 5px; height: 5px; }
 
