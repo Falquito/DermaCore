@@ -95,10 +95,10 @@ export default function Home() {
                   <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
                 </svg>
               </div>
-              <h2 className="text-2xl md:text-3xl font-bold mb-2 group-hover:text-slate-100 transition-colors">
+              <h2 className="text-2xl md:text-3xl font-bold mb-2 group-hover:text-green-900 transition-colors">
                 Mesa de Entrada
               </h2>
-                            <p className="text-sm text-green-900 group-hover:text-green-800 transition-colors">
+              <p className="text-sm text-green-700 group-hover:text-green-800 transition-colors">
                 Recepción y atención al paciente
               </p>
             </div>
