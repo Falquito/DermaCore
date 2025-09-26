@@ -69,7 +69,7 @@ function PatientDetailsModal({ patient, isOpen, onClose }: PatientDetailsModalPr
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[1600px] w-[98vw] max-h-[95vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-[95vw] max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-[1600px] max-h-[95vh] overflow-hidden flex flex-col">
         {/* Header mejorado */}
         <DialogHeader className="border-b pb-6 mb-6 flex-shrink-0">
           <div className="flex items-center gap-4">
