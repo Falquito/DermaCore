@@ -1,0 +1,128 @@
+import { NextRequest, NextResponse } from "next/server";
+import { Prisma, PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+type RouteParams = { params: { id: string } };
+
+type CancelBody = {
+  motivo: string;
+  cancelledById: string;
+};
+
+function isCancelBody(x: unknown): x is CancelBody {
+  if (typeof x !== "object" || x === null) return false;
+  const o = x as Record<string, unknown>;
+  return (
+    typeof o.motivo === "string" &&
+    o.motivo.trim().length > 0 &&
+    typeof o.cancelledById === "string" &&
+    o.cancelledById.trim().length > 0
+  );
+}
+
+export async function POST(req: NextRequest, { params }: RouteParams) {
+  const id = params?.id;
+  if (!id) {
+    return NextResponse.json(
+      { error: "Falta el ID del turno en la URL", code: 4000 },
+      { status: 400 }
+    );
+  }
+
+  const raw = await req.json().catch(() => null);
+  if (!isCancelBody(raw)) {
+    return NextResponse.json(
+      { error: "Body inválido. Se requiere { motivo, cancelledById }", code: 4001 },
+      { status: 400 }
+    );
+  }
+
+  const motivo = raw.motivo.trim();
+  const cancelledById = raw.cancelledById.trim();
+
+  // 1) Buscar el turno para validar y obtener pacienteId
+  const turno = await prisma.appointment.findUnique({
+    where: { id },
+    select: { id: true, estado: true, pacienteId: true },
+  });
+
+  if (!turno) {
+    return NextResponse.json(
+      { error: "Turno no encontrado", code: 4041 },
+      { status: 404 }
+    );
+  }
+
+  // Evitar cancelar si ya está finalizado/cancelado
+  const ESTADOS_BLOQUEADOS = new Set(["COMPLETADO", "CANCELADO", "NO_ASISTIO"] as const);
+  if (ESTADOS_BLOQUEADOS.has(String(turno.estado) as (typeof ESTADOS_BLOQUEADOS extends Set<infer T> ? T : never))) {
+    return NextResponse.json(
+      { error: `El turno está en estado '${turno.estado}' y no puede cancelarse`, code: 4091 },
+      { status: 409 }
+    );
+  }
+
+  // Validación defensiva por si el turno no tiene paciente (depende de tu modelo)
+  if (!turno.pacienteId) {
+    return NextResponse.json(
+      { error: "El turno no tiene paciente asociado", code: 4221 },
+      { status: 422 }
+    );
+  }
+
+  // 2) Transacción: actualizar turno + crear registro de cancelación
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const updated = await tx.appointment.update({
+        where: { id: turno.id },
+        // Si tu campo es enum y tenés tipo EstadoTurno, usá EstadoTurno.CANCELADO
+        data: { estado: "CANCELADO" },
+      });
+
+      const cancellation = await tx.appointmentCancellation.create({
+        data: {
+          appointment: { connect: { id: turno.id } },         // relación requerida
+          paciente: { connect: { id: turno.pacienteId } },     // paciente del turno
+          cancelledBy: { connect: { id: cancelledById } },     // quien realiza la cancelación
+          motivo,
+        },
+        include: {
+          appointment: true,
+          paciente: true,
+          cancelledBy: true,
+        },
+      });
+
+      return { updated, cancellation };
+    });
+
+    return NextResponse.json(
+      { message: "Turno cancelado correctamente", code: 2000, ...result },
+      { status: 200 }
+    );
+  } catch (e: unknown) {
+    // Manejo de errores de Prisma por tipo (sin usar `any`)
+    if (e instanceof Prisma.PrismaClientKnownRequestError) {
+      // P2002: Unique constraint failed (p.ej. appointmentId @unique en AppointmentCancellation)
+      if (e.code === "P2002") {
+        return NextResponse.json(
+          { error: "El turno ya fue cancelado previamente", code: 4092 },
+          { status: 409 }
+        );
+      }
+      // P2025: Record not found
+      if (e.code === "P2025") {
+        return NextResponse.json(
+          { error: "No se pudo actualizar/crear el registro (no encontrado)", code: 4042 },
+          { status: 404 }
+        );
+      }
+    }
+
+    return NextResponse.json(
+      { error: "Error interno al cancelar turno", code: 5000 },
+      { status: 500 }
+    );
+  }
+}
