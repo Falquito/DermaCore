@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { Prisma, PrismaClient } from "@prisma/client";
+// src/app/api/turnos/[id]/route.ts
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { Prisma, PrismaClient, AppointmentStatus } from "@prisma/client";
 
 const prisma = new PrismaClient();
-
-type RouteParams = { params: { id: string } };
 
 type CancelBody = {
   motivo: string;
@@ -21,8 +21,14 @@ function isCancelBody(x: unknown): x is CancelBody {
   );
 }
 
-export async function POST(req: NextRequest, { params }: RouteParams) {
-  const id = params?.id;
+// 👇 En Next 15, el contexto tiene params como Promise.
+// RouteContext es global (no hace falta importarlo).
+export async function POST(
+  req: NextRequest,
+  ctx: RouteContext<"/api/turnos/[id]">
+) {
+  const { id } = await ctx.params; // <- importante: await
+
   if (!id) {
     return NextResponse.json(
       { error: "Falta el ID del turno en la URL", code: 4000 },
@@ -54,11 +60,19 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     );
   }
 
-  // Evitar cancelar si ya está finalizado/cancelado
-  const ESTADOS_BLOQUEADOS = new Set(["COMPLETADO", "CANCELADO", "NO_ASISTIO"] as const);
-  if (ESTADOS_BLOQUEADOS.has(String(turno.estado) as (typeof ESTADOS_BLOQUEADOS extends Set<infer T> ? T : never))) {
+  // Evitar cancelar si ya está finalizado/cancelado/no asistió
+  const ESTADOS_BLOQUEADOS = new Set<AppointmentStatus>([
+    AppointmentStatus.COMPLETADO,
+    AppointmentStatus.CANCELADO,
+    AppointmentStatus.NO_ASISTIO,
+  ]);
+
+  if (ESTADOS_BLOQUEADOS.has(turno.estado as AppointmentStatus)) {
     return NextResponse.json(
-      { error: `El turno está en estado '${turno.estado}' y no puede cancelarse`, code: 4091 },
+      {
+        error: `El turno está en estado '${turno.estado}' y no puede cancelarse`,
+        code: 4091,
+      },
       { status: 409 }
     );
   }
@@ -76,15 +90,14 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const result = await prisma.$transaction(async (tx) => {
       const updated = await tx.appointment.update({
         where: { id: turno.id },
-        // Si tu campo es enum y tenés tipo EstadoTurno, usá EstadoTurno.CANCELADO
-        data: { estado: "CANCELADO" },
+        data: { estado: AppointmentStatus.CANCELADO },
       });
 
       const cancellation = await tx.appointmentCancellation.create({
         data: {
-          appointment: { connect: { id: turno.id } },         // relación requerida
-          paciente: { connect: { id: turno.pacienteId } },     // paciente del turno
-          cancelledBy: { connect: { id: cancelledById } },     // quien realiza la cancelación
+          appointment: { connect: { id: turno.id } },      // relación requerida
+          paciente: { connect: { id: turno.pacienteId } }, // paciente del turno
+          cancelledBy: { connect: { id: cancelledById } }, // quien realiza la cancelación
           motivo,
         },
         include: {
@@ -104,14 +117,14 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
   } catch (e: unknown) {
     // Manejo de errores de Prisma por tipo (sin usar `any`)
     if (e instanceof Prisma.PrismaClientKnownRequestError) {
-      // P2002: Unique constraint failed (p.ej. appointmentId @unique en AppointmentCancellation)
+      // P2002: Unique constraint failed (p.ej., appointmentId @unique en AppointmentCancellation)
       if (e.code === "P2002") {
         return NextResponse.json(
           { error: "El turno ya fue cancelado previamente", code: 4092 },
           { status: 409 }
         );
       }
-      // P2025: Record not found
+      // P2025: Record not found (fallo en connect/update)
       if (e.code === "P2025") {
         return NextResponse.json(
           { error: "No se pudo actualizar/crear el registro (no encontrado)", code: 4042 },
