@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import GerenciaSidebar from '@/components/ui/gerencia-sidebar';
-import GerenciaTopbar from '@/components/ui/gerencia-topbar';
 import { 
   Users, 
   Search, 
@@ -51,7 +49,6 @@ const roleColors = {
 };
 
 export default function UsuariosPage() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -131,24 +128,7 @@ export default function UsuariosPage() {
   const usersWithRole = filteredUsers.filter(user => user.role);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <GerenciaSidebar 
-        userRole="GERENTE" 
-        collapsed={sidebarCollapsed}
-        onCollapsedChange={setSidebarCollapsed}
-      />
-      
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Topbar */}
-        <GerenciaTopbar 
-          userName="Administrador"
-          userEmail="admin@carelink.com"
-        />
-        
-        {/* Page Content */}
-        <main className="flex-1 p-6">
+    <main className="flex-1 p-6">
           <div className="max-w-7xl mx-auto">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
@@ -377,7 +357,5 @@ export default function UsuariosPage() {
             </DialogContent>
           </Dialog>
         </main>
-      </div>
-    </div>
   );
 }

@@ -27,8 +27,8 @@ interface SidebarProps {
 
 const sidebarItems = [
   {
-    id: 'dashboard',
-    name: 'Dashboard',
+    id: 'inicio',
+    name: 'Inicio',
     icon: BarChart3,
     href: '/gerente',
     description: 'Panel principal de control',

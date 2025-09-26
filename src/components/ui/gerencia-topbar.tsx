@@ -16,7 +16,7 @@ interface TopbarProps {
 }
 
 const pathTitles: Record<string, string> = {
-  '/gerente': 'Dashboard',
+  '/gerente': 'Inicio',
   '/gerente/usuarios': 'Usuarios',
   '/gerente/reportes': 'Reportes', 
   '/gerente/auditoria': 'Auditoría',

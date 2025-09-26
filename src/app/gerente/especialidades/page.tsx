@@ -1,8 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import GerenciaSidebar from "@/components/ui/gerencia-sidebar";
-import GerenciaTopbar from "@/components/ui/gerencia-topbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,9 +34,6 @@ type UpdateDTO = { nombre?: string; descripcion?: string | null; activa?: boolea
 
 // ====== Página ======
 export default function EspecialidadesPage() {
-  // --- Layout (como en tus otras páginas) ---
-  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
-
   // --- Datos / UI ---
   const [especialidades, setEspecialidades] = useState<Especialidad[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -226,18 +221,6 @@ export default function EspecialidadesPage() {
 
   // =================== RENDER (sidebar + topbar) ===================
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <GerenciaSidebar
-        userRole="GERENTE"
-        collapsed={sidebarCollapsed}
-        onCollapsedChange={setSidebarCollapsed}
-      />
-
-      {/* Main */}
-      <div className="flex-1 flex flex-col">
-        <GerenciaTopbar userName="Administrador" userEmail="admin@carelink.com" />
-
         <main className="flex-1 p-5 md:p-8">
           {/* Header */}
           <div className="mb-6">
@@ -473,7 +456,5 @@ export default function EspecialidadesPage() {
             </DialogContent>
           </Dialog>
         </main>
-      </div>
-    </div>
   );
 }

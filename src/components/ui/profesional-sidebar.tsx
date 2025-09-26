@@ -14,7 +14,8 @@ import {
   Clock,
   UserCheck,
   Pill,
-  ClipboardList
+  ClipboardList,
+  Home
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -23,6 +24,12 @@ interface ProfesionalSidebarProps {
 }
 
 const menuItems = [
+  {
+    title: 'Inicio',
+    icon: Home,
+    href: '/profesional',
+    description: 'Página principal'
+  },
   {
     title: 'Agenda',
     icon: Calendar,
