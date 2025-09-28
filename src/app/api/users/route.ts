@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { z, ZodIssue } from 'zod'
+import type { Role } from '@prisma/client'
 
 // Esquema de validación para actualizar usuario
 const updateUserSchema = z.object({
   name: z.string().optional(),
   email: z.string().email('Email inválido').optional(),
-  role: z.enum(['PROFESIONAL', 'MESA_ENTRADA', 'GERENTE']).nullable().optional(),
+  roles: z.array(z.enum(['PROFESIONAL', 'MESA_ENTRADA', 'GERENTE'])).optional(),
 })
 
 // GET /api/users - Obtener lista de usuarios
@@ -15,30 +16,39 @@ export async function GET() {
   try {
     const currentUser = await getCurrentUser()
     
-    if (!currentUser || currentUser.role !== 'GERENTE') {
+    if (!currentUser || !currentUser.roles.includes('GERENTE')) {
       return NextResponse.json(
         { error: 'No tienes permisos para acceder a esta información' },
         { status: 403 }
       )
     }
 
-    // Obtener todos los usuarios, ordenando primero los sin rol
+    // Obtener todos los usuarios con sus roles
     const users = await prisma.user.findMany({
       select: {
         id: true,
         name: true,
         email: true,
-        role: true,
         createdAt: true,
         updatedAt: true,
+        roles: {
+          select: {
+            role: true
+          }
+        }
       },
       orderBy: [
-        { role: 'asc' }, // Los sin rol (null) aparecen primero
         { name: 'asc' },
       ]
     })
 
-    return NextResponse.json({ users })
+    // Transform users to include roles array
+    const transformedUsers = users.map(user => ({
+      ...user,
+      roles: user.roles.map((ur: {role: Role}) => ur.role)
+    }))
+
+    return NextResponse.json({ users: transformedUsers })
     
   } catch (error) {
     console.error('Error obteniendo usuarios:', error)
@@ -54,7 +64,7 @@ export async function PUT(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser()
     
-    if (!currentUser || currentUser.role !== 'GERENTE') {
+    if (!currentUser || !currentUser.roles.includes('GERENTE')) {
       return NextResponse.json(
         { error: 'No tienes permisos para realizar esta acción' },
         { status: 403 }
@@ -62,7 +72,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { id, ...userData } = body
+    const { id, roles: newRoles, ...userData } = body
     
     if (!id) {
       return NextResponse.json(
@@ -71,12 +81,13 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Validar datos
-    const validatedData = updateUserSchema.parse(userData)
+    // Validar datos (sin roles para validar separadamente)
+    const validatedData = updateUserSchema.omit({ roles: true }).parse(userData)
     
     // Verificar que el usuario existe
     const existingUser = await prisma.user.findUnique({
-      where: { id }
+      where: { id },
+      include: { roles: true }
     })
     
     if (!existingUser) {
@@ -86,24 +97,64 @@ export async function PUT(request: NextRequest) {
       )
     }
 
+    // Handle roles update if provided
+    let roleUpdateData = {}
+    if (newRoles !== undefined) {
+      // Validate roles array
+      if (!Array.isArray(newRoles)) {
+        return NextResponse.json(
+          { error: 'Los roles deben ser un array' },
+          { status: 400 }
+        )
+      }
+
+      // Validate each role
+      const validRoles = ['PROFESIONAL', 'MESA_ENTRADA', 'GERENTE']
+      const invalidRoles = newRoles.filter(role => !validRoles.includes(role))
+      if (invalidRoles.length > 0) {
+        return NextResponse.json(
+          { error: `Roles inválidos: ${invalidRoles.join(', ')}` },
+          { status: 400 }
+        )
+      }
+
+      roleUpdateData = {
+        roles: {
+          deleteMany: {}, // Delete all existing roles
+          create: newRoles.map((role: string) => ({ role: role as Role })) // Create new roles with proper typing
+        }
+      }
+    }
+
     // Actualizar usuario
     const updatedUser = await prisma.user.update({
       where: { id },
       data: {
         ...validatedData,
+        ...roleUpdateData,
         updatedAt: new Date(),
       },
       select: {
         id: true,
         name: true,
         email: true,
-        role: true,
         createdAt: true,
         updatedAt: true,
+        roles: {
+          select: {
+            role: true
+          }
+        }
       }
     })
 
-    return NextResponse.json({ user: updatedUser })
+    // Transform user to include roles array
+    const transformedUser = {
+      ...updatedUser,
+      roles: updatedUser.roles.map((ur: {role: Role}) => ur.role)
+    }
+
+    return NextResponse.json({ user: transformedUser })
     
   } catch (error) {
     console.error('Error actualizando usuario:', error)
@@ -128,12 +179,12 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// PATCH /api/users - Actualizar rol específicamente
+// PATCH /api/users - Actualizar roles específicamente
 export async function PATCH(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser()
     
-    if (!currentUser || currentUser.role !== 'GERENTE') {
+    if (!currentUser || !currentUser.roles.includes('GERENTE')) {
       return NextResponse.json(
         { error: 'No tienes permisos para realizar esta acción' },
         { status: 403 }
@@ -141,26 +192,37 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { userId, role } = body
+    const { userId, roles: newRoles } = body
     
-    if (!userId || !role) {
+    if (!userId || !newRoles) {
       return NextResponse.json(
-        { error: 'userId y role son requeridos' },
+        { error: 'userId y roles son requeridos' },
         { status: 400 }
       )
     }
 
-    // Validar rol
-    if (!['PROFESIONAL', 'MESA_ENTRADA', 'GERENTE'].includes(role)) {
+    // Validate roles array
+    if (!Array.isArray(newRoles)) {
       return NextResponse.json(
-        { error: 'Rol inválido' },
+        { error: 'Los roles deben ser un array' },
+        { status: 400 }
+      )
+    }
+
+    // Validate each role
+    const validRoles = ['PROFESIONAL', 'MESA_ENTRADA', 'GERENTE']
+    const invalidRoles = newRoles.filter(role => !validRoles.includes(role))
+    if (invalidRoles.length > 0) {
+      return NextResponse.json(
+        { error: `Roles inválidos: ${invalidRoles.join(', ')}` },
         { status: 400 }
       )
     }
     
     // Verificar que el usuario existe
     const existingUser = await prisma.user.findUnique({
-      where: { id: userId }
+      where: { id: userId },
+      include: { roles: true }
     })
     
     if (!existingUser) {
@@ -170,27 +232,40 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    // Actualizar solo el rol
+    // Actualizar solo los roles
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
-        role: role,
+        roles: {
+          deleteMany: {}, // Delete all existing roles
+          create: newRoles.map((role: string) => ({ role: role as Role })) // Create new roles
+        },
         updatedAt: new Date(),
       },
       select: {
         id: true,
         name: true,
         email: true,
-        role: true,
         createdAt: true,
         updatedAt: true,
+        roles: {
+          select: {
+            role: true
+          }
+        }
       }
     })
 
-    return NextResponse.json({ user: updatedUser })
+    // Transform user to include roles array
+    const transformedUser = {
+      ...updatedUser,
+      roles: updatedUser.roles.map((ur: {role: Role}) => ur.role)
+    }
+
+    return NextResponse.json({ user: transformedUser })
     
   } catch (error) {
-    console.error('Error actualizando rol del usuario:', error)
+    console.error('Error actualizando roles del usuario:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }

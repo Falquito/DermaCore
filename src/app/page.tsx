@@ -1,7 +1,39 @@
 import Image from 'next/image'
 import { Shield, Stethoscope, Headphones, ArrowRight, Heart, Users, Calendar } from 'lucide-react'
+import { getCurrentUser, type Role } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 
-export default function Home() {
+export const dynamic = 'force-dynamic'
+
+export default async function Home() {
+  const user = await getCurrentUser()
+  
+  // Redirect to login if not authenticated
+  if (!user) {
+    redirect('/login')
+  }
+  
+  // Redirect to error if no roles
+  if (user.roles.length === 0) {
+    redirect('/error')
+  }
+  
+  // If user has only one role, redirect to that section directly
+  if (user.roles.length === 1) {
+    const role = user.roles[0]
+    switch (role) {
+      case 'GERENTE':
+        redirect('/gerente')
+      case 'PROFESIONAL':
+        redirect('/profesional')
+      case 'MESA_ENTRADA':
+        redirect('/mesa-entrada')
+    }
+  }
+  
+  // Helper function to check if user has a specific role
+  const hasRole = (role: Role) => user.roles.includes(role)
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
       {/* Header Section */}
@@ -21,8 +53,11 @@ export default function Home() {
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 drop-shadow-lg">
             Care<span className="text-emerald-300">Link</span>
           </h1>
-          <p className="text-xl md:text-2xl text-white/90 mb-8 max-w-2xl mx-auto">
-            Sistema integral de gestión clínica y atención médica
+          <p className="text-xl md:text-2xl text-white/90 mb-4 max-w-2xl mx-auto">
+            Bienvenido, {user.name}
+          </p>
+          <p className="text-lg text-white/80 mb-8 max-w-2xl mx-auto">
+            Selecciona el área de trabajo desde donde deseas operar
           </p>
           <div className="flex items-center justify-center gap-6 text-white/80">
             <div className="flex items-center gap-2">
@@ -53,105 +88,111 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
-              Selecciona tu área de trabajo
+              Tus áreas de trabajo disponibles
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Accede al sistema según tu rol profesional para gestionar de manera eficiente todas tus actividades
+              Tienes acceso a {user.roles.length} {user.roles.length === 1 ? 'área' : 'áreas'} del sistema. Elige donde deseas trabajar.
             </p>
           </div>
 
           {/* Role Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             
-            {/* Gerencia Card */}
-            <a 
-              href="/login" 
-              className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 hover:-translate-y-2"
-            >
-              <div className="h-32 bg-gradient-to-br from-amber-500 to-orange-600 relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-black/10 to-black/20"></div>
-                <div className="absolute top-6 left-6">
-                  <div className="h-16 w-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-                    <Shield className="h-8 w-8 text-white" />
+            {/* Gerencia Card - Only show if user has GERENTE role */}
+            {hasRole('GERENTE') && (
+              <a 
+                href="/gerente" 
+                className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 hover:-translate-y-2"
+              >
+                <div className="h-32 bg-gradient-to-br from-amber-500 to-orange-600 relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-black/10 to-black/20"></div>
+                  <div className="absolute top-6 left-6">
+                    <div className="h-16 w-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                      <Shield className="h-8 w-8 text-white" />
+                    </div>
+                  </div>
+                  <div className="absolute bottom-4 right-4">
+                    <ArrowRight className="h-6 w-6 text-white/70 group-hover:text-white group-hover:translate-x-1 transition-all" />
                   </div>
                 </div>
-                <div className="absolute bottom-4 right-4">
-                  <ArrowRight className="h-6 w-6 text-white/70 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                <div className="p-6">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3 group-hover:text-amber-600 transition-colors">
+                    Gerencia
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    Administración completa del sistema, gestión de usuarios y configuración general de la clínica
+                  </p>
+                  <div className="flex items-center text-amber-600 font-medium">
+                    <span>Acceder al área</span>
+                    <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                  </div>
                 </div>
-              </div>
-              <div className="p-6">
-                <h3 className="text-2xl font-bold text-gray-900 mb-3 group-hover:text-amber-600 transition-colors">
-                  Gerencia
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  Administración completa del sistema, gestión de usuarios y configuración general de la clínica
-                </p>
-                <div className="flex items-center text-amber-600 font-medium">
-                  <span>Acceder al sistema</span>
-                  <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-            </a>
+              </a>
+            )}
 
-            {/* Profesionales Card */}
-            <a 
-              href="/login" 
-              className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 hover:-translate-y-2"
-            >
-              <div className="h-32 bg-gradient-to-br from-emerald-500 to-teal-600 relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-black/10 to-black/20"></div>
-                <div className="absolute top-6 left-6">
-                  <div className="h-16 w-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-                    <Stethoscope className="h-8 w-8 text-white" />
+            {/* Profesionales Card - Only show if user has PROFESIONAL role */}
+            {hasRole('PROFESIONAL') && (
+              <a 
+                href="/profesional" 
+                className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 hover:-translate-y-2"
+              >
+                <div className="h-32 bg-gradient-to-br from-emerald-500 to-teal-600 relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-black/10 to-black/20"></div>
+                  <div className="absolute top-6 left-6">
+                    <div className="h-16 w-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                      <Stethoscope className="h-8 w-8 text-white" />
+                    </div>
+                  </div>
+                  <div className="absolute bottom-4 right-4">
+                    <ArrowRight className="h-6 w-6 text-white/70 group-hover:text-white group-hover:translate-x-1 transition-all" />
                   </div>
                 </div>
-                <div className="absolute bottom-4 right-4">
-                  <ArrowRight className="h-6 w-6 text-white/70 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                <div className="p-6">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3 group-hover:text-emerald-600 transition-colors">
+                    Profesionales
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    Acceso para médicos y especialistas. Gestión de pacientes, historias clínicas y agenda médica
+                  </p>
+                  <div className="flex items-center text-emerald-600 font-medium">
+                    <span>Acceder al área</span>
+                    <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                  </div>
                 </div>
-              </div>
-              <div className="p-6">
-                <h3 className="text-2xl font-bold text-gray-900 mb-3 group-hover:text-emerald-600 transition-colors">
-                  Profesionales
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  Acceso para médicos y especialistas. Gestión de pacientes, historias clínicas y agenda médica
-                </p>
-                <div className="flex items-center text-emerald-600 font-medium">
-                  <span>Acceder al sistema</span>
-                  <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-            </a>
+              </a>
+            )}
 
-            {/* Mesa de Entrada Card */}
-            <a 
-              href="/login" 
-              className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 hover:-translate-y-2"
-            >
-              <div className="h-32 bg-gradient-to-br from-blue-500 to-indigo-600 relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-black/10 to-black/20"></div>
-                <div className="absolute top-6 left-6">
-                  <div className="h-16 w-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-                    <Headphones className="h-8 w-8 text-white" />
+            {/* Mesa de Entrada Card - Only show if user has MESA_ENTRADA role */}
+            {hasRole('MESA_ENTRADA') && (
+              <a 
+                href="/mesa-entrada" 
+                className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 hover:-translate-y-2"
+              >
+                <div className="h-32 bg-gradient-to-br from-blue-500 to-indigo-600 relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-black/10 to-black/20"></div>
+                  <div className="absolute top-6 left-6">
+                    <div className="h-16 w-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                      <Headphones className="h-8 w-8 text-white" />
+                    </div>
+                  </div>
+                  <div className="absolute bottom-4 right-4">
+                    <ArrowRight className="h-6 w-6 text-white/70 group-hover:text-white group-hover:translate-x-1 transition-all" />
                   </div>
                 </div>
-                <div className="absolute bottom-4 right-4">
-                  <ArrowRight className="h-6 w-6 text-white/70 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                <div className="p-6">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors">
+                    Mesa de Entrada
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    Recepción y atención al paciente. Gestión de turnos, pagos y primeras consultas
+                  </p>
+                  <div className="flex items-center text-blue-600 font-medium">
+                    <span>Acceder al área</span>
+                    <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                  </div>
                 </div>
-              </div>
-              <div className="p-6">
-                <h3 className="text-2xl font-bold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors">
-                  Mesa de Entrada
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  Recepción y atención al paciente. Gestión de turnos, pagos y primeras consultas
-                </p>
-                <div className="flex items-center text-blue-600 font-medium">
-                  <span>Acceder al sistema</span>
-                  <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-            </a>
+              </a>
+            )}
           </div>
 
           {/* Footer Info */}

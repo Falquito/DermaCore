@@ -7,10 +7,13 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "prisma:migrate": "prisma migrate dev --name init",
-    "prisma:generate": "prisma generate",
-    "prisma:studio": "prisma studio",
-    "db:seed": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" prisma/seed.ts"
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:reset": "prisma migrate reset",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:push": "prisma db push"
   },
   "dependencies": {
     "@prisma/client": "^6.15.0",

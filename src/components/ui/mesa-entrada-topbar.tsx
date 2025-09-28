@@ -6,7 +6,8 @@ import {
   Bell, 
   ChevronRight,
   LogOut,
-  User
+  User,
+  Home
 } from 'lucide-react'
 
 interface TopbarProps {
@@ -30,6 +31,10 @@ export default function MesaEntradaTopbar({ userName, userEmail }: TopbarProps) 
 
   const handlePerfilClick = () => {
     window.location.href = '/mesa-entrada/perfil'
+  }
+
+  const handleGoHome = () => {
+    window.location.href = '/'
   }
 
   const handleLogout = () => {
@@ -71,6 +76,17 @@ export default function MesaEntradaTopbar({ userName, userEmail }: TopbarProps) 
 
         {/* Search and User Actions */}
         <div className="flex items-center space-x-4">
+          {/* Home Button */}
+          <button 
+            type="button"
+            onClick={handleGoHome}
+            className="flex items-center space-x-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 px-3 py-2 rounded-lg transition-colors"
+            title="Volver al inicio"
+          >
+            <Home className="h-4 w-4" />
+            <span className="hidden lg:inline">Inicio</span>
+          </button>
+
           {/* Search Bar */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />

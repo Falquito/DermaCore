@@ -7,7 +7,8 @@ import {
   Edit, 
   Shield,
   UserCheck,
-  AlertCircle
+  AlertCircle,
+  Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,20 +19,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 
 interface User {
   id: string;
   name: string | null;
   email: string;
-  role: 'PROFESIONAL' | 'MESA_ENTRADA' | 'GERENTE' | null;
+  roles: ('PROFESIONAL' | 'MESA_ENTRADA' | 'GERENTE')[];
   createdAt: string;
   updatedAt: string;
 }
@@ -54,7 +48,7 @@ export default function UsuariosPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingRole, setEditingRole] = useState<string>('');
+  const [editingRoles, setEditingRoles] = useState<string[]>([]);
   const [updating, setUpdating] = useState(false);
 
   // Cargar usuarios al montar el componente
@@ -82,8 +76,20 @@ export default function UsuariosPage() {
 
   const handleEditUser = (user: User) => {
     setSelectedUser(user);
-    setEditingRole(user.role || 'NONE');
+    setEditingRoles(user.roles.length > 0 ? user.roles : []);
     setIsEditModalOpen(true);
+  };
+
+  const handleRoleToggle = (role: string) => {
+    setEditingRoles(prev => {
+      if (prev.includes(role)) {
+        // Remove role
+        return prev.filter(r => r !== role);
+      } else {
+        // Add role
+        return [...prev, role];
+      }
+    });
   };
 
   const handleUpdateUser = async () => {
@@ -98,9 +104,11 @@ export default function UsuariosPage() {
         },
         body: JSON.stringify({
           id: selectedUser.id,
-          role: editingRole === 'NONE' ? null : editingRole,
+          roles: editingRoles,
         }),
-      });      if (response.ok) {
+      });
+      
+      if (response.ok) {
         const data = await response.json();
         setUsers(prev => prev.map(user => 
           user.id === selectedUser.id ? data.user : user
@@ -124,8 +132,8 @@ export default function UsuariosPage() {
   );
 
   // Separar usuarios con y sin rol
-  const usersWithoutRole = filteredUsers.filter(user => !user.role);
-  const usersWithRole = filteredUsers.filter(user => user.role);
+  const usersWithoutRole = filteredUsers.filter(user => user.roles.length === 0);
+  const usersWithRole = filteredUsers.filter(user => user.roles.length > 0);
 
   return (
     <main className="flex-1 p-6">
@@ -257,11 +265,19 @@ export default function UsuariosPage() {
                           </td>
                           <td className="py-3 px-4 text-gray-900">{user.email}</td>
                           <td className="py-3 px-4">
-                            {user.role && (
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleColors[user.role]}`}>
-                                {roleLabels[user.role]}
-                              </span>
-                            )}
+                            <div className="flex flex-wrap gap-1">
+                              {user.roles.length > 0 ? (
+                                user.roles.map((role, index) => (
+                                  <span key={index} className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleColors[role]}`}>
+                                    {roleLabels[role]}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                  Sin asignar
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center space-x-2">
@@ -309,7 +325,7 @@ export default function UsuariosPage() {
                   <span>Editar Usuario</span>
                 </DialogTitle>
                 <DialogDescription>
-                  Asigna o modifica el rol del usuario en el sistema.
+                  Asigna uno o más roles al usuario en el sistema. Los usuarios pueden tener múltiples roles simultáneamente.
                 </DialogDescription>
               </DialogHeader>
               
@@ -322,19 +338,52 @@ export default function UsuariosPage() {
                   </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="role">Rol del usuario</Label>
-                  <Select value={editingRole} onValueChange={setEditingRole}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar rol" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="NONE">Sin rol asignado</SelectItem>
-                      <SelectItem value="PROFESIONAL">Profesional</SelectItem>
-                      <SelectItem value="MESA_ENTRADA">Mesa de entrada</SelectItem>
-                      <SelectItem value="GERENTE">Gerente</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-3">
+                  <Label>Roles del usuario</Label>
+                  <div className="space-y-2">
+                    {['PROFESIONAL', 'MESA_ENTRADA', 'GERENTE'].map((role) => (
+                      <div 
+                        key={role}
+                        className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${
+                          editingRoles.includes(role) 
+                            ? 'border-emerald-500 bg-emerald-50' 
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        onClick={() => handleRoleToggle(role)}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-4 h-4 border-2 rounded flex items-center justify-center ${
+                            editingRoles.includes(role)
+                              ? 'border-emerald-500 bg-emerald-500'
+                              : 'border-gray-300'
+                          }`}>
+                            {editingRoles.includes(role) && (
+                              <Check className="w-3 h-3 text-white" />
+                            )}
+                          </div>
+                          <span className="font-medium text-gray-900">
+                            {roleLabels[role as keyof typeof roleLabels]}
+                          </span>
+                        </div>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          roleColors[role as keyof typeof roleColors]
+                        }`}>
+                          {roleLabels[role as keyof typeof roleLabels]}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {editingRoles.length === 0 && (
+                    <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <AlertCircle className="h-4 w-4 text-orange-600" />
+                        <span className="text-sm text-orange-700">
+                          Sin roles asignados. El usuario será redirigido a la página de error al iniciar sesión.
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               

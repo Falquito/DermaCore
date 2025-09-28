@@ -12,7 +12,11 @@ export async function GET() {
 
     const profesionales = await prisma.user.findMany({
       where: {
-        role: 'PROFESIONAL'
+        roles: {
+          some: {
+            role: 'PROFESIONAL'
+          }
+        }
       },
       select: {
         id: true,

@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { getCurrentUser, roleToPath } from '@/lib/auth'
+import { getCurrentUser, userHasRole } from '@/lib/auth'
 import MesaEntradaSidebar from '@/components/ui/mesa-entrada-sidebar'
 import MesaEntradaTopbar from '@/components/ui/mesa-entrada-topbar'
 
@@ -10,15 +10,15 @@ export default async function MesaEntradaLayout({
 }) {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
-  if (!user.role) {
-    redirect('/')
+  if (user.roles.length === 0) {
+    redirect('/error')
   }
-  if (user.role !== 'MESA_ENTRADA') redirect(roleToPath(user.role))
+  if (!userHasRole(user.roles, 'MESA_ENTRADA')) redirect('/error')
 
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <MesaEntradaSidebar userRole={user.role} />
+      <MesaEntradaSidebar userRole={user.roles.includes('MESA_ENTRADA') ? 'MESA_ENTRADA' : user.roles[0]} />
       
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">

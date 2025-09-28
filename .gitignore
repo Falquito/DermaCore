@@ -1,41 +1,67 @@
-# Dependencies
-node_modules/
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
 /.pnp
-.pnp.js
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
-# Testing
+# testing
 /coverage
+coverage/
 
-# Next.js
+# next.js
 /.next/
 /out/
 
-# Production
+# production
 /build
+dist/
 
-# Misc
-.DS_Store
-*.pem
-
-# Debug
+# logs & debug
+**/*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.pnpm-debug.log*
 
-# Local env files
-.env*.local
+# misc / OS
+.DS_Store
+**/.DS_Store
+.pnp.*
+.eslintcache
+
+# env files
 .env
+.env.*.local
+.env*
+!.env.example
 
-# Vercel
-.vercel
-
-# TypeScript
+# typescript
 *.tsbuildinfo
 next-env.d.ts
 
 # Prisma
-/prisma/migrations/*
-!/prisma/migrations/.gitkeep
+prisma/dev.db
+prisma/*.sqlite
+prisma/*.db
+prisma/migrations/**/steps.json
+.prisma/
+# NOTE: Keep migration files tracked for team sync!
+# Migration SQL files should be committed to Git
+
+# Generated code
+/src/generated/prisma
 
 # Docker
-.dockerignore
+docker-data/
+
+# Vercel
+.vercel
+
+# Ignore local bcrypt hash tool page
+src/app/tools/hash/page.tsx
