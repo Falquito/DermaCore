@@ -79,7 +79,6 @@ async function main() {
       where: { email: u.email },
       update: { 
         passwordHash: u.passwordHash, 
-        role: u.role, 
         name: u.name,
         apellido: u.apellido,
         dni: u.dni,
@@ -92,17 +91,40 @@ async function main() {
         apellido: u.apellido,
         dni: u.dni,
         telefono: u.telefono,
-        role: u.role, 
         passwordHash: u.passwordHash,
         especialidadId: especialidad?.id
       },
     })
+    
+    // Crear o actualizar roles
+    await prisma.userRole.upsert({
+      where: {
+        userId_role: {
+          userId: usuario.id,
+          role: u.role
+        }
+      },
+      update: {},
+      create: {
+        userId: usuario.id,
+        role: u.role
+      }
+    })
+    
     usuariosCreados.push(usuario)
   }
 
   // Crear horarios para profesionales
   console.log('🕐 Creando horarios profesionales...')
-  const profesionalesCreados = usuariosCreados.filter(u => u.role === 'PROFESIONAL')
+  const profesionalesCreados = await prisma.user.findMany({
+    where: {
+      roles: {
+        some: {
+          role: 'PROFESIONAL'
+        }
+      }
+    }
+  })
   
   for (const prof of profesionalesCreados) {
     // Horarios típicos de lunes a viernes 8:00-17:00 con diferentes variaciones
@@ -132,7 +154,15 @@ async function main() {
   }
 
   // Obtener usuario mesa de entrada
-  const mesa = usuariosCreados.find(u => u.role === 'MESA_ENTRADA')
+  const mesa = await prisma.user.findFirst({
+    where: {
+      roles: {
+        some: {
+          role: 'MESA_ENTRADA'
+        }
+      }
+    }
+  })
 
   // Crear pacientes extensos con datos argentinos realistas
   console.log('🏥 Creando pacientes...')

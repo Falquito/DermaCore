@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { getCurrentUser, hashPassword, roleToPath, signIn } from '@/lib/auth'
+import { getCurrentUser, hashPassword, getDefaultPath, signIn } from '@/lib/auth'
 
 async function registerAction(formData: FormData) {
   'use server'
@@ -28,7 +28,7 @@ async function registerAction(formData: FormData) {
 
 export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const user = await getCurrentUser()
-  if (user && user.role !== null) redirect(roleToPath(user.role))
+  if (user && user.roles.length > 0) redirect(getDefaultPath(user.roles))
 
   const sp = await searchParams
   const exists = sp?.error === 'exists'

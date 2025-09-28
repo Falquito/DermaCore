@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { getCurrentUser, roleToPath } from '@/lib/auth'
+import { getCurrentUser, userHasRole } from '@/lib/auth'
 import GerenciaSidebar from '@/components/ui/gerencia-sidebar'
 import GerenciaTopbar from '@/components/ui/gerencia-topbar'
 
@@ -10,15 +10,15 @@ export default async function GerenteLayout({
 }) {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
-  if (!user.role) {
-    redirect('/')
+  if (user.roles.length === 0) {
+    redirect('/error')
   }
-  if (user.role !== 'GERENTE') redirect(roleToPath(user.role))
+  if (!userHasRole(user.roles, 'GERENTE')) redirect('/error')
 
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <GerenciaSidebar userRole={user.role} />
+      <GerenciaSidebar userRole={user.roles.includes('GERENTE') ? 'GERENTE' : user.roles[0]} />
       
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">

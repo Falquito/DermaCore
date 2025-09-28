@@ -7,7 +7,8 @@ import {
   ChevronRight,
   LogOut,
   User,
-  Calendar
+  Calendar,
+  Home
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -37,6 +38,10 @@ export default function ProfesionalTopbar({ userName, userEmail }: TopbarProps) 
     window.location.href = '/profesional/perfil'
   }
 
+  const handleGoHome = () => {
+    window.location.href = '/'
+  }
+
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', {
@@ -64,6 +69,19 @@ export default function ProfesionalTopbar({ userName, userEmail }: TopbarProps) 
 
         {/* Right section - Search, notifications, user */}
         <div className="flex items-center space-x-4">
+          {/* Home Button */}
+          <Button 
+            type="button"
+            variant="ghost" 
+            size="sm" 
+            onClick={handleGoHome}
+            className="flex items-center space-x-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+            title="Volver al inicio"
+          >
+            <Home className="h-4 w-4" />
+            <span className="hidden lg:inline">Inicio</span>
+          </Button>
+
           {/* Search */}
           <div className="relative hidden sm:block">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />

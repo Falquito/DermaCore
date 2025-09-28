@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { getCurrentUser, roleToPath } from '@/lib/auth'
+import { getCurrentUser } from '@/lib/auth'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button'
 export default async function MesaEntradaPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
-  if (user.role === null) redirect('/login')
-  if (user.role !== 'MESA_ENTRADA') redirect(roleToPath(user.role))
+  if (user.roles.length === 0) redirect('/error')
+  if (!user.roles.includes('MESA_ENTRADA')) redirect('/error')
 
   return (
     <div className="p-6">

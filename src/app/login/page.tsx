@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { signIn, getCurrentUser, roleToPath } from '@/lib/auth'
+import { signIn, getCurrentUser, getDefaultPath } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,20 +11,20 @@ async function loginAction(formData: FormData) {
   if (!res.ok) {
     redirect('/login?error=1')
   }
-  // If role is null, redirect to home or a safe default
-  if (!res.user.role) {
-    redirect('/')
+  // If user has no roles, redirect to error page
+  if (res.user.roles.length === 0) {
+    redirect('/error')
   }
-  redirect(roleToPath(res.user.role))
+  redirect(getDefaultPath(res.user.roles))
 }
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const user = await getCurrentUser()
   if (user) {
-    if (!user.role) {
-      redirect('/')
+    if (user.roles.length === 0) {
+      redirect('/error')
     }
-    redirect(roleToPath(user.role))
+    redirect(getDefaultPath(user.roles))
   }
 
   const sp = await searchParams

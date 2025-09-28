@@ -15,7 +15,7 @@ enum Role {
   GERENTE
 }
 
-// Modelo de usuario con autenticación básica y rol
+// Modelo de usuario con autenticación básica y roles múltiples
 model User {
   id           String    @id @default(cuid())
   email        String    @unique
@@ -24,10 +24,10 @@ model User {
   dni          String?   @unique
   telefono     String?
   passwordHash String
-  role         Role? // Optional, assigned after creation
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   sessions     Session[]
+  roles        UserRole[] // Multiple roles relationship
 
   // Información específica para profesionales
   especialidadId          String?
@@ -58,6 +58,19 @@ model Session {
   expiresAt DateTime
 
   @@map("sessions")
+}
+
+// Modelo de relación many-to-many entre usuarios y roles
+model UserRole {
+  id       String   @id @default(cuid())
+  userId   String
+  role     Role
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, role])
+  @@map("user_roles")
 }
 
 // Obras sociales disponibles en Argentina

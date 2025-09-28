@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { validateProfile } from '@/lib/validations'
+import type { Role } from '@prisma/client'
 
 export async function PUT(request: NextRequest) {
   try {
@@ -57,7 +58,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Solo agregar especialidad si el usuario es profesional
-    if (currentUser.role === 'PROFESIONAL' && especialidadId) {
+    if (currentUser.roles.includes('PROFESIONAL') && especialidadId) {
       updateData.especialidadId = especialidadId
     }
 
@@ -66,7 +67,8 @@ export async function PUT(request: NextRequest) {
       where: { id: currentUser.id },
       data: updateData,
       include: {
-        especialidad: true
+        especialidad: true,
+        roles: true
       }
     })
 
@@ -79,7 +81,7 @@ export async function PUT(request: NextRequest) {
         apellido: updatedUser.apellido,
         dni: updatedUser.dni,
         telefono: updatedUser.telefono,
-        role: updatedUser.role,
+        roles: updatedUser.roles.map((ur: {role: Role}) => ur.role),
         especialidad: updatedUser.especialidad
       }
     })
@@ -108,7 +110,8 @@ export async function GET() {
     const user = await prisma.user.findUnique({
       where: { id: currentUser.id },
       include: {
-        especialidad: true
+        especialidad: true,
+        roles: true
       }
     })
 
@@ -127,7 +130,7 @@ export async function GET() {
         apellido: user.apellido,
         dni: user.dni,
         telefono: user.telefono,
-        role: user.role,
+        roles: user.roles.map((ur: {role: Role}) => ur.role),
         especialidad: user.especialidad
       }
     })

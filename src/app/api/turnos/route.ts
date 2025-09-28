@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    if (currentUser.role !== 'MESA_ENTRADA' && currentUser.role !== 'GERENTE') {
+    if (!currentUser.roles.includes('MESA_ENTRADA') && !currentUser.roles.includes('GERENTE')) {
       return NextResponse.json({ error: 'No tiene permisos para crear turnos' }, { status: 403 })
     }
 
