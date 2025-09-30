@@ -9,9 +9,9 @@ import {
   Settings, 
   ChevronLeft, 
   ChevronRight,
-  Stethoscope,
   Clock,
   UserCheck,
+  Pill,
   ClipboardList,
   Home
 } from 'lucide-react'
