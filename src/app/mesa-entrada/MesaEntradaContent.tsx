@@ -575,6 +575,8 @@ export default function MesaEntradaContent({
       patient.apellido.toLowerCase().includes(term) ||
       patient.dni.includes(term) ||
       patient.email?.toLowerCase().includes(term)
+      patient.dni.includes(term) ||
+      patient.email?.toLowerCase().includes(term)
     )
   }, [patients, searchTerm])
 
@@ -650,6 +652,8 @@ export default function MesaEntradaContent({
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-gray-900 mb-2">Gestión de Pacientes</h1>
         <p className="text-gray-600">Administra el registro y la información de los pacientes</p>
+        <h1 className="text-2xl font-semibold text-gray-900 mb-2">Gestión de Pacientes</h1>
+        <p className="text-gray-600">Administra el registro y la información de los pacientes</p>
       </div>
 
       {/* Actions Bar */}
@@ -658,6 +662,7 @@ export default function MesaEntradaContent({
           <div className="flex-1 max-w-md">
             <Input
               type="text"
+              placeholder="Buscar paciente por nombre, apellido, DNI o email..."
               placeholder="Buscar paciente por nombre, apellido, DNI o email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}

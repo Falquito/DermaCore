@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { 
   Calendar, 
@@ -9,6 +10,7 @@ import {
   Settings, 
   ChevronLeft, 
   ChevronRight,
+  Stethoscope,
   Clock,
   UserCheck,
   Pill,
@@ -19,6 +21,8 @@ import { Button } from '@/components/ui/button'
 
 interface ProfesionalSidebarProps {
   userRole: string
+  collapsed?: boolean
+  onCollapsedChange?: (collapsed: boolean) => void
   collapsed?: boolean
   onCollapsedChange?: (collapsed: boolean) => void
 }
@@ -67,6 +71,9 @@ export default function ProfesionalSidebar({
   userRole, 
   collapsed = false, 
   onCollapsedChange 
+  userRole, 
+  collapsed = false, 
+  onCollapsedChange 
 }: ProfesionalSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
@@ -75,8 +82,16 @@ export default function ProfesionalSidebar({
   useEffect(() => {
     setIsCollapsed(collapsed)
   }, [collapsed])
+  const [isCollapsed, setIsCollapsed] = useState(collapsed)
+
+  useEffect(() => {
+    setIsCollapsed(collapsed)
+  }, [collapsed])
 
   const toggleCollapse = () => {
+    const newCollapsed = !isCollapsed
+    setIsCollapsed(newCollapsed)
+    onCollapsedChange?.(newCollapsed)
     const newCollapsed = !isCollapsed
     setIsCollapsed(newCollapsed)
     onCollapsedChange?.(newCollapsed)
@@ -97,8 +112,12 @@ export default function ProfesionalSidebar({
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
           {!isCollapsed && (
+      <div className="p-4 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          {!isCollapsed && (
             <div className="flex items-center space-x-3">
               <div className="bg-emerald-100 p-2 rounded-lg">
+                <Stethoscope className="h-6 w-6 text-emerald-600" />
                 <Stethoscope className="h-6 w-6 text-emerald-600" />
               </div>
               <div>
@@ -110,7 +129,26 @@ export default function ProfesionalSidebar({
           {isCollapsed && (
             <div className="bg-emerald-100 p-2 rounded-lg mx-auto">
               <Stethoscope className="h-6 w-6 text-emerald-600" />
+          )}
+          {isCollapsed && (
+            <div className="bg-emerald-100 p-2 rounded-lg mx-auto">
+              <Stethoscope className="h-6 w-6 text-emerald-600" />
             </div>
+          )}
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleCollapse}
+            className="p-1 hover:bg-gray-100"
+          >
+            {isCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
           )}
           
           <Button
