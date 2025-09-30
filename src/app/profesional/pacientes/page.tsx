@@ -11,5 +11,5 @@ export default async function PacientesPage() {
     <div className="p-6">
       <PacientesContent />
     </div>
-  )
+  );
 }

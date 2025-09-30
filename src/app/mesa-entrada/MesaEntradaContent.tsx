@@ -573,7 +573,8 @@ export default function MesaEntradaContent({
     return patients.filter(patient =>
       patient.nombre.toLowerCase().includes(term) ||
       patient.apellido.toLowerCase().includes(term) ||
-      patient.dni.includes(term)
+      patient.dni.includes(term) ||
+      patient.email?.toLowerCase().includes(term)
     )
   }, [patients, searchTerm])
 
@@ -647,8 +648,8 @@ export default function MesaEntradaContent({
 
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-2">Listado y Visualización de Pacientes</h1>
-        <p className="text-gray-600">Consulta y gestiona la información completa de todos los pacientes registrados</p>
+        <h1 className="text-2xl font-semibold text-gray-900 mb-2">Gestión de Pacientes</h1>
+        <p className="text-gray-600">Administra el registro y la información de los pacientes</p>
       </div>
 
       {/* Actions Bar */}
@@ -657,10 +658,9 @@ export default function MesaEntradaContent({
           <div className="flex-1 max-w-md">
             <Input
               type="text"
-              placeholder="Buscar por nombre, apellido o DNI..."
+              placeholder="Buscar paciente por nombre, apellido, DNI o email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full"
             />
           </div>
           <div className="flex gap-3 ml-4">
@@ -851,17 +851,15 @@ export default function MesaEntradaContent({
         </div>
       )}
 
-      {/* Resumen de estadísticas */}
-      {filteredPatients.length > 0 && (
-        <div className="bg-white rounded-lg border border-gray-200 p-4 mt-6">
-          <p className="text-sm text-gray-600">
-            <span className="font-medium">Total de pacientes:</span> {patients.length}
-            {searchTerm && <span> | <span className="font-medium">Mostrando:</span> {filteredPatients.length}</span>}
-            <span> | <span className="font-medium text-green-600">Activos:</span> {patients.filter(p => p.activo).length}</span>
-            <span> | <span className="font-medium text-red-600">Inactivos:</span> {patients.filter(p => !p.activo).length}</span>
-          </p>
+          {/* Resumen */}
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <p className="text-sm text-gray-600">
+              Total de pacientes: <span className="font-medium">{patients.length}</span>
+              {searchTerm && ` | Mostrando: ${filteredPatients.length}`}
+            </p>
+          </div>
         </div>
-      )}
+      </div>
 
       {/* Modal del formulario */}
       {showFormulario && (

@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { signIn, getCurrentUser, getDefaultPath } from '@/lib/auth'
+import { signIn, getCurrentUser, roleToPath } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,95 +11,62 @@ async function loginAction(formData: FormData) {
   if (!res.ok) {
     redirect('/login?error=1')
   }
-  // If user has no roles, redirect to error page
-  if (res.user.roles.length === 0) {
-    redirect('/error')
-  }
-  redirect(getDefaultPath(res.user.roles))
+  redirect(roleToPath(res.user.role))
 }
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const user = await getCurrentUser()
-  if (user) {
-    if (user.roles.length === 0) {
-      redirect('/error')
-    }
-    redirect(getDefaultPath(user.roles))
-  }
+  if (user) redirect(roleToPath(user.role))
 
   const sp = await searchParams
   const hasError = !!sp?.error
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4 text-gray-900 relative overflow-hidden"
-    >
-      {/* Blurred background image */}
-      <div
-        className="absolute inset-0 w-full h-full"
-        style={{
-          backgroundImage: 'url(/doctor-icon-virtual-screen-health-care-and-medical-on-background-copy-space-free-photo.jpg)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          filter: 'blur(8px)',
-          zIndex: 0,
-        }}
-      />
-      {/* Gradient overlay for diffuminated effect */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.7) 100%)',
-          zIndex: 1,
-        }}
-      />
-      <div className="w-full max-w-md flex flex-col bg-white rounded-xl shadow border border-gray-200 px-0 pt-0 pb-0 bg-opacity-90 backdrop-blur-sm relative" style={{zIndex:2}}>
-        {/* Topbar style header */}
-        <div className="bg-emerald-600 rounded-t-xl px-6 py-5 flex flex-col items-center">
-          <h1 className="text-2xl font-bold text-white mb-1">Iniciar sesión</h1>
-          <p className="text-sm text-emerald-100 mb-0">Accede a tu cuenta de CareLink</p>
-        </div>
-        <div className="px-6 pt-6 pb-8">
-          {hasError && (
-            <div className="mb-2 rounded-md bg-red-50 p-3 text-sm text-red-800 border border-red-200 text-center">
-              Credenciales inválidas. Intenta nuevamente.
-            </div>
-          )}
-          <form action={loginAction} className="flex flex-col items-center">
-            <div className="w-full max-w-sm flex flex-col">
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                className="block w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-gray-900 shadow-sm"
-                placeholder="tu@correo.com"
-              />
-            </div>
-            <div className="w-full max-w-sm flex flex-col mt-3">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                className="block w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-gray-900 shadow-sm"
-                placeholder="••••••••"
-              />
-            </div>
-            <button
-              type="submit"
-              className="mt-5 max-w-sm w-full sm:w-auto bg-emerald-600 text-white py-2.5 px-8 rounded-lg hover:bg-emerald-700 transition shadow font-semibold text-base"
-            >
-              Iniciar sesión
-            </button>
-          </form>
-          <div className="mt-4 text-center text-sm text-gray-600">
-            ¿No tienes cuenta?{' '}
-            <a href="/register" className="text-emerald-700 font-medium hover:underline">Crear nueva cuenta</a>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-green-100 px-4 text-gray-900">
+      <div className="w-full max-w-lg flex flex-col bg-white rounded-2xl shadow-lg border border-emerald-100 px-6 pt-6 pb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-3 text-center">Iniciar sesión</h1>
+        <p className="text-base text-gray-600 mb-6 text-center">Accede a tu cuenta de CareLink</p>
+
+        {hasError && (
+          <div className="mb-6 rounded-md bg-red-50 p-3 text-sm text-red-700 border border-red-200 text-center">
+            Credenciales inválidas. Intenta nuevamente.
           </div>
+        )}
+
+        <form action={loginAction} className="flex flex-col items-center">
+          <div className="w-full max-w-sm flex flex-col">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              required
+              className="block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-gray-900"
+              placeholder="tu@correo.com"
+            />
+          </div>
+          <div className="w-full max-w-sm flex flex-col mt-3">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">Contraseña</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              required
+              className="block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-gray-900"
+              placeholder="••••••••"
+            />
+          </div>
+          <button
+            type="submit"
+            className="mt-4 w-auto px-8 mx-auto bg-emerald-600 text-white py-2.5 rounded-md hover:bg-emerald-700 transition shadow"
+          >
+            Iniciar sesión
+          </button>
+        </form>
+
+        <div className="mt-4 text-center text-sm text-gray-600">
+          ¿No tienes cuenta?{' '}
+          <a href="/register" className="text-emerald-700 font-medium hover:underline">Crear nueva cuenta</a>
         </div>
       </div>
     </div>

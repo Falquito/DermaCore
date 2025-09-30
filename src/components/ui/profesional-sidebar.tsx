@@ -1,8 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import Image from 'next/image'
 import { 
   Calendar, 
   Users, 
@@ -10,6 +9,7 @@ import {
   Settings, 
   ChevronLeft, 
   ChevronRight,
+  Stethoscope,
   Clock,
   UserCheck,
   ClipboardList,
@@ -19,15 +19,11 @@ import { Button } from '@/components/ui/button'
 
 interface ProfesionalSidebarProps {
   userRole: string
+  collapsed?: boolean
+  onCollapsedChange?: (collapsed: boolean) => void
 }
 
 const menuItems = [
-  {
-    title: 'Inicio',
-    icon: Home,
-    href: '/profesional',
-    description: 'Página principal'
-  },
   {
     title: 'Agenda',
     icon: Calendar,
@@ -68,14 +64,22 @@ const menuItems = [
 
 export default function ProfesionalSidebar({ 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  userRole
+  userRole, 
+  collapsed = false, 
+  onCollapsedChange 
 }: ProfesionalSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(collapsed)
+
+  useEffect(() => {
+    setIsCollapsed(collapsed)
+  }, [collapsed])
 
   const toggleCollapse = () => {
-    setIsCollapsed(!isCollapsed)
+    const newCollapsed = !isCollapsed
+    setIsCollapsed(newCollapsed)
+    onCollapsedChange?.(newCollapsed)
   }
 
   const handleNavigation = (href: string) => {
@@ -90,58 +94,38 @@ export default function ProfesionalSidebar({
       flex flex-col min-h-screen
     `}>
       {/* Header */}
-      <div className="p-2 border-b border-gray-200">
-        {!isCollapsed ? (
-          <div className="flex items-center justify-between p-2">
+      <div className="p-4 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          {!isCollapsed && (
             <div className="flex items-center space-x-3">
               <div className="bg-emerald-100 p-2 rounded-lg">
-                <Image
-                  src="/logo.png"
-                  alt="CareLink Logo"
-                  width={64}
-                  height={64}
-                  className="w-10 h-10 object-contain"
-                />
+                <Stethoscope className="h-6 w-6 text-emerald-600" />
               </div>
               <div>
                 <h2 className="font-semibold text-gray-900">CareLink</h2>
                 <p className="text-xs text-emerald-600 font-medium">Profesional</p>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleCollapse}
-              className="p-1 hover:bg-gray-100 flex-shrink-0"
-            >
+          )}
+          {isCollapsed && (
+            <div className="bg-emerald-100 p-2 rounded-lg mx-auto">
+              <Stethoscope className="h-6 w-6 text-emerald-600" />
+            </div>
+          )}
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleCollapse}
+            className="p-1 hover:bg-gray-100"
+          >
+            {isCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
               <ChevronLeft className="h-4 w-4" />
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <div className="flex justify-center">
-              <div className="bg-emerald-100 p-1 rounded-lg">
-                <Image
-                  src="/logo.png"
-                  alt="CareLink Logo"
-                  width={32}
-                  height={32}
-                  className="w-8 h-8 object-contain"
-                />
-              </div>
-            </div>
-            <div className="flex justify-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleCollapse}
-                className="p-1 hover:bg-gray-100 w-8 h-8"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Navigation Menu */}

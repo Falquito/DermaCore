@@ -1,476 +1,71 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { Calendar, Clock, Users, TrendingUp, Filter, Loader2 } from 'lucide-react';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from 'chart.js';
-import { Pie, Bar } from 'react-chartjs-2';
-import { AppointmentStatus } from '@prisma/client';
-
-// Register Chart.js components
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title);
-
-// Types
-type ProfessionalStats = {
-  dateRange: {
-    from: Date;
-    to: Date;
-  };
-  totalAppointments: number;
-  statusCounts: Record<AppointmentStatus, number>;
-  obraSocialPercentages: Array<{
-    name: string;
-    count: number;
-    percentage: number;
-  }>;
-  completionRate: number;
-  cancellationRate: number;
-  recentAppointments: Array<{
-    id: string;
-    fecha: Date;
-    paciente: string;
-    estado: AppointmentStatus;
-    motivo?: string;
-    obraSocial: string;
-  }>;
-  averageDaily: number;
-};
-
-// Status labels and colors
-const STATUS_LABELS: Record<AppointmentStatus, string> = {
-  PROGRAMADO: 'Programado',
-  CONFIRMADO: 'Confirmado',
-  EN_SALA_DE_ESPERA: 'En sala de espera',
-  COMPLETADO: 'Completado',
-  CANCELADO: 'Cancelado',
-  NO_ASISTIO: 'No asistió',
-}
-
-const STATUS_COLORS: Record<AppointmentStatus, string> = {
-  PROGRAMADO: '#3B82F6',
-  CONFIRMADO: '#10B981',
-  EN_SALA_DE_ESPERA: '#F59E0B',
-  COMPLETADO: '#059669',
-  CANCELADO: '#EF4444',
-  NO_ASISTIO: '#6B7280',
-}
-
-// Generate colors for obra social pie chart
-const generateColors = (count: number) => {
-  const colors = [
-    '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
-    '#06B6D4', '#84CC16', '#F97316', '#EC4899', '#6B7280'
-  ];
-  return Array.from({ length: count }, (_, i) => colors[i % colors.length]);
-};
+import { useState } from 'react';
+import ProfesionalSidebar from '@/components/ui/profesional-sidebar';
+import ProfesionalTopbar from '@/components/ui/profesional-topbar';
+import { Construction, Clock, Wrench } from 'lucide-react';
 
 export default function ProfesionalPage() {
-  const [stats, setStats] = useState<ProfessionalStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [hiddenDatasets, setHiddenDatasets] = useState<Set<number>>(new Set());
-  const chartRef = useRef<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
-
-  // Initialize default dates (last 30 days)
-  useEffect(() => {
-    const today = new Date();
-    const lastMonth = new Date();
-    lastMonth.setDate(lastMonth.getDate() - 30);
-    
-    setDateFrom(lastMonth.toISOString().split('T')[0]);
-    setDateTo(today.toISOString().split('T')[0]);
-  }, []);
-
-  // Fetch stats when dates change
-  useEffect(() => {
-    if (!dateFrom || !dateTo) return;
-
-    const fetchStats = async () => {
-      try {
-        setLoading(true);
-        const params = new URLSearchParams({
-          dateFrom,
-          dateTo
-        });
-
-        const response = await fetch(`/api/professional-stats?${params.toString()}`);
-        if (!response.ok) throw new Error('Error fetching stats');
-
-        const data = await response.json();
-        setStats(data);
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStats();
-  }, [dateFrom, dateTo]);
-
-  // Prepare chart data
-  const obraSocialChartData = stats ? {
-    labels: stats.obraSocialPercentages.map(item => item.name),
-    datasets: [{
-      data: stats.obraSocialPercentages.map((item, index) => 
-        hiddenDatasets.has(index) ? 0 : item.percentage
-      ),
-      backgroundColor: generateColors(stats.obraSocialPercentages.length),
-      borderWidth: 2,
-      borderColor: '#ffffff'
-    }]
-  } : null;
-
-  const statusChartData = stats ? {
-    labels: Object.keys(stats.statusCounts).map(status => STATUS_LABELS[status as AppointmentStatus]),
-    datasets: [{
-      label: 'Turnos',
-      data: Object.values(stats.statusCounts),
-      backgroundColor: Object.keys(stats.statusCounts).map(status => STATUS_COLORS[status as AppointmentStatus]),
-      borderWidth: 1,
-      borderColor: '#ffffff'
-    }]
-  } : null;
-
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false // Usaremos leyenda personalizada
-      },
-      tooltip: {
-        callbacks: {
-          label: function(context: { label: string; parsed: number; dataset: { data: number[] } }) {
-            const label = context.label || '';
-            const value = context.parsed || 0;
-            const dataset = context.dataset;
-            const total = dataset.data.reduce((a: number, b: number) => a + b, 0);
-            const percentage = ((value / total) * 100).toFixed(1);
-            return `${label}: ${value} (${percentage}%)`;
-          }
-        }
-      }
-    },
-    onHover: (event: unknown, elements: unknown[], chart: unknown) => {
-      const canvas = (chart as any)?.canvas; // eslint-disable-line @typescript-eslint/no-explicit-any
-      if (canvas) {
-        canvas.style.cursor = (elements as any[]).length > 0 ? 'pointer' : 'default'; // eslint-disable-line @typescript-eslint/no-explicit-any
-      }
-    }
-  };
-
-  // Funciones para manejar la leyenda interactiva
-  const toggleDataset = (index: number) => {
-    const newHiddenDatasets = new Set(hiddenDatasets);
-    if (newHiddenDatasets.has(index)) {
-      newHiddenDatasets.delete(index);
-    } else {
-      newHiddenDatasets.add(index);
-    }
-    setHiddenDatasets(newHiddenDatasets);
-  };
-
-  const handleLegendHover = (index: number) => {
-    if (chartRef.current) {
-      const chart = chartRef.current;
-      chart.setActiveElements([{ datasetIndex: 0, index }]);
-      chart.update('none');
-    }
-  };
-
-  const handleLegendLeave = () => {
-    if (chartRef.current) {
-      const chart = chartRef.current;
-      chart.setActiveElements([]);
-      chart.update('none');
-    }
-  };
-
-  const barChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false
-      },
-      tooltip: {
-        callbacks: {
-          label: function(context: { label: string; parsed: { y: number } }) {
-            return `${context.label}: ${context.parsed.y} turnos`;
-          }
-        }
-      }
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        ticks: {
-          stepSize: 1
-        }
-      }
-    }
-  };
-
-  if (loading) {
-    return (
-      <main className="flex-1 p-5 md:p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
-            <span className="ml-2 text-gray-600">Cargando estadísticas...</span>
-          </div>
-        </div>
-      </main>
-    );
-  }
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
-    <main className="flex-1 p-5 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-4">
-        {/* Header with date filters */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Indicadores</h1>
-            <p className="text-gray-600">Resumen de tu actividad profesional</p>
-          </div>
-          
-          <div className="flex items-center gap-3 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-            <Filter className="h-4 w-4 text-gray-500" />
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700">Desde:</label>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700">Hasta:</label>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-          </div>
-        </div>
 
-        {/* Key metrics cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total de Turnos</p>
-                <p className="text-xl font-bold text-gray-900">{stats?.totalAppointments || 0}</p>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <ProfesionalSidebar 
+        userRole="PROFESIONAL" 
+        collapsed={sidebarCollapsed}
+        onCollapsedChange={setSidebarCollapsed}
+      />
+      
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Topbar */}
+        <ProfesionalTopbar 
+          userName="Dr. Profesional"
+          userEmail="doctor@carelink.com"
+          sidebarCollapsed={sidebarCollapsed}
+          setSidebarCollapsed={setSidebarCollapsed}
+        />
+        
+        {/* Content */}
+        <div className="flex-1 p-8 overflow-auto">
+          <div className="max-w-4xl mx-auto">
+            {/* Construction Message */}
+            <div className="text-center py-16">
+              <div className="mb-8">
+                <Construction className="mx-auto h-24 w-24 text-emerald-500" />
               </div>
-              <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Calendar className="h-5 w-5 text-blue-600" />
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Promedio diario: {stats?.averageDaily || 0}
-            </p>
-          </div>
-
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Tasa de Completado</p>
-                <p className="text-xl font-bold text-green-600">{stats?.completionRate || 0}%</p>
-              </div>
-              <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-green-600" />
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Turnos completados exitosamente
-            </p>
-          </div>
-
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Tasa de Cancelación</p>
-                <p className="text-xl font-bold text-red-600">{stats?.cancellationRate || 0}%</p>
-              </div>
-              <div className="h-10 w-10 bg-red-100 rounded-lg flex items-center justify-center">
-                <Clock className="h-5 w-5 text-red-600" />
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Cancelados y no asistieron
-            </p>
-          </div>
-
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Pacientes Únicos</p>
-                <p className="text-xl font-bold text-purple-600">
-                  {stats?.recentAppointments ? new Set(stats.recentAppointments.map(a => a.paciente)).size : 0}
-                </p>
-              </div>
-              <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Users className="h-5 w-5 text-purple-600" />
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              En el período seleccionado
-            </p>
-          </div>
-        </div>
-
-        {/* Charts row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Obra Social Pie Chart */}
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">
-              Obras Sociales
-            </h3>
-            {obraSocialChartData && stats?.totalAppointments ? (
-              <div className="flex flex-col">
-                {/* Chart container - más espacio */}
-                <div className="h-56 mb-3">
-                  <Pie 
-                    ref={chartRef}
-                    data={obraSocialChartData} 
-                    options={chartOptions} 
-                  />
-                </div>
-                
-                {/* Leyenda personalizada con botones - menos espacio */}
-                <div className="flex flex-wrap gap-1 justify-center">
-                  {stats.obraSocialPercentages.map((item: { name: string; percentage: number }, index: number) => {
-                    const isHidden = hiddenDatasets.has(index);
-                    const colors = generateColors(stats.obraSocialPercentages.length);
-                    const backgroundColor = colors[index];
-                    
-                    return (
-                      <button
-                        key={index}
-                        onClick={() => toggleDataset(index)}
-                        onMouseEnter={() => handleLegendHover(index)}
-                        onMouseLeave={handleLegendLeave}
-                        className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium transition-all duration-200 ${
-                          isHidden 
-                            ? 'bg-gray-100 text-gray-400 border-gray-200' 
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:scale-105 shadow-sm'
-                        } border`}
-                        style={{
-                          opacity: isHidden ? 0.5 : 1
-                        }}
-                      >
-                        <div 
-                          className="w-2 h-2 rounded-full mr-1.5 flex-shrink-0"
-                          style={{ backgroundColor: isHidden ? '#9CA3AF' : backgroundColor }}
-                        />
-                        <span className="truncate max-w-16">{item.name}</span>
-                        <span className="ml-1 text-gray-500">({item.percentage.toFixed(1)}%)</span>
-                      </button>
-                    );
-                  })}
+              <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                En Construcción
+              </h1>
+              <p className="text-xl text-gray-600 mb-8">
+                El módulo de Profesionales está siendo desarrollado
+              </p>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6 mb-8">
+                <h2 className="text-lg font-semibold text-emerald-800 mb-3 flex items-center justify-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Funcionalidades en Desarrollo
+                </h2>
+                <div className="space-y-2 text-emerald-700">
+                  <p>• Agenda médica personalizada</p>
+                  <p>• Gestión de pacientes y consultas</p>
+                  <p>• Historias clínicas digitales</p>
+                  <p>• Prescripciones y recetas</p>
+                  <p>• Órdenes de estudios médicos</p>
+                  <p>• Reportes profesionales</p>
                 </div>
               </div>
-            ) : (
-              <div className="h-64 flex items-center justify-center text-gray-500">
-                <p>No hay datos para mostrar</p>
+              <div className="flex items-center justify-center gap-2 text-emerald-600">
+                <Wrench className="h-5 w-5" />
+                <span className="text-lg font-medium">
+                  Pronto disponible
+                </span>
               </div>
-            )}
-          </div>
-
-          {/* Status Bar Chart */}
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">
-              Estados de turnos
-            </h3>
-            {statusChartData && stats?.totalAppointments ? (
-              <div className="h-64">
-                <Bar data={statusChartData} options={barChartOptions} />
-              </div>
-            ) : (
-              <div className="h-64 flex items-center justify-center text-gray-500">
-                <p>No hay datos para mostrar</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Recent appointments table */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-          <div className="p-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Turnos Recientes
-            </h3>
-            <p className="text-gray-600">Últimos 5 turnos registrados</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Fecha
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Paciente
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Estado
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Obra Social
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Motivo
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {stats?.recentAppointments?.map((appointment) => (
-                  <tr key={appointment.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(appointment.fecha).toLocaleDateString('es-ES', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric'
-                      })}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {appointment.paciente}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${{
-                        PROGRAMADO: 'bg-blue-100 text-blue-800',
-                        CONFIRMADO: 'bg-green-100 text-green-800',
-                        EN_SALA_DE_ESPERA: 'bg-yellow-100 text-yellow-800',
-                        COMPLETADO: 'bg-emerald-100 text-emerald-800',
-                        CANCELADO: 'bg-red-100 text-red-800',
-                        NO_ASISTIO: 'bg-gray-100 text-gray-800',
-                      }[appointment.estado]}`}>
-                        {STATUS_LABELS[appointment.estado]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                      {appointment.obraSocial}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {appointment.motivo || '-'}
-                    </td>
-                  </tr>
-                )) || (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-3 text-center text-gray-500">
-                      No hay turnos recientes
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+            </div>
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

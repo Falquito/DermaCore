@@ -11,5 +11,5 @@ export default async function HistoriasClinicasPage() {
     <div className="p-6">
       <HistoriasClinicasContent />
     </div>
-  )
+  );
 }

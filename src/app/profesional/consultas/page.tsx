@@ -11,5 +11,5 @@ export default async function ConsultasPage() {
     <div className="p-6">
       <ConsultasContent />
     </div>
-  )
+  );
 }

@@ -1,410 +1,62 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { 
-  Users, 
-  Search, 
-  Edit, 
-  Shield,
-  UserCheck,
-  AlertCircle,
-  Check
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-
-interface User {
-  id: string;
-  name: string | null;
-  email: string;
-  roles: ('PROFESIONAL' | 'MESA_ENTRADA' | 'GERENTE')[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-const roleLabels = {
-  PROFESIONAL: 'Profesional',
-  MESA_ENTRADA: 'Mesa de entrada',
-  GERENTE: 'Gerente'
-};
-
-const roleColors = {
-  PROFESIONAL: 'bg-blue-100 text-blue-800',
-  MESA_ENTRADA: 'bg-green-100 text-green-800',
-  GERENTE: 'bg-purple-100 text-purple-800'
-};
+import { useState } from 'react';
+import GerenciaSidebar from '@/components/ui/gerencia-sidebar';
+import GerenciaTopbar from '@/components/ui/gerencia-topbar';
+import { Construction, Clock, Wrench } from 'lucide-react';
 
 export default function UsuariosPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingRoles, setEditingRoles] = useState<string[]>([]);
-  const [updating, setUpdating] = useState(false);
-
-  // Cargar usuarios al montar el componente
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/users');
-      
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.users);
-      } else {
-        console.error('Error al cargar usuarios');
-      }
-    } catch (error) {
-      console.error('Error al cargar usuarios:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEditUser = (user: User) => {
-    setSelectedUser(user);
-    setEditingRoles(user.roles.length > 0 ? user.roles : []);
-    setIsEditModalOpen(true);
-  };
-
-  const handleRoleToggle = (role: string) => {
-    setEditingRoles(prev => {
-      if (prev.includes(role)) {
-        // Remove role
-        return prev.filter(r => r !== role);
-      } else {
-        // Add role
-        return [...prev, role];
-      }
-    });
-  };
-
-  const handleUpdateUser = async () => {
-    if (!selectedUser) return;
-    
-    setUpdating(true);
-    try {
-      const response = await fetch('/api/users', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          id: selectedUser.id,
-          roles: editingRoles,
-        }),
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(prev => prev.map(user => 
-          user.id === selectedUser.id ? data.user : user
-        ));
-        setIsEditModalOpen(false);
-        setSelectedUser(null);
-      } else {
-        console.error('Error al actualizar usuario');
-      }
-    } catch (error) {
-      console.error('Error al actualizar usuario:', error);
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  // Filtrar usuarios por término de búsqueda
-  const filteredUsers = users.filter(user =>
-    user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Separar usuarios con y sin rol
-  const usersWithoutRole = filteredUsers.filter(user => user.roles.length === 0);
-  const usersWithRole = filteredUsers.filter(user => user.roles.length > 0);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
-    <main className="flex-1 p-6">
-          <div className="max-w-7xl mx-auto">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-3">
-                <div className="bg-emerald-100 p-2 rounded-lg">
-                  <Users className="h-6 w-6 text-emerald-600" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Usuarios</h1>
-                  <p className="text-gray-600 text-sm">
-                    Lista de usuarios del sistema
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Search and Stats */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-              <div className="p-4 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="Buscar usuarios..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  <div className="flex items-center space-x-4 ml-4">
-                    <div className="flex items-center space-x-2">
-                      <AlertCircle className="h-4 w-4 text-orange-500" />
-                      <span className="text-sm text-gray-600">
-                        Sin Rol: <span className="font-semibold text-orange-600">{usersWithoutRole.length}</span>
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <UserCheck className="h-4 w-4 text-emerald-500" />
-                      <span className="text-sm text-gray-600">
-                        Con Rol: <span className="font-semibold text-emerald-600">{usersWithRole.length}</span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Users Table */}
-              <div className="overflow-x-auto">
-                {loading ? (
-                  <div className="p-8 text-center text-gray-500">
-                    Cargando usuarios...
-                  </div>
-                ) : (
-                  <table className="w-full">
-                    <thead className="bg-gray-50 border-b border-gray-200">
-                      <tr>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Usuario</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Email</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Rol</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Estado</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Fecha</th>
-                        <th className="text-right py-3 px-4 font-medium text-gray-600 text-sm">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {/* Usuarios sin rol primero */}
-                      {usersWithoutRole.map((user) => (
-                        <tr key={user.id} className="bg-orange-25 hover:bg-orange-50 transition-colors">
-                          <td className="py-3 px-4">
-                            <div className="flex items-center space-x-3">
-                              <div className="bg-gray-100 p-2 rounded-full">
-                                <Users className="h-4 w-4 text-gray-600" />
-                              </div>
-                              <div>
-                                <p className="font-medium text-gray-900">
-                                  {user.name || 'Sin nombre'}
-                                </p>
-                                <p className="text-sm text-gray-500">ID: {user.id.slice(0, 8)}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 text-gray-900">{user.email}</td>
-                          <td className="py-3 px-4">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                              Sin asignar
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center space-x-2">
-                              <AlertCircle className="h-4 w-4 text-orange-500" />
-                              <span className="text-sm text-orange-600 font-medium">Pendiente</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 text-sm text-gray-500">
-                            {new Date(user.createdAt).toLocaleDateString('es-ES')}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditUser(user)}
-                              className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                            >
-                              <Edit className="h-4 w-4 mr-1" />
-                              Editar
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                      
-                      {/* Usuarios con rol */}
-                      {usersWithRole.map((user) => (
-                        <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="py-3 px-4">
-                            <div className="flex items-center space-x-3">
-                              <div className="bg-emerald-100 p-2 rounded-full">
-                                <Shield className="h-4 w-4 text-emerald-600" />
-                              </div>
-                              <div>
-                                <p className="font-medium text-gray-900">
-                                  {user.name || 'Sin nombre'}
-                                </p>
-                                <p className="text-sm text-gray-500">ID: {user.id.slice(0, 8)}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 text-gray-900">{user.email}</td>
-                          <td className="py-3 px-4">
-                            <div className="flex flex-wrap gap-1">
-                              {user.roles.length > 0 ? (
-                                user.roles.map((role, index) => (
-                                  <span key={index} className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleColors[role]}`}>
-                                    {roleLabels[role]}
-                                  </span>
-                                ))
-                              ) : (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                  Sin asignar
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center space-x-2">
-                              <UserCheck className="h-4 w-4 text-emerald-500" />
-                              <span className="text-sm text-emerald-600 font-medium">Activo</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 text-sm text-gray-500">
-                            {new Date(user.createdAt).toLocaleDateString('es-ES')}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditUser(user)}
-                              className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                            >
-                              <Edit className="h-4 w-4 mr-1" />
-                              Editar
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                      
-                      {filteredUsers.length === 0 && !loading && (
-                        <tr>
-                          <td colSpan={6} className="py-8 text-center text-gray-500">
-                            {searchTerm ? 'No se encontraron usuarios con ese criterio' : 'No hay usuarios registrados'}
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Edit User Modal */}
-          <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle className="flex items-center space-x-2">
-                  <Edit className="h-5 w-5 text-emerald-600" />
-                  <span>Editar Usuario</span>
-                </DialogTitle>
-                <DialogDescription>
-                  Asigna uno o más roles al usuario en el sistema. Los usuarios pueden tener múltiples roles simultáneamente.
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Usuario</Label>
-                  <div className="p-3 bg-gray-50 rounded-md">
-                    <p className="font-medium">{selectedUser?.name || 'Sin nombre'}</p>
-                    <p className="text-sm text-gray-600">{selectedUser?.email}</p>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <GerenciaSidebar 
+        userRole="GERENTE" 
+        collapsed={sidebarCollapsed}
+        onCollapsedChange={setSidebarCollapsed}
+      />
+      
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Topbar */}
+        <GerenciaTopbar 
+          userName="Administrador"
+          userEmail="admin@carelink.com"
+        />
+        
+        {/* Page Content - En Construcción */}
+          <main className="min-h-screen flex items-center justify-center p-4 md:p-6">
+            <div className="max-w-md w-full text-center">
+              <div className="bg-white rounded-lg shadow-lg p-6 md:p-8 border-l-4 border-l-emerald-500">
+                <div className="flex justify-center mb-4">
+                  <div className="bg-emerald-100 p-4 rounded-full">
+                    <Construction className="h-12 w-12 text-emerald-600" />
                   </div>
                 </div>
                 
-                <div className="space-y-3">
-                  <Label>Roles del usuario</Label>
-                  <div className="space-y-2">
-                    {['PROFESIONAL', 'MESA_ENTRADA', 'GERENTE'].map((role) => (
-                      <div 
-                        key={role}
-                        className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${
-                          editingRoles.includes(role) 
-                            ? 'border-emerald-500 bg-emerald-50' 
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                        onClick={() => handleRoleToggle(role)}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-4 h-4 border-2 rounded flex items-center justify-center ${
-                            editingRoles.includes(role)
-                              ? 'border-emerald-500 bg-emerald-500'
-                              : 'border-gray-300'
-                          }`}>
-                            {editingRoles.includes(role) && (
-                              <Check className="w-3 h-3 text-white" />
-                            )}
-                          </div>
-                          <span className="font-medium text-gray-900">
-                            {roleLabels[role as keyof typeof roleLabels]}
-                          </span>
-                        </div>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          roleColors[role as keyof typeof roleColors]
-                        }`}>
-                          {roleLabels[role as keyof typeof roleLabels]}
-                        </span>
-                      </div>
-                    ))}
+                <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">
+                  Página en Construcción
+                </h1>
+                
+                <p className="text-gray-600 mb-6 text-sm md:text-base">
+                  Estamos trabajando en la gestión de usuarios. Esta funcionalidad estará disponible próximamente.
+                </p>
+                
+                <div className="flex items-center justify-center space-x-6 text-sm text-gray-500">
+                  <div className="flex items-center">
+                    <Clock className="h-4 w-4 mr-1 text-emerald-600" />
+                    En desarrollo
                   </div>
-                  
-                  {editingRoles.length === 0 && (
-                    <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                      <div className="flex items-center space-x-2">
-                        <AlertCircle className="h-4 w-4 text-orange-600" />
-                        <span className="text-sm text-orange-700">
-                          Sin roles asignados. El usuario será redirigido a la página de error al iniciar sesión.
-                        </span>
-                      </div>
-                    </div>
-                  )}
+                  <div className="flex items-center">
+                    <Wrench className="h-4 w-4 mr-1 text-emerald-600" />
+                    Próximamente
+                  </div>
                 </div>
               </div>
-              
-              <div className="flex justify-end space-x-3">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsEditModalOpen(false)}
-                  disabled={updating}
-                >
-                  Cancelar
-                </Button>
-                <Button 
-                  onClick={handleUpdateUser}
-                  disabled={updating}
-                  className="bg-emerald-600 hover:bg-emerald-700"
-                >
-                  {updating ? 'Guardando...' : 'Guardar cambios'}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </main>
+            </div>
+          </main>
+        </div>
+      </div>
   );
 }

@@ -1,113 +1,49 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getSession } from '@/lib/session'
-import { prisma } from '@/lib/prisma'
-import { AppointmentStatus } from '@prisma/client'
+// src/app/api/agenda/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "../../../lib/prisma"; // o relativo según tu estructura
 
-// UI-specific appointment type (transformed from Prisma Appointment)
-type Appointment = {
-  id: string
-  professionalId: string
-  patientId?: string | null
-  title: string
-  start: string // ISO
-  end: string // ISO
-  status: AppointmentStatus
-  notes?: string | null
-}
+const dbToUi: Record<string, "PENDING"|"WAITING"|"COMPLETED"|"CANCELED"> = {
+  PROGRAMADO: "PENDING",
+  EN_SALA: "WAITING",
+  EN_ESPERA: "WAITING",
+  FINALIZADO: "COMPLETED",
+  CANCELADO: "CANCELED",
+};
 
-export async function GET(req: NextRequest) {
-  const session = await getSession()
-  if (!session) return NextResponse.json([], { status: 200 })
+export async function GET(req: NextRequest): Promise<Response> {
+  const { searchParams } = new URL(req.url);
+  const from = new Date(searchParams.get("from")!);
+  const to   = new Date(searchParams.get("to")!);
 
-  const { searchParams } = new URL(req.url)
-  const from = searchParams.get('from')
-  const to = searchParams.get('to')
-  const statusParam = searchParams.get('status') // comma-separated statuses matching Prisma enum values
-  const professionalIdParam = searchParams.get('professionalId') // Allow querying other professionals
-  const q = (searchParams.get('q') || '').trim()
-  if (!from || !to) return NextResponse.json([], { status: 200 })
-
-  const fromDate = new Date(from)
-  const toDate = new Date(to)
-
-  // Determine which professional's appointments to fetch
-  let targetProfessionalId = session.userId // Default to current user
-  
-  // If professionalId is provided and user has appropriate permissions, use it
-  if (professionalIdParam) {
-    // Get current user's roles from database
-    const currentUser = await prisma.user.findUnique({
-      where: { id: session.userId },
-      include: { roles: true }
-    })
-    
-    const userRoles = currentUser?.roles.map(r => r.role) || []
-    
-    // Allow MESA_ENTRADA and GERENTE to view any professional's appointments
-    if (userRoles.includes('MESA_ENTRADA') || userRoles.includes('GERENTE')) {
-      targetProfessionalId = professionalIdParam
-    }
-    // If user is PROFESIONAL but requesting their own data, allow it
-    else if (userRoles.includes('PROFESIONAL') && professionalIdParam === session.userId) {
-      targetProfessionalId = professionalIdParam
-    }
-    // Otherwise, keep default (current user)
-  }
-
-  // Build filters
-  const estadoIn = statusParam
-    ? statusParam
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)
-    : undefined
-
-  const estadoValues = Object.values(AppointmentStatus) as AppointmentStatus[]
-  const estadoInPrisma = estadoIn?.filter((s): s is AppointmentStatus =>
-    estadoValues.includes(s as AppointmentStatus)
-  )
-
-  // Query DB
-  const rows = await prisma.appointment.findMany({
-    where: {
-      profesionalId: targetProfessionalId,
-      fecha: { gte: fromDate, lt: toDate },
-      ...(estadoInPrisma && estadoInPrisma.length ? { estado: { in: estadoInPrisma } } : {}),
-      ...(q
-        ? {
-            OR: [
-              { motivo: { contains: q, mode: 'insensitive' } },
-              { observaciones: { contains: q, mode: 'insensitive' } },
-              { paciente: { nombre: { contains: q, mode: 'insensitive' } } },
-              { paciente: { apellido: { contains: q, mode: 'insensitive' } } },
-              { paciente: { dni: { contains: q, mode: 'insensitive' } } },
-            ],
-          }
-        : {}),
+  const appts = await prisma.appointment.findMany({
+    where: { fecha: { gte: from, lt: to } },
+    orderBy: { fecha: "asc" },
+    select: {
+      id: true,
+      profesionalId: true, // 👈 DB
+      pacienteId: true,
+      fecha: true,
+      duracion: true,
+      motivo: true,
+      observaciones: true,
+      estado: true,
     },
-    include: {
-      paciente: { select: { id: true, nombre: true, apellido: true, dni: true } },
-    },
-    orderBy: { fecha: 'asc' },
-  })
+  });
 
-  // Map to UI shape
-  const data: Appointment[] = rows.map((r) => {
-    const start = r.fecha
-    const end = new Date(start.getTime() + (r.duracion ?? 30) * 60000)
-    const fullName = r.paciente ? `${r.paciente.apellido}, ${r.paciente.nombre}`.trim() : ''
-    const title = fullName || r.motivo || 'Consulta'
+  const items = appts.map(a => {
+    const start = new Date(a.fecha);
+    const end   = new Date(start.getTime() + a.duracion * 60000);
     return {
-      id: r.id,
-      professionalId: r.profesionalId,
-      patientId: r.pacienteId,
-      title,
+      id: a.id,
+      professionalId: a.profesionalId, // 👈 map a UI
+      patientId: a.pacienteId,
+      title: a.motivo || "Consulta",
       start: start.toISOString(),
       end: end.toISOString(),
-      status: r.estado,
-      notes: r.observaciones ?? null,
-    }
-  })
+      status: dbToUi[a.estado] ?? "PENDING",
+      notes: a.observaciones ?? null,
+    };
+  });
 
-  return NextResponse.json(data, { status: 200 })
+  return NextResponse.json(items);
 }
