@@ -8,13 +8,15 @@ import {
   LogOut,
   User,
   Calendar,
-  Home
+  Clock
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface TopbarProps {
   userName: string | null
   userEmail: string
+  sidebarCollapsed: boolean
+  setSidebarCollapsed: (collapsed: boolean) => void
 }
 
 const pathTitles: Record<string, string> = {
@@ -26,21 +28,25 @@ const pathTitles: Record<string, string> = {
   '/profesional/prescripciones': 'Prescripciones',
   '/profesional/estudios': 'Estudios Médicos',
   '/profesional/reportes': 'Reportes',
-  '/profesional/configuracion': 'Configuración',
-  '/profesional/perfil': 'Mi Perfil'
+  '/profesional/configuracion': 'Configuración'
 }
 
-export default function ProfesionalTopbar({ userName, userEmail }: TopbarProps) {
+export default function ProfesionalTopbar({ userName, userEmail, sidebarCollapsed, setSidebarCollapsed }: TopbarProps) {
   const pathname = usePathname()
   const currentTitle = pathTitles[pathname] || 'CareLink'
-
-  const handlePerfilClick = () => {
-    window.location.href = '/profesional/perfil'
-  }
-
-  const handleGoHome = () => {
-    window.location.href = '/'
-  }
+  
+  // Obtener fecha y hora actual
+  const now = new Date()
+  const currentDate = now.toLocaleDateString('es-AR', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+  const currentTime = now.toLocaleTimeString('es-AR', {
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 
   const handleLogout = async () => {
     try {
@@ -56,6 +62,18 @@ export default function ProfesionalTopbar({ userName, userEmail }: TopbarProps) 
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
+        {/* Sidebar collapsed button (quick fix) */}
+        {sidebarCollapsed && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mr-4"
+            onClick={() => setSidebarCollapsed(false)}
+            title="Abrir menú"
+          >
+            <ChevronRight className="h-5 w-5 text-emerald-600" />
+          </Button>
+        )}
         {/* Left section - Breadcrumb y título */}
   <div className="flex items-center">
           <div className="flex items-center text-sm text-gray-500">
@@ -65,23 +83,20 @@ export default function ProfesionalTopbar({ userName, userEmail }: TopbarProps) 
           </div>
         </div>
 
-
+  {/* Center section - Fecha y hora (never wraps, hides if would wrap) */}
+  <div className="hidden xl:flex items-center space-x-4 text-sm text-gray-600 whitespace-nowrap">
+          <div className="flex items-center space-x-2 ml-2">
+            <Calendar className="h-4 w-4 text-emerald-600" />
+            <span className="capitalize">{currentDate}</span>
+          </div>
+          <div className="flex items-center space-x-2 mr-2">
+            <Clock className="h-4 w-4 text-emerald-600" />
+            <span>{currentTime}</span>
+          </div>
+        </div>
 
         {/* Right section - Search, notifications, user */}
         <div className="flex items-center space-x-4">
-          {/* Home Button */}
-          <Button 
-            type="button"
-            variant="ghost" 
-            size="sm" 
-            onClick={handleGoHome}
-            className="flex items-center space-x-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-            title="Volver al inicio"
-          >
-            <Home className="h-4 w-4" />
-            <span className="hidden lg:inline">Inicio</span>
-          </Button>
-
           {/* Search */}
           <div className="relative hidden sm:block">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -122,10 +137,7 @@ export default function ProfesionalTopbar({ userName, userEmail }: TopbarProps) 
               
               {/* Dropdown menu */}
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                <button 
-                  onClick={handlePerfilClick}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
-                >
+                <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2">
                   <User className="h-4 w-4" />
                   <span>Mi Perfil</span>
                 </button>

@@ -8,43 +8,19 @@ import ObservacionesEditor from "@/components/ObservacionesEditor";
 
 export default function ConsultaDesdeAgendaPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const search = useSearchParams();
   const appointmentId = search.get("id") ?? "";
 
-  async function handleDelete() {
-    if (!appointmentId) return;
-    const ok = window.confirm(
-      "¿Eliminar definitivamente este turno? Esta acción no se puede deshacer."
-    );
-    if (!ok) return;
-
-    try {
-      setDeleting(true);
-      const res = await fetch(`/api/appointments/${appointmentId}`, { method: "DELETE" });
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.error || "No se pudo eliminar el turno");
-      }
-      // Avisar a la agenda si está abierta en otra pestaña
-      window.dispatchEvent(new CustomEvent("appt:deleted", { detail: { id: appointmentId } }));
-      // Volver a la agenda
-      window.location.href = "/profesional/agenda";
-    } catch (e: any) {
-      alert(e?.message || "Error al eliminar el turno");
-    } finally {
-      setDeleting(false);
-    }
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
       <ProfesionalSidebar
         userRole="PROFESIONAL"
         collapsed={sidebarCollapsed}
         onCollapsedChange={setSidebarCollapsed}
       />
 
+      {/* Main */}
       <div className="flex-1 flex flex-col">
         <ProfesionalTopbar
           userName="Dr. Profesional"
@@ -66,27 +42,7 @@ export default function ConsultaDesdeAgendaPage() {
                 <a className="underline text-emerald-700" href="/profesional/agenda">Agenda</a>.
               </div>
             ) : (
-              <>
-                <ObservacionesEditor appointmentId={appointmentId} />
-
-                {/* Acciones inferiores */}
-                <div className="mt-6 flex items-center justify-between">
-                  <a
-                    href="/profesional/agenda"
-                    className="text-sm text-emerald-700 underline"
-                  >
-                    ← Volver a la agenda
-                  </a>
-
-                  <button
-                    onClick={handleDelete}
-                    disabled={deleting}
-                    className="rounded-xl bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:opacity-50"
-                  >
-                    {deleting ? "Eliminando…" : "Eliminar consulta"}
-                  </button>
-                </div>
-              </>
+              <ObservacionesEditor appointmentId={appointmentId} />
             )}
           </div>
         </main>

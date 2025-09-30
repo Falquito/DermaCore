@@ -5,10 +5,6 @@ import { createSession, getSession, invalidateSession } from './session'
 import type { Role, User } from '@prisma/client'
 export type { Role }
 
-export type UserWithRoles = Pick<User, 'id' | 'email' | 'name'> & {
-  roles: Role[]
-}
-
 export async function hashPassword(password: string) {
   const salt = await bcrypt.genSalt(10)
   return bcrypt.hash(password, salt)
@@ -20,14 +16,9 @@ export async function verifyPassword(password: string, hash: string) {
 
 export async function signIn(email: string, password: string): Promise<
   | { ok: false; error: string }
-  | { ok: true; user: UserWithRoles }
+  | { ok: true; user: Pick<User, 'id' | 'email' | 'role' | 'name'> }
 > {
-  const user = await prisma.user.findUnique({ 
-    where: { email },
-    include: {
-      roles: true
-    }
-  })
+  const user = await prisma.user.findUnique({ where: { email } })
   console.log('[AUTH] signIn lookup', { email, found: !!user })
   if (!user) return { ok: false, error: 'Credenciales inválidas' }
 
@@ -48,8 +39,7 @@ export async function signIn(email: string, password: string): Promise<
     expires: session.expiresAt,
   })
 
-  const userRoles = user.roles.map((ur: {role: Role}) => ur.role)
-  return { ok: true, user: { id: user.id, email: user.email, name: user.name, roles: userRoles } }
+  return { ok: true, user: { id: user.id, email: user.email, role: user.role, name: user.name } }
 }
 
 export async function signOut() {
@@ -61,21 +51,15 @@ export async function signOut() {
   }
 }
 
-export async function getCurrentUser(): Promise<UserWithRoles | null> {
+export async function getCurrentUser(): Promise<Pick<User, 'id' | 'email' | 'role' | 'name'> | null> {
   const session = await getSession()
   console.log('[AUTH] getCurrentUser session', { hasSession: !!session })
   if (!session) return null
-  const user = await prisma.user.findUnique({ 
-    where: { id: session.userId },
-    include: {
-      roles: true
-    }
-  })
+  const user = await prisma.user.findUnique({ where: { id: session.userId } })
   console.log('[AUTH] getCurrentUser user', { userId: session.userId, found: !!user })
   if (!user) return null
-  const { id, email, name } = user
-  const userRoles = user.roles.map((ur: {role: Role}) => ur.role)
-  return { id, email, name, roles: userRoles }
+  const { id, email, role, name } = user
+  return { id, email, role, name }
 }
 
 export function roleToPath(role: Role) {
@@ -87,31 +71,4 @@ export function roleToPath(role: Role) {
     case 'GERENTE':
       return '/gerente'
   }
-}
-
-export function getDefaultPath(roles: Role[]): string {
-  // If user has multiple roles, go to home page to choose
-  if (roles.length > 1) {
-    return '/'
-  }
-  
-  // Single role: redirect directly to the section
-  if (roles.includes('GERENTE')) {
-    return '/gerente'
-  }
-  if (roles.includes('PROFESIONAL')) {
-    return '/profesional'
-  }
-  if (roles.includes('MESA_ENTRADA')) {
-    return '/mesa-entrada'
-  }
-  return '/error'
-}
-
-export function userHasRole(userRoles: Role[], requiredRole: Role): boolean {
-  return userRoles.includes(requiredRole)
-}
-
-export function userHasAnyRole(userRoles: Role[], requiredRoles: Role[]): boolean {
-  return requiredRoles.some(role => userRoles.includes(role))
 }

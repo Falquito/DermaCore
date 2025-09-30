@@ -37,7 +37,6 @@ export default function FormularioAltaPaciente({ onSubmit, onCancel, isLoading: 
     contactoEmergenciaNombre: '',
     contactoEmergenciaTelefono: '',
     contactoEmergenciaRelacion: '',
-    activo: true, // Por defecto activo
   })
 
   const validateDNI = (dni: string) => {
