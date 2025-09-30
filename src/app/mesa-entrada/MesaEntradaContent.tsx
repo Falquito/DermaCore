@@ -1,13 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Patient } from '@prisma/client'
 import FormularioAltaPaciente from '@/components/FormularioAltaPaciente'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { PatientSubmitData } from '@/types/patient'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { PatientFormData, PatientSubmitData } from '@/types/patient'
+import { CheckCircle, X, XCircle } from 'lucide-react'
 
 interface PatientWithCreator extends Patient {
   creator: {
@@ -24,9 +26,12 @@ interface PatientDetailsModalProps {
   patient: PatientWithCreator
   isOpen: boolean
   onClose: () => void
+  onEdit: (patient: PatientWithCreator) => void
+  onToggleActive: (patient: PatientWithCreator) => void
+  isToggling: boolean
 }
 
-function PatientDetailsModal({ patient, isOpen, onClose }: PatientDetailsModalProps) {
+function PatientDetailsModal({ patient, isOpen, onClose, onEdit, onToggleActive, isToggling }: PatientDetailsModalProps) {
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('es-AR', {
       year: 'numeric',
@@ -297,11 +302,26 @@ function PatientDetailsModal({ patient, isOpen, onClose }: PatientDetailsModalPr
             <Button variant="outline" onClick={onClose} className="px-6">
               Cerrar
             </Button>
+            <Button
+              onClick={() => onEdit(patient)}
+              className="px-6 bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Editar
+            </Button>
             <Button 
               variant={patient.activo ? "destructive" : "default"}
+              onClick={() => onToggleActive(patient)}
+              disabled={isToggling}
               className={`px-6 ${patient.activo ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}`}
             >
-              {patient.activo ? "Desactivar Paciente" : "Activar Paciente"}
+              {isToggling ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Procesando...
+                </div>
+              ) : (
+                patient.activo ? "Desactivar Paciente" : "Activar Paciente"
+              )}
             </Button>
           </div>
         </div>
@@ -316,16 +336,106 @@ export default function MesaEntradaContent({
   const [showFormulario, setShowFormulario] = useState(false)
   const [patients, setPatients] = useState(initialPatients)
   const [searchTerm, setSearchTerm] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const [formSubmitting, setFormSubmitting] = useState(false)
+  const [togglingIds, setTogglingIds] = useState<string[]>([])
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [selectedPatient, setSelectedPatient] = useState<PatientWithCreator | null>(null)
   const [showPatientDetails, setShowPatientDetails] = useState(false)
+  const [formMode, setFormMode] = useState<'create' | 'edit'>('create')
+  const [patientToEdit, setPatientToEdit] = useState<PatientWithCreator | null>(null)
+  const isEditMode = formMode === 'edit'
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 12
 
-  const handleCreatePatient = async (patientData: PatientSubmitData) => {
+  const allowedGeneros = ['Masculino', 'Femenino', 'Otro'] as const
+
+  const normalizeGenero = (value?: string | null) => {
+    if (!value) return ''
+    const trimmed = value.trim()
+    const match = allowedGeneros.find(option => option.toLowerCase() === trimmed.toLowerCase())
+    return match ?? ''
+  }
+
+  const buildInitialFormData = (patient: PatientWithCreator): PatientFormData => ({
+    nombre: patient.nombre,
+    apellido: patient.apellido,
+    dni: patient.dni,
+    fechaNacimiento: new Date(patient.fechaNacimiento),
+    genero: normalizeGenero(patient.genero),
+    telefono: patient.telefono ?? '',
+    celular: patient.celular ?? '',
+    email: patient.email ?? '',
+    direccion: patient.direccion ?? '',
+    ciudad: patient.ciudad ?? '',
+    provincia: patient.provincia ?? '',
+    codigoPostal: patient.codigoPostal ?? '',
+    contactoEmergenciaNombre: patient.contactoEmergenciaNombre ?? '',
+    contactoEmergenciaTelefono: patient.contactoEmergenciaTelefono ?? '',
+    contactoEmergenciaRelacion: patient.contactoEmergenciaRelacion ?? '',
+    activo: patient.activo,
+  })
+
+  const buildSubmitDataFromPatient = (
+    patient: PatientWithCreator,
+    overrides: Partial<PatientSubmitData> = {}
+  ): PatientSubmitData => ({
+    nombre: overrides.nombre ?? patient.nombre,
+    apellido: overrides.apellido ?? patient.apellido,
+    dni: overrides.dni ?? patient.dni,
+    fechaNacimiento:
+      overrides.fechaNacimiento ?? new Date(patient.fechaNacimiento).toISOString(),
+    genero: normalizeGenero(overrides.genero ?? patient.genero),
+    telefono: overrides.telefono ?? patient.telefono ?? '',
+    celular: overrides.celular ?? patient.celular ?? '',
+    email: overrides.email ?? patient.email ?? '',
+    direccion: overrides.direccion ?? patient.direccion ?? '',
+    ciudad: overrides.ciudad ?? patient.ciudad ?? '',
+    provincia: overrides.provincia ?? patient.provincia ?? '',
+    codigoPostal: overrides.codigoPostal ?? patient.codigoPostal ?? '',
+    contactoEmergenciaNombre:
+      overrides.contactoEmergenciaNombre ?? patient.contactoEmergenciaNombre ?? '',
+    contactoEmergenciaTelefono:
+      overrides.contactoEmergenciaTelefono ?? patient.contactoEmergenciaTelefono ?? '',
+    contactoEmergenciaRelacion:
+      overrides.contactoEmergenciaRelacion ?? patient.contactoEmergenciaRelacion ?? '',
+    activo: overrides.activo ?? patient.activo,
+  })
+
+  const handleOpenCreateForm = () => {
+    setFormMode('create')
+    setPatientToEdit(null)
+    setShowFormulario(true)
+  }
+
+  const handleOpenEditForm = (patient: PatientWithCreator) => {
+    setFormMode('edit')
+    setPatientToEdit(patient)
+    setShowFormulario(true)
+    setShowPatientDetails(false)
+    setSelectedPatient(patient)
+  }
+
+  const handleCloseForm = () => {
+    setShowFormulario(false)
+    setPatientToEdit(null)
+    setFormMode('create')
+  }
+
+  const handleSavePatient = async (patientData: PatientSubmitData) => {
+    const editing = isEditMode && patientToEdit !== null
+
     try {
-      setIsLoading(true)
-      
-      const response = await fetch('/api/patients', {
-        method: 'POST',
+      setFormSubmitting(true)
+
+      const endpoint = editing && patientToEdit
+        ? `/api/patients/${patientToEdit.id}`
+        : '/api/patients'
+
+      const method = editing ? 'PUT' : 'POST'
+
+      const response = await fetch(endpoint, {
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -335,35 +445,144 @@ export default function MesaEntradaContent({
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result.error || 'Error al crear el paciente')
+        throw new Error(result.error || `Error al ${editing ? 'actualizar' : 'crear'} el paciente`)
       }
-      
+
       if (result.success) {
-        // Agregar el nuevo paciente a la lista
-        setPatients(prev => [result.patient, ...prev])
-        setShowFormulario(false)
-        
-        // Mostrar mensaje de éxito
-        alert(result.message)
+        setPatients(prev => {
+          if (editing) {
+            return prev.map(patient => patient.id === result.patient.id ? result.patient : patient)
+          }
+          return [result.patient, ...prev]
+        })
+
+        if (editing && selectedPatient?.id === result.patient.id) {
+          setSelectedPatient(result.patient)
+        }
+
+        if (!editing) {
+          setCurrentPage(1)
+        }
+
+        handleCloseForm()
+        setFeedback({ type: 'success', message: result.message })
       }
     } catch (error) {
       console.error('Error:', error)
-      throw error // Re-throw para que FormularioAltaPaciente maneje el error
+      const message = error instanceof Error ? error.message : 'Ocurrió un error al guardar el paciente'
+      setFeedback({ type: 'error', message })
+      throw error
     } finally {
-      setIsLoading(false)
+      setFormSubmitting(false)
     }
   }
 
-  const filteredPatients = patients.filter(patient => {
-    if (!searchTerm) return true
-    
+  const handleToggleActive = async (patient: PatientWithCreator) => {
+    if (togglingIds.includes(patient.id)) return
+
+    try {
+      setTogglingIds(prev => (prev.includes(patient.id) ? prev : [...prev, patient.id]))
+
+      const payload = buildSubmitDataFromPatient(patient, { activo: !patient.activo })
+
+      const response = await fetch(`/api/patients/${patient.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Error al actualizar el estado del paciente')
+      }
+
+      if (result.success) {
+        setPatients(prev => prev.map(item => item.id === result.patient.id ? result.patient : item))
+
+        if (selectedPatient?.id === result.patient.id) {
+          setSelectedPatient(result.patient)
+        }
+
+        if (patientToEdit?.id === result.patient.id) {
+          setPatientToEdit(result.patient)
+        }
+
+        setFeedback({ type: 'success', message: result.message })
+      }
+    } catch (error) {
+      console.error('Error:', error)
+      const message = error instanceof Error
+        ? error.message
+        : 'Error inesperado al actualizar el estado del paciente'
+      setFeedback({ type: 'error', message })
+    } finally {
+      setTogglingIds(prev => prev.filter(id => id !== patient.id))
+    }
+  }
+
+  const handleRefresh = async () => {
+    try {
+      setIsRefreshing(true)
+      const response = await fetch('/api/patients')
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'No se pudo actualizar el listado de pacientes')
+      }
+
+      if (Array.isArray(result.patients)) {
+        const refreshedPatients = result.patients as PatientWithCreator[]
+        setPatients(refreshedPatients)
+
+        if (selectedPatient) {
+          const updatedSelected = refreshedPatients.find(item => item.id === selectedPatient.id)
+          if (updatedSelected) {
+            setSelectedPatient(updatedSelected)
+          }
+        }
+
+        if (patientToEdit) {
+          const updatedEditing = refreshedPatients.find(item => item.id === patientToEdit.id)
+          if (updatedEditing) {
+            setPatientToEdit(updatedEditing)
+          }
+        }
+
+        setFeedback({ type: 'success', message: 'Listado de pacientes actualizado' })
+      }
+    } catch (error) {
+      console.error('Error:', error)
+      const message = error instanceof Error
+        ? error.message
+        : 'Error inesperado al refrescar el listado de pacientes'
+      setFeedback({ type: 'error', message })
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  const handleDismissFeedback = () => setFeedback(null)
+
+  const filteredPatients = useMemo(() => {
+    if (!searchTerm) return patients
+
     const term = searchTerm.toLowerCase()
-    return (
+    return patients.filter(patient =>
       patient.nombre.toLowerCase().includes(term) ||
       patient.apellido.toLowerCase().includes(term) ||
       patient.dni.includes(term)
     )
-  })
+  }, [patients, searchTerm])
+
+  const totalPages = Math.max(1, Math.ceil(filteredPatients.length / pageSize))
+
+  const paginatedPatients = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    return filteredPatients.slice(startIndex, startIndex + pageSize)
+  }, [filteredPatients, currentPage, pageSize])
 
   const handlePatientSelect = (patient: PatientWithCreator) => {
     setSelectedPatient(patient)
@@ -374,8 +593,58 @@ export default function MesaEntradaContent({
     return new Date(date).toLocaleDateString('es-AR')
   }
 
+  const calculateAge = (birthDate: Date) => {
+    const today = new Date()
+    const birth = new Date(birthDate)
+    let age = today.getFullYear() - birth.getFullYear()
+    const monthDiff = today.getMonth() - birth.getMonth()
+
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--
+    }
+
+    return age
+  }
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm])
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
+
+  const startItem = filteredPatients.length === 0 ? 0 : (currentPage - 1) * pageSize + 1
+  const endItem = Math.min(filteredPatients.length, currentPage * pageSize)
+  const selectedPatientIsToggling = selectedPatient ? togglingIds.includes(selectedPatient.id) : false
+
   return (
     <div className="p-6">
+      {feedback && (
+        <div className="mb-4">
+          <Alert variant={feedback.type === 'error' ? 'destructive' : 'default'} className="relative pr-12">
+            {feedback.type === 'error' ? (
+              <XCircle className="h-5 w-5" />
+            ) : (
+              <CheckCircle className="h-5 w-5 text-emerald-600" />
+            )}
+            <AlertDescription className="text-sm text-gray-700">
+              {feedback.message}
+            </AlertDescription>
+            <button
+              type="button"
+              onClick={handleDismissFeedback}
+              className="absolute right-4 top-4 rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+              aria-label="Cerrar notificación"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </Alert>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-gray-900 mb-2">Listado y Visualización de Pacientes</h1>
@@ -397,17 +666,25 @@ export default function MesaEntradaContent({
           <div className="flex gap-3 ml-4">
             <Button
               variant="outline"
-              onClick={() => window.location.reload()}
+              onClick={handleRefresh}
+              disabled={isRefreshing}
               className="text-gray-600 hover:text-gray-900 border-gray-300"
             >
-              🔄 Actualizar
+              {isRefreshing ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                  <span>Actualizando...</span>
+                </div>
+              ) : (
+                '🔄 Actualizar'
+              )}
             </Button>
             <Button
-              onClick={() => setShowFormulario(true)}
-              disabled={isLoading}
+              onClick={handleOpenCreateForm}
+              disabled={formSubmitting || isEditMode}
               className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
             >
-              {isLoading ? (
+              {formSubmitting && !isEditMode ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   Creando...
@@ -420,121 +697,159 @@ export default function MesaEntradaContent({
         </div>
       </div>
 
-      {/* Lista de Pacientes en Cards */}
-      <div className="space-y-4">
-        {filteredPatients.length === 0 ? (
-          <div className="bg-white rounded-lg border text-center py-12 text-gray-500">
-            <div className="text-6xl mb-4">👥</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {searchTerm ? 'No se encontraron pacientes' : 'No hay pacientes registrados'}
-            </h3>
-            <p className="text-gray-500">
-              {searchTerm 
-                ? 'No hay pacientes que coincidan con tu búsqueda.' 
-                : 'Comienza registrando el primer paciente del sistema.'
-              }
-            </p>
+      {/* Lista de Pacientes en vista tabular */}
+      {filteredPatients.length === 0 ? (
+        <div className="bg-white rounded-lg border text-center py-12 text-gray-500">
+          <div className="text-6xl mb-4">👥</div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            {searchTerm ? 'No se encontraron pacientes' : 'No hay pacientes registrados'}
+          </h3>
+          <p className="text-gray-500">
+            {searchTerm 
+              ? 'No hay pacientes que coincidan con tu búsqueda.' 
+              : 'Comienza registrando el primer paciente del sistema.'
+            }
+          </p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 uppercase tracking-wide text-xs">Paciente</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 uppercase tracking-wide text-xs">Contacto</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 uppercase tracking-wide text-xs">Registro</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 uppercase tracking-wide text-xs">Estado</th>
+                  <th className="px-4 py-3 text-right font-semibold text-gray-700 uppercase tracking-wide text-xs">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {paginatedPatients.map((patient) => {
+                  const isToggling = togglingIds.includes(patient.id)
+                  const isActivating = !patient.activo
+
+                  return (
+                    <tr key={patient.id} className="hover:bg-blue-50/40 transition-colors">
+                      <td className="px-4 py-4 align-top">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold">
+                            {patient.nombre.charAt(0)}{patient.apellido.charAt(0)}
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-sm font-semibold text-gray-900">
+                            {patient.apellido}, {patient.nombre}
+                          </div>
+                          <div className="text-xs text-gray-500 flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span>DNI: {patient.dni}</span>
+                            <span className="text-gray-300">•</span>
+                            <span>{patient.genero}</span>
+                            <span className="text-gray-300">•</span>
+                            <span>{calculateAge(new Date(patient.fechaNacimiento))} años</span>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 align-top">
+                      <div className="space-y-1 text-xs text-gray-600">
+                        <div className="font-medium text-gray-700 truncate max-w-[200px]">
+                          {patient.email || 'Sin email registrado'}
+                        </div>
+                        <div>
+                          {patient.celular || patient.telefono ? (
+                            <span className="font-medium text-gray-700">Tel: {patient.celular || patient.telefono}</span>
+                          ) : (
+                            <span className="text-gray-400">Sin teléfono</span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 align-top text-xs text-gray-600">
+                      <div><span className="font-medium text-gray-700">Registrado:</span> {formatDate(patient.createdAt)}</div>
+                      <div><span className="font-medium text-gray-700">Actualizado:</span> {formatDate(patient.updatedAt)}</div>
+                      <div><span className="font-medium text-gray-700">Por:</span> {patient.creator.name || patient.creator.email}</div>
+                    </td>
+                    <td className="px-4 py-4 align-top">
+                      <Badge 
+                        variant={patient.activo ? 'default' : 'destructive'}
+                        className={`${patient.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} font-medium`}
+                      >
+                        {patient.activo ? 'Activo' : 'Inactivo'}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-4 align-top">
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePatientSelect(patient)}
+                          className="text-gray-600 hover:text-blue-700 hover:border-blue-300 hover:bg-blue-50"
+                        >
+                          Ver
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenEditForm(patient)}
+                          className="border-blue-200 text-blue-600 hover:bg-blue-50"
+                          disabled={formSubmitting}
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          variant={patient.activo ? 'destructive' : 'default'}
+                          size="sm"
+                          onClick={() => handleToggleActive(patient)}
+                          disabled={isToggling}
+                          className={`${patient.activo 
+                            ? 'bg-red-600 hover:bg-red-700 text-white' 
+                            : 'bg-green-600 hover:bg-green-700 text-white'
+                          } flex items-center gap-2`}
+                        >
+                          {isToggling ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                              {isActivating ? 'Activando...' : 'Desactivando...'}
+                            </>
+                          ) : (
+                            patient.activo ? 'Desactivar' : 'Activar'
+                          )}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                )})}
+              </tbody>
+            </table>
           </div>
-        ) : (
-          filteredPatients.map((patient) => (
-            <div 
-              key={patient.id} 
-              className="bg-white rounded-xl border border-gray-200 hover:border-blue-300 p-6 hover:shadow-lg transition-all duration-200"
-            >
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                      {patient.nombre.charAt(0)}{patient.apellido.charAt(0)}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xl font-semibold text-gray-900 mb-1">
-                        {patient.nombre} {patient.apellido}
-                      </h3>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={patient.activo ? "default" : "destructive"}
-                               className={`${patient.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} font-medium`}>
-                          <div className={`w-2 h-2 rounded-full mr-2 ${patient.activo ? 'bg-green-600' : 'bg-red-600'}`}></div>
-                          {patient.activo ? "Activo" : "Inactivo"}
-                        </Badge>
-                        <span className="text-gray-500 text-sm">DNI: {patient.dni}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-                    <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg overflow-hidden">
-                      <span className="text-blue-600 flex-shrink-0">📱</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs text-gray-500 font-medium">Contacto</p>
-                        <p className="text-sm font-medium truncate">{patient.telefono || patient.celular || 'No registrado'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg overflow-hidden">
-                      <span className="text-green-600 flex-shrink-0">✉️</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs text-gray-500 font-medium">Email</p>
-                        <p className="text-sm font-medium truncate">{patient.email || 'No registrado'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg overflow-hidden">
-                      <span className="text-purple-600 flex-shrink-0">📅</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs text-gray-500 font-medium">Registrado</p>
-                        <p className="text-sm font-medium">{formatDate(patient.createdAt)}</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
-                    <span className="font-medium">Creado por:</span> {patient.creator.name || patient.creator.email} • 
-                    <span className="font-medium"> Actualizado:</span> {formatDate(patient.updatedAt)}
-                  </div>
-                </div>
-                
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 lg:ml-6 min-w-[200px]">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePatientSelect(patient)}
-                    className="flex-1 text-gray-600 hover:text-blue-700 hover:border-blue-300 hover:bg-blue-50"
-                  >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    Ver detalles
-                  </Button>
-                  <Button
-                    variant={patient.activo ? "destructive" : "default"}
-                    size="sm"
-                    className={`flex-1 ${patient.activo 
-                      ? "bg-red-600 hover:bg-red-700 text-white" 
-                      : "bg-green-600 hover:bg-green-700 text-white"
-                    }`}
-                  >
-                    {patient.activo ? (
-                      <>
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728" />
-                        </svg>
-                        Desactivar
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        Activar
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
+          <div className="flex flex-col gap-3 border-t border-gray-100 px-4 py-3 md:flex-row md:items-center md:justify-between">
+            <div className="text-sm text-gray-600">
+              Mostrando {startItem}-{endItem} de {filteredPatients.length} pacientes
             </div>
-          ))
-        )}
-      </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+              >
+                Anterior
+              </Button>
+              <span className="text-sm text-gray-600">
+                Página {currentPage} de {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage >= totalPages}
+              >
+                Siguiente
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Resumen de estadísticas */}
       {filteredPatients.length > 0 && (
@@ -551,9 +866,13 @@ export default function MesaEntradaContent({
       {/* Modal del formulario */}
       {showFormulario && (
         <FormularioAltaPaciente
-          onSubmit={handleCreatePatient}
-          onCancel={() => setShowFormulario(false)}
-          isLoading={isLoading}
+          onSubmit={handleSavePatient}
+          onCancel={handleCloseForm}
+          isLoading={formSubmitting}
+          initialData={isEditMode && patientToEdit ? buildInitialFormData(patientToEdit) : undefined}
+          title={isEditMode ? 'Editar Paciente' : undefined}
+          submitLabel={isEditMode ? 'Guardar Cambios' : undefined}
+          loadingLabel={isEditMode ? 'Actualizando...' : undefined}
         />
       )}
 
@@ -566,6 +885,9 @@ export default function MesaEntradaContent({
             setShowPatientDetails(false)
             setSelectedPatient(null)
           }}
+          onEdit={handleOpenEditForm}
+          onToggleActive={handleToggleActive}
+          isToggling={selectedPatientIsToggling}
         />
       )}
     </div>

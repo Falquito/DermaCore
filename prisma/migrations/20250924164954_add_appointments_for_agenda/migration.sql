@@ -1,6 +1,6 @@
 -- CreateEnum
 CREATE TYPE "public"."AppointmentStatus" AS ENUM ('PENDING', 'WAITING', 'COMPLETED', 'CANCELED');
-
+-- Archivo eliminado por reinicio de migraciones
 -- CreateTable
 CREATE TABLE "public"."appointments" (
     "id" TEXT NOT NULL,

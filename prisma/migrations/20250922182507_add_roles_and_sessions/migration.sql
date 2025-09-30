@@ -1,6 +1,6 @@
 /*
   Warnings:
-
+-- Archivo eliminado por reinicio de migraciones
   - Added the required column `passwordHash` to the `users` table without a default value. This is not possible if the table is not empty.
 
 */

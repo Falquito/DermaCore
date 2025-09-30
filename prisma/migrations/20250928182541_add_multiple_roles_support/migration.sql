@@ -1,6 +1,6 @@
 /*
   Warnings:
-
+-- Archivo eliminado por reinicio de migraciones
   - You are about to drop the column `role` on the `users` table. All the data in the column will be lost.
 
 */

@@ -1,7 +1,7 @@
 -- Drop existing appointments table and enum since they don't match schema
 DROP TABLE IF EXISTS "public"."appointments";
 DROP TYPE IF EXISTS "public"."AppointmentStatus";
-
+-- Archivo eliminado por reinicio de migraciones
 -- Create the correct AppointmentStatus enum with Spanish values
 CREATE TYPE "public"."AppointmentStatus" AS ENUM ('PROGRAMADO', 'CONFIRMADO', 'EN_SALA_DE_ESPERA', 'COMPLETADO', 'CANCELADO', 'NO_ASISTIO');
 

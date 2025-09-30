@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { DatePicker } from '@/components/ui/date-picker'
 import { PatientFormData, PatientSubmitData } from '@/types/patient'
 import { User, Phone, MapPin, AlertCircle } from 'lucide-react'
@@ -14,31 +15,79 @@ interface FormularioAltaPacienteProps {
   onSubmit: (data: PatientSubmitData) => Promise<void>
   onCancel: () => void
   isLoading?: boolean
+  initialData?: Partial<PatientFormData>
+  title?: string
+  submitLabel?: string
+  loadingLabel?: string
 }
 
-export default function FormularioAltaPaciente({ onSubmit, onCancel, isLoading: externalLoading }: FormularioAltaPacienteProps) {
+const defaultFormValues: PatientFormData = {
+  nombre: '',
+  apellido: '',
+  dni: '',
+  fechaNacimiento: undefined,
+  genero: '',
+  telefono: '',
+  celular: '',
+  email: '',
+  direccion: '',
+  ciudad: '',
+  provincia: '',
+  codigoPostal: '',
+  contactoEmergenciaNombre: '',
+  contactoEmergenciaTelefono: '',
+  contactoEmergenciaRelacion: '',
+  activo: true,
+}
+
+const allowedGeneros = ['Masculino', 'Femenino', 'Otro'] as const
+
+const normalizeGenero = (value?: string | null) => {
+  if (!value) return ''
+  const trimmed = value.trim()
+  const match = allowedGeneros.find(option => option.toLowerCase() === trimmed.toLowerCase())
+  return match ?? ''
+}
+
+const normalizeInitialData = (data?: Partial<PatientFormData>): PatientFormData => {
+  if (!data) return { ...defaultFormValues }
+
+  const fechaNacimiento = data.fechaNacimiento
+    ? new Date(data.fechaNacimiento)
+    : undefined
+
+  return {
+    ...defaultFormValues,
+    ...data,
+    genero: normalizeGenero(data.genero),
+    fechaNacimiento,
+  }
+}
+
+export default function FormularioAltaPaciente({
+  onSubmit,
+  onCancel,
+  isLoading: externalLoading,
+  initialData,
+  title,
+  submitLabel,
+  loadingLabel,
+}: FormularioAltaPacienteProps) {
   const [internalLoading, setInternalLoading] = useState(false)
   const isLoading = externalLoading || internalLoading
   const [errors, setErrors] = useState<Record<string, string>>({})
-  
-  const [formData, setFormData] = useState<PatientFormData>({
-    nombre: '',
-    apellido: '',
-    dni: '',
-    fechaNacimiento: undefined,
-    genero: '',
-    telefono: '',
-    celular: '',
-    email: '',
-    direccion: '',
-    ciudad: '',
-    provincia: '',
-    codigoPostal: '',
-    contactoEmergenciaNombre: '',
-    contactoEmergenciaTelefono: '',
-    contactoEmergenciaRelacion: '',
-    activo: true, // Por defecto activo
-  })
+  const [formData, setFormData] = useState<PatientFormData>(() => normalizeInitialData(initialData))
+  const [serverError, setServerError] = useState<string | null>(null)
+
+  const resolvedTitle = title ?? (initialData ? 'Editar Paciente' : 'Alta de Paciente')
+  const resolvedSubmitLabel = submitLabel ?? (initialData ? 'Guardar Cambios' : 'Crear Paciente')
+  const resolvedLoadingLabel = loadingLabel ?? (initialData ? 'Guardando...' : 'Creando...')
+
+  useEffect(() => {
+    setFormData(normalizeInitialData(initialData))
+    setErrors({})
+    setServerError(null)
+  }, [initialData])
 
   const validateDNI = (dni: string) => {
     const dniNumber = dni.replace(/\D/g, '')
@@ -65,9 +114,17 @@ export default function FormularioAltaPaciente({ onSubmit, onCancel, isLoading: 
   }
 
   const handleInputChange = (field: keyof PatientFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
+    const normalizedValue = field === 'genero' ? normalizeGenero(value) : value
+    setFormData(prev => ({ ...prev, [field]: normalizedValue }))
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }))
+    }
+  }
+
+  const handleDateChange = (date: Date | undefined) => {
+    setFormData(prev => ({ ...prev, fechaNacimiento: date }))
+    if (errors.fechaNacimiento) {
+      setErrors(prev => ({ ...prev, fechaNacimiento: '' }))
     }
   }
 
@@ -109,6 +166,7 @@ export default function FormularioAltaPaciente({ onSubmit, onCancel, isLoading: 
       return
     }
 
+    setServerError(null)
     setInternalLoading(true)
     try {
       // Preparar los datos para envío, convirtiendo la fecha a ISO string
@@ -119,6 +177,8 @@ export default function FormularioAltaPaciente({ onSubmit, onCancel, isLoading: 
       await onSubmit(dataToSubmit)
     } catch (error) {
       console.error('Error al enviar el formulario:', error)
+      const message = error instanceof Error ? error.message : 'Ocurrió un error inesperado al guardar el paciente'
+      setServerError(message)
     } finally {
       setInternalLoading(false)
     }
@@ -128,10 +188,19 @@ export default function FormularioAltaPaciente({ onSubmit, onCancel, isLoading: 
     <Dialog open={true} onOpenChange={onCancel}>
       <DialogContent className="max-w-[98vw] w-[98vw] lg:max-w-[95vw] xl:max-w-[90vw] 2xl:max-w-[85vw] max-h-[95vh] overflow-y-auto p-0">
         <DialogHeader className="p-6 pb-0">
-          <DialogTitle className="text-2xl font-bold text-gray-800">Alta de Paciente</DialogTitle>
+          <DialogTitle className="text-2xl font-bold text-gray-800">{resolvedTitle}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="p-6 pt-0">
+          {serverError && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-5 w-5" />
+              <AlertDescription className="text-sm">
+                {serverError}
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="space-y-8">
             
             {/* Datos Personales */}
@@ -196,7 +265,7 @@ export default function FormularioAltaPaciente({ onSubmit, onCancel, isLoading: 
                   <Label htmlFor="fechaNacimiento" className="text-emerald-600 font-medium">Fecha de Nacimiento *</Label>
                   <DatePicker
                     date={formData.fechaNacimiento}
-                    onDateChange={(date) => setFormData(prev => ({ ...prev, fechaNacimiento: date }))}
+                    onDateChange={handleDateChange}
                     placeholder="Seleccionar fecha de nacimiento"
                     disabled={isLoading}
                     className="border-2 border-emerald-200 bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:bg-emerald-50/30 hover:border-emerald-300 transition-all duration-200 shadow-sm"
@@ -410,10 +479,10 @@ export default function FormularioAltaPaciente({ onSubmit, onCancel, isLoading: 
               {isLoading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Creando...
+                  {resolvedLoadingLabel}
                 </>
               ) : (
-                'Crear Paciente'
+                resolvedSubmitLabel
               )}
             </Button>
           </div>

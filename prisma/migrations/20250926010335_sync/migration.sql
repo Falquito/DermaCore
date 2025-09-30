@@ -1,6 +1,6 @@
 -- CreateEnum
 CREATE TYPE "public"."TipoConsulta" AS ENUM ('OBRA_SOCIAL', 'PARTICULAR');
-
+-- Archivo eliminado por reinicio de migraciones
 -- AlterTable
 ALTER TABLE "public"."appointments" ADD COLUMN     "autorizacion" TEXT,
 ADD COLUMN     "copago" DECIMAL(65,30),

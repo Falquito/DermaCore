@@ -5,7 +5,7 @@ CREATE TABLE "public"."users" (
     "name" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-
+-- Archivo eliminado por reinicio de migraciones
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
 

@@ -4,7 +4,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { z } from 'zod'
 
 // Esquema de validación para el formulario de paciente
-const createPatientSchema = z.object({
+export const createPatientSchema = z.object({
   // Datos personales (obligatorios)
   nombre: z.string().min(1, 'El nombre es obligatorio').trim(),
   apellido: z.string().min(1, 'El apellido es obligatorio').trim(),
