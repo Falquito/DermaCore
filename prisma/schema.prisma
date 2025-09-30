@@ -15,27 +15,19 @@ enum Role {
   GERENTE
 }
 
-// Modelo de usuario con autenticación básica y roles múltiples
+// Modelo de usuario con autenticación básica y rol
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  name         String?
-  apellido     String?
-  dni          String?   @unique
-  telefono     String?
-  passwordHash String
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  sessions     Session[]
-  roles        UserRole[] // Multiple roles relationship
-
-  // Información específica para profesionales
-  especialidadId          String?
-  especialidad            Especialidad? @relation("UserEspecialidad", fields: [especialidadId], references: [id])
-  profesionalSchedules    ProfessionalSchedule[]
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String
+  role          Role      @default(MESA_ENTRADA)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
 
   // Relaciones con pacientes y turnos
-  createdPatients          Patient[]     @relation("PatientCreator")
+  createdPatients     Patient[]      @relation("PatientCreator")
   professionalAppointments Appointment[] @relation("ProfesionalAppointments")
   createdAppointments      Appointment[] @relation("CreatorAppointments")
 
@@ -65,65 +57,49 @@ model Session {
   @@map("sessions")
 }
 
-// Modelo de relación many-to-many entre usuarios y roles
-model UserRole {
-  id       String   @id @default(cuid())
-  userId   String
-  role     Role
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, role])
-  @@map("user_roles")
-}
-
 // Obras sociales disponibles en Argentina
 model ObraSocial {
-  id        String   @id @default(cuid())
-  nombre    String   @unique
-  codigo    String?  @unique
-  activa    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relación con turnos
-  appointments Appointment[]
+  id          String    @id @default(cuid())
+  nombre      String    @unique
+  codigo      String?   @unique
+  activa      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@map("obras_sociales")
 }
 
 // Modelo de paciente con campos específicos para Argentina
 model Patient {
-  id              String   @id @default(cuid())
+  id              String      @id @default(cuid())
   // Datos personales
   nombre          String
   apellido        String
-  dni             String   @unique
+  dni             String      @unique
   fechaNacimiento DateTime
-  genero          String // M, F, Otro
+  genero          String      // M, F, Otro
   telefono        String?
   celular         String?
   email           String?
   
+  
   // Dirección
-  direccion    String?
-  ciudad       String?
-  provincia    String?
-  codigoPostal String?
-
+  direccion       String?
+  ciudad          String?
+  provincia       String?
+  codigoPostal    String?
+  
   // Contacto de emergencia
-  contactoEmergenciaNombre   String?
-  contactoEmergenciaTelefono String?
-  contactoEmergenciaRelacion String?
-
+  contactoEmergenciaNombre    String?
+  contactoEmergenciaTelefono  String?
+  contactoEmergenciaRelacion  String?
+  
   // Sistema
-  activo    Boolean  @default(true) // Estado del paciente (Activo/Inactivo)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  createdBy String // ID del usuario que creó el paciente
-  creator   User     @relation("PatientCreator", fields: [createdBy], references: [id])
-
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  createdBy       String      // ID del usuario que creó el paciente
+  creator         User        @relation("PatientCreator", fields: [createdBy], references: [id])
+  
   // Turnos
   appointments            Appointment[]
   AppointmentCancellation AppointmentCancellation[]
@@ -145,12 +121,6 @@ enum AppointmentStatus {
   NO_ASISTIO
 }
 
-// Tipos de consulta
-enum TipoConsulta {
-  OBRA_SOCIAL
-  PARTICULAR
-}
-
 // Modelo de turnos/citas
 model Appointment {
   id            String            @id @default(cuid())
@@ -159,17 +129,18 @@ model Appointment {
   motivo        String?
   observaciones String?
   estado        AppointmentStatus @default(PROGRAMADO)
-
-  // Campos para obra social específicos del turno
-  obraSocialId   String? // Obra social al momento del turno
-  numeroAfiliado String? // Número de afiliado al momento del turno  
-  tipoConsulta   TipoConsulta @default(OBRA_SOCIAL) // Particular, Obra Social
-  copago         Decimal? // Monto de copago o precio particular
-  autorizacion   String? // Número de autorización de obra social
-
+  
+  // TODO: Campos para obra social específicos del turno
+  // Estos campos se agregarán cuando se implemente la funcionalidad de turnos:
+  // obraSocialId         String?          // Obra social al momento del turno
+  // numeroAfiliado       String?          // Número de afiliado al momento del turno  
+  // tipoConsulta         String?          // Particular, Obra Social, etc.
+  // copago              Decimal?         // Monto de copago si aplica
+  // autorizacion        String?          // Número de autorización de obra social
+  
   // Relaciones
   pacienteId    String
-  paciente      Patient @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  paciente      Patient          @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
   profesionalId String
   profesional   User    @relation("ProfesionalAppointments", fields: [profesionalId], references: [id])
   createdBy     String // Usuario que creó el turno (mesa de entrada)
