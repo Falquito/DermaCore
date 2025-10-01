@@ -621,7 +621,7 @@ export default function MesaEntradaContent({
   const selectedPatientIsToggling = selectedPatient ? togglingIds.includes(selectedPatient.id) : false
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {feedback && (
         <div className="mb-4">
           <Alert variant={feedback.type === 'error' ? 'destructive' : 'default'} className="relative pr-12">
@@ -652,9 +652,9 @@ export default function MesaEntradaContent({
       </div>
 
       {/* Actions Bar */}
-      <div className="bg-white rounded-lg border p-4 mb-6">
-        <div className="flex justify-between items-center">
-          <div className="flex-1 max-w-md">
+      <div className="mb-6 rounded-lg border bg-white p-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="w-full md:max-w-md">
             <Input
               type="text"
               placeholder="Buscar por nombre, apellido o DNI..."
@@ -663,12 +663,12 @@ export default function MesaEntradaContent({
               className="w-full"
             />
           </div>
-          <div className="flex gap-3 ml-4">
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-end md:ml-4 md:w-auto">
             <Button
               variant="outline"
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="text-gray-600 hover:text-gray-900 border-gray-300"
+              className="w-full border-gray-300 text-gray-600 hover:text-gray-900 sm:w-auto"
             >
               {isRefreshing ? (
                 <div className="flex items-center gap-2">
@@ -682,7 +682,7 @@ export default function MesaEntradaContent({
             <Button
               onClick={handleOpenCreateForm}
               disabled={formSubmitting || isEditMode}
-              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 sm:w-auto"
             >
               {formSubmitting && !isEditMode ? (
                 <>

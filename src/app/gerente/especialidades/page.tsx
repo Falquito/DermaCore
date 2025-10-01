@@ -61,6 +61,8 @@ export default function EspecialidadesPage() {
   const [popupTitle, setPopupTitle] = useState<string>("");
   const [popupMsg, setPopupMsg] = useState<string>("");
   const [popupKind, setPopupKind] = useState<"ok" | "err" | "warn">("ok");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const pageSize = 8;
 
   const openPopup = (kind: "ok" | "err" | "warn", title: string, msg: string): void => {
     setPopupKind(kind);
@@ -219,22 +221,43 @@ export default function EspecialidadesPage() {
     });
   }, [especialidades, searchTerm]);
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+
+  const paginatedEspecialidades = useMemo<Especialidad[]>(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filtered.slice(startIndex, startIndex + pageSize);
+  }, [filtered, currentPage, pageSize]);
+
+  const startItem = filtered.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(filtered.length, currentPage * pageSize);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, incluirInactivas]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   // =================== RENDER (sidebar + topbar) ===================
   return (
-        <main className="flex-1 p-5 md:p-8">
-          {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-3xl font-semibold text-gray-900 mb-2">Catálogo de Especialidades</h1>
-            <p className="text-base text-gray-700">
-              Administrá especialidades (activas e inactivas). Creá, editá o aplicá baja lógica.
-            </p>
-          </div>
+    <div className="space-y-6 p-4 md:p-6">
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-semibold text-gray-900">Catálogo de Especialidades</h1>
+          <p className="text-base text-gray-700">
+            Administrá especialidades (activas e inactivas). Creá, editá o aplicá baja lógica.
+          </p>
+        </div>
 
-          {/* Barra de acciones */}
-          <Card className="mb-6 shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="relative w-full md:max-w-lg">
+        {/* Barra de acciones */}
+        <Card className="shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="relative w-full md:max-w-lg">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
                   <Input
                     className="pl-10 text-base"
@@ -242,39 +265,43 @@ export default function EspecialidadesPage() {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
-                </div>
-                <div className="flex gap-2">
-                  {/* Toggle Activas/Inactivas */}
-                  <Button
-                    variant="outline"
-                    onClick={() => setIncluirInactivas((v) => !v)}
-                    disabled={loading}
-                    className="text-base"
-                    title={incluirInactivas ? "Mostrar solo activas" : "Mostrar también inactivas"}
-                  >
-                    {incluirInactivas ? "Solo activas" : "Mostrar inactivas"}
-                  </Button>
-
-                  <Button variant="secondary" onClick={fetchEspecialidades} disabled={loading} className="text-base">
-                    <RefreshCw className="h-5 w-5 mr-2" />
-                    Actualizar
-                  </Button>
-
-                  <Button
-                    className="bg-emerald-600 hover:bg-emerald-700 text-base"
-                    onClick={openCreate}
-                    disabled={loading}
-                  >
-                    <Plus className="h-5 w-5 mr-2" />
-                    Nueva especialidad
-                  </Button>
-                </div>
               </div>
-            </CardContent>
-          </Card>
+              <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setIncluirInactivas((v) => !v)}
+                  disabled={loading}
+                  className="w-full text-base sm:w-auto"
+                  title={incluirInactivas ? "Mostrar solo activas" : "Mostrar también inactivas"}
+                >
+                  {incluirInactivas ? "Solo activas" : "Mostrar inactivas"}
+                </Button>
 
-          {/* Lista vertical (cards con degradado) */}
-          <div className="space-y-4">
+                <Button
+                  variant="secondary"
+                  onClick={fetchEspecialidades}
+                  disabled={loading}
+                  className="w-full text-base sm:w-auto"
+                >
+                  <RefreshCw className="mr-2 h-5 w-5" />
+                  Actualizar
+                </Button>
+
+                <Button
+                  className="w-full bg-emerald-600 text-base hover:bg-emerald-700 sm:w-auto"
+                  onClick={openCreate}
+                  disabled={loading}
+                >
+                  <Plus className="mr-2 h-5 w-5" />
+                  Nueva especialidad
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Lista vertical (cards con degradado) */}
+        <div className="space-y-4">
             {!loading && filtered.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center text-gray-600 text-lg">
@@ -282,7 +309,7 @@ export default function EspecialidadesPage() {
                 </CardContent>
               </Card>
             ) : (
-              filtered.map((esp) => (
+              paginatedEspecialidades.map((esp) => (
                 <div
                   key={esp.id}
                   className={`rounded-xl border shadow-sm p-5 transition-all
@@ -291,7 +318,7 @@ export default function EspecialidadesPage() {
                       : "border-red-200 bg-gradient-to-r from-red-50 via-white to-white"
                     }`}
                 >
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     {/* Info principal */}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-3">
@@ -323,9 +350,9 @@ export default function EspecialidadesPage() {
                     </div>
 
                     {/* Acciones */}
-                    <div className="flex flex-col gap-2 shrink-0">
+                    <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end md:w-auto md:flex-col md:items-stretch">
                       <Button variant="outline" onClick={() => openEdit(esp)} disabled={loading} className="text-base">
-                        <Pencil className="h-5 w-5 mr-2" />
+                        <Pencil className="mr-2 h-5 w-5" />
                         Editar
                       </Button>
                       <Button
@@ -335,7 +362,7 @@ export default function EspecialidadesPage() {
                         title={esp.activa ? "Desactivar (baja lógica)" : "Activar"}
                         className="text-base"
                       >
-                        <Power className="h-5 w-5 mr-2" />
+                        <Power className="mr-2 h-5 w-5" />
                         {esp.activa ? "Desactivar" : "Activar"}
                       </Button>
                     </div>
@@ -343,9 +370,38 @@ export default function EspecialidadesPage() {
                 </div>
               ))
             )}
-          </div>
+        </div>
 
-          {/* Modal Crear/Editar */}
+        {filtered.length > 0 && (
+          <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-gray-600">
+              Mostrando {startItem}-{endItem} de {filtered.length} especialidades
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+              >
+                Anterior
+              </Button>
+              <span className="text-sm text-gray-600">
+                Página {currentPage} de {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={currentPage >= totalPages}
+              >
+                Siguiente
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Crear/Editar */}
           <Dialog open={showForm} onOpenChange={setShowForm}>
             <DialogContent>
               <DialogHeader>
@@ -455,6 +511,7 @@ export default function EspecialidadesPage() {
               </div>
             </DialogContent>
           </Dialog>
-        </main>
+      </div>
+    </div>
   );
 }

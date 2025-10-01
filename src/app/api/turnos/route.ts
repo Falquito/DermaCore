@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { z } from 'zod'
-import { TipoConsulta, AppointmentStatus } from '@prisma/client'
+import { TipoConsulta, AppointmentStatus, Prisma } from '@prisma/client'
 
 // Esquema de validación para crear un turno
 const createAppointmentSchema = z.object({
@@ -68,20 +68,21 @@ export async function GET(request: NextRequest) {
     const profesionalId = searchParams.get('profesionalId')
     const fecha = searchParams.get('fecha')
     const estado = searchParams.get('estado')
-    
-    const where: {
-      profesionalId?: string
-      fecha?: {
-        gte: Date
-        lte: Date
-      }
-      estado?: AppointmentStatus
-    } = {}
-    
+    const searchQuery = searchParams.get('q')?.trim() ?? ''
+
+    const pageParam = parseInt(searchParams.get('page') ?? '1', 10)
+    const pageSizeParam = parseInt(searchParams.get('pageSize') ?? '20', 10)
+
+    const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1
+    const pageSizeBase = Number.isFinite(pageSizeParam) && pageSizeParam > 0 ? pageSizeParam : 20
+    const pageSize = Math.min(Math.max(pageSizeBase, 5), 100)
+
+    const where: Prisma.AppointmentWhereInput = {}
+
     if (profesionalId) {
       where.profesionalId = profesionalId
     }
-    
+
     if (fecha) {
       const fechaDate = new Date(fecha)
       const fechaStart = new Date(fechaDate.getFullYear(), fechaDate.getMonth(), fechaDate.getDate(), 0, 0, 0)
@@ -96,37 +97,170 @@ export async function GET(request: NextRequest) {
       where.estado = estado as AppointmentStatus
     }
 
-    const turnos = await prisma.appointment.findMany({
-      where,
-      include: {
-        paciente: {
-          select: {
-            id: true,
-            nombre: true,
-            apellido: true,
-            dni: true,
-            telefono: true,
-            celular: true
+    if (searchQuery) {
+      where.OR = [
+        {
+          paciente: {
+            nombre: {
+              contains: searchQuery,
+              mode: 'insensitive'
+            }
           }
         },
-        profesional: {
-          select: {
-            id: true,
-            name: true,
-            email: true
+        {
+          paciente: {
+            apellido: {
+              contains: searchQuery,
+              mode: 'insensitive'
+            }
           }
         },
-        obraSocial: {
-          select: {
-            id: true,
-            nombre: true
+        {
+          paciente: {
+            dni: {
+              contains: searchQuery,
+              mode: 'insensitive'
+            }
+          }
+        },
+        {
+          profesional: {
+            name: {
+              contains: searchQuery,
+              mode: 'insensitive'
+            }
           }
         }
-      },
-      orderBy: { fecha: 'asc' }
-    })
+      ]
+    }
 
-    return NextResponse.json({ turnos })
+    const skip = (page - 1) * pageSize
+
+    const [turnos, total, resumenPorEstado, proximoTurno] = await Promise.all([
+      prisma.appointment.findMany({
+        where,
+        include: {
+          paciente: {
+            select: {
+              id: true,
+              nombre: true,
+              apellido: true,
+              dni: true,
+              telefono: true,
+              celular: true
+            }
+          },
+          profesional: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          },
+          obraSocial: {
+            select: {
+              id: true,
+              nombre: true
+            }
+          }
+        },
+        orderBy: { fecha: 'asc' },
+        skip,
+        take: pageSize
+      }),
+      prisma.appointment.count({ where }),
+      prisma.appointment.groupBy({
+        by: ['estado'],
+        where,
+        _count: {
+          estado: true
+        }
+      }),
+      prisma.appointment.findFirst({
+        where: {
+          AND: [
+            where,
+            {
+              estado: {
+                notIn: [
+                  AppointmentStatus.CANCELADO,
+                  AppointmentStatus.NO_ASISTIO,
+                  AppointmentStatus.COMPLETADO
+                ]
+              }
+            },
+            {
+              fecha: {
+                gte: new Date()
+              }
+            }
+          ]
+        },
+        orderBy: { fecha: 'asc' },
+        include: {
+          paciente: {
+            select: {
+              id: true,
+              nombre: true,
+              apellido: true,
+              dni: true
+            }
+          },
+          profesional: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          obraSocial: {
+            select: {
+              id: true,
+              nombre: true
+            }
+          }
+        }
+      })
+    ])
+
+    const resumen = resumenPorEstado.reduce(
+      (acc, item) => {
+        acc.total = total
+        if (item.estado === AppointmentStatus.EN_SALA_DE_ESPERA) {
+          acc.enSala += item._count.estado
+        }
+        if (item.estado === AppointmentStatus.CANCELADO) {
+          acc.cancelados += item._count.estado
+        }
+        if (item.estado === AppointmentStatus.COMPLETADO) {
+          acc.completados += item._count.estado
+        }
+        if (
+          item.estado === AppointmentStatus.PROGRAMADO ||
+          item.estado === AppointmentStatus.CONFIRMADO ||
+          item.estado === AppointmentStatus.EN_SALA_DE_ESPERA
+        ) {
+          acc.cancelables += item._count.estado
+        }
+        return acc
+      },
+      {
+        total,
+        cancelables: 0,
+        enSala: 0,
+        cancelados: 0,
+        completados: 0
+      }
+    )
+
+    return NextResponse.json({
+      turnos,
+      page,
+      pageSize,
+      total,
+      totalPages: Math.max(Math.ceil(total / pageSize), 1),
+      resumen,
+      proximoTurno
+    })
     
   } catch (error) {
     console.error('Error al obtener turnos:', error)
@@ -152,39 +286,38 @@ export async function POST(request: NextRequest) {
     // Verificar que la fecha y hora no estén ocupadas
     const fechaTurno = new Date(validatedData.fecha)
     const fechaFin = new Date(fechaTurno.getTime() + validatedData.duracion * 60000)
-    
-    const turnoExistente = await prisma.appointment.findFirst({
+
+    const inicioDelDia = new Date(fechaTurno)
+    inicioDelDia.setHours(0, 0, 0, 0)
+    const finDelDia = new Date(fechaTurno)
+    finDelDia.setHours(23, 59, 59, 999)
+
+    const turnosMismoDia = await prisma.appointment.findMany({
       where: {
         profesionalId: validatedData.profesionalId,
-        fecha: {
-          lt: fechaFin
-        },
-        AND: {
-          OR: [
-            {
-              fecha: {
-                gte: fechaTurno
-              }
-            },
-            {
-              // Verificar si el turno existente se superpone
-              fecha: {
-                lt: fechaTurno
-              },
-              // Calcular fecha de fin del turno existente
-              duracion: {
-                gt: Math.ceil((fechaTurno.getTime() - Date.now()) / (1000 * 60))
-              }
-            }
-          ]
-        },
         estado: {
           notIn: [AppointmentStatus.CANCELADO, AppointmentStatus.NO_ASISTIO]
+        },
+        fecha: {
+          gte: inicioDelDia,
+          lte: finDelDia
         }
+      },
+      select: {
+        id: true,
+        fecha: true,
+        duracion: true
       }
     })
 
-    if (turnoExistente) {
+    const existeSuperposicion = turnosMismoDia.some((turno) => {
+      const inicioExistente = new Date(turno.fecha)
+      const finExistente = new Date(inicioExistente.getTime() + (turno.duracion || 30) * 60000)
+
+      return fechaTurno < finExistente && fechaFin > inicioExistente
+    })
+
+    if (existeSuperposicion) {
       return NextResponse.json({ 
         error: 'Ya existe un turno programado en ese horario para el profesional seleccionado' 
       }, { status: 409 })

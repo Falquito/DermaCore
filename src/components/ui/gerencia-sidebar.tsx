@@ -23,6 +23,8 @@ interface SidebarProps {
   userRole: string
   collapsed?: boolean
   onCollapsedChange?: (collapsed: boolean) => void
+  className?: string
+  onNavigate?: () => void
 }
 
 const sidebarItems = [
@@ -82,6 +84,8 @@ export default function GerenciaSidebar({
   userRole,
   collapsed: externalCollapsed,
   onCollapsedChange,
+  className,
+  onNavigate,
 }: SidebarProps) {
   const [internalCollapsed, setInternalCollapsed] = useState(false)
   const pathname = usePathname()
@@ -100,7 +104,8 @@ export default function GerenciaSidebar({
     <aside
       className={cn(
         'bg-white border-r border-gray-200 flex flex-col min-h-screen transition-all duration-300',
-        collapsed ? 'w-16' : 'w-64'
+        collapsed ? 'w-16' : 'w-64',
+        className
       )}
     >
       {/* Header */}
@@ -127,7 +132,7 @@ export default function GerenciaSidebar({
               variant="ghost"
               size="sm"
               onClick={() => handleCollapsedChange(!collapsed)}
-              className="p-1 hover:bg-gray-100 flex-shrink-0"
+              className="hidden lg:inline-flex p-1 hover:bg-gray-100 flex-shrink-0"
               aria-label="Colapsar sidebar"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -151,7 +156,7 @@ export default function GerenciaSidebar({
                 variant="ghost"
                 size="sm"
                 onClick={() => handleCollapsedChange(!collapsed)}
-                className="p-1 hover:bg-gray-100 w-8 h-8"
+                className="hidden lg:inline-flex w-8 h-8 p-1 hover:bg-gray-100"
                 aria-label="Expandir sidebar"
               >
                 <ChevronRight className="h-4 w-4" />
@@ -180,6 +185,7 @@ export default function GerenciaSidebar({
                   collapsed && 'justify-center'
                 )}
                 title={collapsed ? item.name : undefined}
+                onClick={onNavigate}
               >
                 <Icon
                   className={cn(

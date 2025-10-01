@@ -22,6 +22,8 @@ import { cn } from '@/lib/utils'
 
 interface SidebarProps {
   userRole: string
+  className?: string
+  onNavigate?: () => void
 }
 
 const sidebarItems = [
@@ -78,7 +80,9 @@ const sidebarItems = [
 
 export default function MesaEntradaSidebar({ 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  userRole 
+  userRole,
+  className,
+  onNavigate 
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false)
   const pathname = usePathname()
@@ -86,7 +90,8 @@ export default function MesaEntradaSidebar({
   return (
     <aside className={cn(
       "bg-white border-r border-gray-200 flex flex-col min-h-screen transition-all duration-300",
-      collapsed ? "w-16" : "w-64"
+      collapsed ? "w-16" : "w-64",
+      className
     )}>
       {/* Header */}
       <div className="p-2 border-b border-gray-200">
@@ -111,7 +116,7 @@ export default function MesaEntradaSidebar({
               variant="ghost"
               size="sm"
               onClick={() => setCollapsed(!collapsed)}
-              className="p-1 hover:bg-gray-100 flex-shrink-0"
+              className="hidden lg:inline-flex p-1 hover:bg-gray-100 flex-shrink-0"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -134,7 +139,7 @@ export default function MesaEntradaSidebar({
                 variant="ghost"
                 size="sm"
                 onClick={() => setCollapsed(!collapsed)}
-                className="p-1 hover:bg-gray-100 w-8 h-8"
+                className="hidden lg:inline-flex p-1 hover:bg-gray-100 w-8 h-8"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -164,6 +169,7 @@ export default function MesaEntradaSidebar({
                   ${collapsed ? 'justify-center' : ''}
                 `}
                 title={collapsed ? item.name : ''}
+                onClick={onNavigate}
               >
                 <Icon className={`
                   ${isActive ? 'text-emerald-600' : 'text-gray-500'}

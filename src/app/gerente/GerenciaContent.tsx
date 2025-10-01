@@ -15,17 +15,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 
 export default function GerenciaContent() {
   return (
-    <div className="p-6">
+    <div className="space-y-6 p-4 md:p-6">
       {/* Header */}
-      <div className="mb-8">
+      <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard Ejecutivo</h1>
-        <p className="text-gray-600 mt-1">
+        <p className="mt-1 text-gray-600">
           Panel de control para la gestión integral de la clínica
         </p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
         <Card className="hover:shadow-lg transition-shadow border-l-4 border-l-emerald-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Pacientes</CardTitle>
@@ -80,7 +80,7 @@ export default function GerenciaContent() {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
         {/* Quick Actions */}
         <Card className="lg:col-span-1">
           <CardHeader>
@@ -125,24 +125,24 @@ export default function GerenciaContent() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center gap-4 p-3 bg-emerald-50 rounded-lg border border-emerald-100">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+            <div className="flex flex-col gap-2 rounded-lg border border-emerald-100 bg-emerald-50 p-3 sm:flex-row sm:items-center">
+                <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
                 <div className="flex-1">
                   <p className="text-sm font-medium">Nuevo usuario registrado</p>
                   <p className="text-xs text-gray-500">Dr. María González - hace 2 horas</p>
                 </div>
               </div>
               
-              <div className="flex items-center gap-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <div className="flex flex-col gap-2 rounded-lg border border-blue-100 bg-blue-50 p-3 sm:flex-row sm:items-center">
+                <div className="h-2 w-2 rounded-full bg-blue-500"></div>
                 <div className="flex-1">
                   <p className="text-sm font-medium">Reporte mensual generado</p>
                   <p className="text-xs text-gray-500">Sistema automático - hace 4 horas</p>
                 </div>
               </div>
               
-              <div className="flex items-center gap-4 p-3 bg-amber-50 rounded-lg border border-amber-100">
-                <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+              <div className="flex flex-col gap-2 rounded-lg border border-amber-100 bg-amber-50 p-3 sm:flex-row sm:items-center">
+                <div className="h-2 w-2 rounded-full bg-amber-500"></div>
                 <div className="flex-1">
                   <p className="text-sm font-medium">Configuración actualizada</p>
                   <p className="text-xs text-gray-500">Admin - ayer</p>
@@ -166,7 +166,7 @@ export default function GerenciaContent() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 sm:flex-row sm:items-center">
               <AlertTriangle className="h-4 w-4 text-amber-600" />
               <div className="flex-1">
                 <p className="text-sm font-medium">Licencias por vencer</p>
@@ -177,7 +177,7 @@ export default function GerenciaContent() {
               </Button>
             </div>
             
-            <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex flex-col gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 sm:flex-row sm:items-center">
               <Activity className="h-4 w-4 text-blue-600" />
               <div className="flex-1">
                 <p className="text-sm font-medium">Backup programado</p>

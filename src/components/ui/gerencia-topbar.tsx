@@ -7,13 +7,15 @@ import {
   ChevronRight,
   LogOut,
   User,
-  Home
+  Home,
+  Menu
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface TopbarProps {
   userName: string | null
   userEmail: string
+  onMenuToggle?: () => void
 }
 
 const pathTitles: Record<string, string> = {
@@ -26,7 +28,7 @@ const pathTitles: Record<string, string> = {
   '/gerente/perfil': 'Mi Perfil',
 }
 
-export default function GerenciaTopbar({ userName, userEmail }: TopbarProps) {
+export default function GerenciaTopbar({ userName, userEmail, onMenuToggle }: TopbarProps) {
   const pathname = usePathname()
   const currentTitle = pathTitles[pathname] || 'Gerencia'
 
@@ -38,124 +40,119 @@ export default function GerenciaTopbar({ userName, userEmail }: TopbarProps) {
     window.location.href = '/gerente/perfil'
   }
 
-  const handleSignOut = async (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    
+  const handleSignOut = async () => {
     try {
-      console.log('Iniciando proceso de logout...')
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
       })
-      
-      console.log('Respuesta del logout:', response.status)
-      
+
       if (response.ok) {
-        console.log('Logout exitoso, redirigiendo a login...')
-        // Forzar redirección completa en lugar de usar router.push
         window.location.href = '/login'
       } else {
         console.error('Error al cerrar sesión:', response.status)
-        alert('Error al cerrar sesión. Por favor, intenta de nuevo.')
+        alert('Error al cerrar sesión. Por favor, intenta nuevamente.')
       }
     } catch (error) {
-      console.error('Error al cerrar sesión:', error)
-      alert('Error de conexión. Por favor, verifica tu conexión e intenta de nuevo.')
+      console.error('Error de conexión al cerrar sesión:', error)
+      alert('Error de conexión. Intenta nuevamente más tarde.')
     }
   }
 
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4">
-      <div className="flex items-center justify-between">
+    <header className="bg-white border-b border-gray-200 px-4 py-3 sm:px-6 sm:py-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         {/* Breadcrumbs */}
-        <div className="flex items-center space-x-2">
-          <span className="text-sm text-gray-500">Gerencia</span>
-          <ChevronRight className="w-4 h-4 text-gray-400" />
-          <span className="text-sm font-medium text-gray-900">{currentTitle}</span>
+        <div className="flex flex-1 items-center gap-3 text-sm text-gray-500 sm:flex-none">
+          {onMenuToggle && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onMenuToggle}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 lg:hidden"
+              aria-label="Abrir menú"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
+          <div className="flex items-center">
+            <span>Gerencia</span>
+            <ChevronRight className="mx-2 h-4 w-4" />
+            <span className="text-gray-900 font-medium">{currentTitle}</span>
+          </div>
         </div>
 
-        {/* Right section - Search, notifications, user */}
-        <div className="flex items-center space-x-4">
-          {/* Home Button */}
+        {/* Right section */}
+        <div className="flex items-center gap-2 sm:gap-3">
           <Button 
             type="button"
             variant="ghost" 
             size="sm" 
             onClick={handleGoHome}
-            className="flex items-center space-x-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+            className="flex items-center gap-2 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
             title="Volver al inicio"
           >
             <Home className="h-4 w-4" />
             <span className="hidden lg:inline">Inicio</span>
           </Button>
 
-          {/* Search */}
-          <div className="relative hidden sm:block">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <div className="relative hidden lg:block">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
             <input
               type="text"
               placeholder="Buscar..."
-              className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm 
-                focus:ring-2 focus:ring-emerald-500 focus:border-transparent
-                bg-gray-50 hover:bg-white transition-colors"
+              className="w-64 rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
-          {/* Notifications */}
-          <Button variant="ghost" size="sm" className="relative">
-            <Bell className="h-5 w-5 text-gray-600" />
-            <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+          <Button variant="ghost" size="icon" className="relative h-9 w-9 text-gray-600 hover:text-gray-700">
+            <Bell className="h-5 w-5" />
+            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-xs text-white">
               2
             </span>
           </Button>
 
-          {/* User menu */}
-          <div className="flex items-center space-x-3">
-            <div className="hidden sm:block text-right">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="hidden md:block text-right">
               <p className="text-sm font-medium text-gray-900">
                 {userName || 'Administrador'}
               </p>
-              <p className="text-xs text-gray-500">
-                {userEmail}
-              </p>
+              <p className="text-xs text-gray-500">{userEmail}</p>
             </div>
-            
-            <div className="relative group">
-              <Button variant="ghost" size="sm" className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
+
+            <div className="group relative">
+              <Button variant="ghost" size="sm" className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100">
                   <User className="h-4 w-4 text-emerald-600" />
                 </div>
               </Button>
-              
-              {/* Dropdown menu */}
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+              <div className="invisible absolute right-0 mt-2 w-48 rounded-lg border border-gray-200 bg-white py-1 opacity-0 shadow-lg transition-all duration-200 group-hover:visible group-hover:opacity-100">
                 <button 
                   onClick={handlePerfilClick}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
+                  className="flex w-full items-center space-x-2 px-4 py-2 text-left text-sm text-gray-700 transition hover:bg-gray-50"
                 >
                   <User className="h-4 w-4" />
                   <span>Mi Perfil</span>
                 </button>
-                <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2">
+                <button className="flex w-full items-center space-x-2 px-4 py-2 text-left text-sm text-gray-700 transition hover:bg-gray-50">
                   <Bell className="h-4 w-4" />
                   <span>Configuración</span>
                 </button>
               </div>
             </div>
 
-            {/* Logout Button */}
             <Button 
               type="button"
               variant="ghost" 
-              size="sm" 
+              size="icon" 
               onClick={handleSignOut}
-              className="flex items-center space-x-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+              className="flex h-9 w-9 items-center justify-center rounded-md text-red-600 hover:bg-red-50 hover:text-red-700"
             >
               <LogOut className="h-4 w-4" />
-              <span className="hidden md:inline">Cerrar Sesión</span>
+              <span className="sr-only">Cerrar sesión</span>
             </Button>
           </div>
         </div>
