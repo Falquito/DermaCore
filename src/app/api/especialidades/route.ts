@@ -4,8 +4,15 @@ import { getCurrentUser } from "@/lib/auth";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
+// Solo letras (incluye tildes/ñ) y espacios
+const nombreRegex = /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ\s]+$/;
+
 const createSchema = z.object({
-  nombre: z.string().trim().min(1, "El nombre es obligatorio"),
+  nombre: z
+    .string()
+    .trim()
+    .min(1, "El nombre es obligatorio")
+    .regex(nombreRegex, "El nombre solo puede contener letras y espacios"),
   descripcion: z.string().trim().optional(),
 });
 
@@ -34,7 +41,7 @@ export async function GET(req: NextRequest) {
 
     const especialidades = await prisma.especialidad.findMany({
       where,
-      orderBy: { nombre: "asc" },
+      orderBy: { createdAt: "desc" },
       include: {
         createdBy: { select: { name: true, email: true } },
         updatedBy: { select: { name: true, email: true } },
@@ -44,7 +51,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ especialidades });
   } catch (err: unknown) {
-    // usar la variable para evitar el warning de eslint
     console.error("[API][especialidades][GET] error:", err);
     return NextResponse.json({ error: "Error al cargar especialidades" }, { status: 500 });
   }
@@ -63,7 +69,7 @@ export async function POST(req: NextRequest) {
 
     const created = await prisma.especialidad.create({
       data: {
-        nombre: data.nombre,
+        nombre: data.nombre, // ya viene trimmeado y validado por zod
         descripcion: data.descripcion,
         createdById: user.id, // auditoría
       },

@@ -4,9 +4,17 @@ import { getCurrentUser } from "@/lib/auth";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
+// Solo letras (incluye tildes/ñ) y espacios
+const nombreRegex = /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ\s]+$/;
+
 // Schema para actualización parcial
 const updateSchema = z.object({
-  nombre: z.string().trim().min(1, "El nombre es obligatorio").optional(),
+  nombre: z
+    .string()
+    .trim()
+    .min(1, "El nombre es obligatorio")
+    .regex(nombreRegex, "El nombre solo puede contener letras y espacios")
+    .optional(),
   descripcion: z.string().trim().optional().nullable(),
   activa: z.boolean().optional(),
 });
