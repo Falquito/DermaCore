@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    if (!user.roles?.some(role => role.role === "GERENTE")) {
+    if (!user.roles?.includes("GERENTE")) {
       return NextResponse.json({ error: "Permisos insuficientes" }, { status: 403 });
     }
 
