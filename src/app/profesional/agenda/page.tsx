@@ -1,13 +1,24 @@
 'use client'
 
-import React, { useEffect, useMemo, useState, useLayoutEffect, useRef } from 'react'
+import React, { useEffect, useMemo, useState, useRef, useLayoutEffect } from 'react'
 import Link from 'next/link'
 import styles from './agenda.module.css'
-import { useHoverWithin } from "@/hooks/useHoverWithin";
+import { useHoverWithin } from '@/hooks/useHoverWithin'
 import { AppointmentStatus } from '@prisma/client'
 import { getStatusLabel } from '@/lib/appointment-status'
-
-
+import {
+  Calendar,
+  CalendarDays,
+  Clock,
+  Filter,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Users,
+  Eye,
+  X,
+  ListChecks,
+} from 'lucide-react'
 
 type Appointment = {
   id: string
@@ -22,6 +33,12 @@ type Appointment = {
 
 type View = 'day' | 'week' | 'month'
 
+type StatusSummary = {
+  status: AppointmentStatus
+  total: number
+  filtered: number
+  percentage: number
+}
 
 const LOCALE = 'es-ES' as const
 
@@ -67,9 +84,6 @@ function minutesSinceStartOfGrid(date: Date) {
   const { startHour } = getHoursRange()
   return date.getHours() * 60 + date.getMinutes() - startHour * 60
 }
-// removed percent-based totalGridMinutes; using px-based layout now
-
-
 
 export default function AgendaPage() {
   const [view, setView] = useState<View>('week')
@@ -79,21 +93,18 @@ export default function AgendaPage() {
   const [active, setActive] = useState<Appointment | null>(null)
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null)
-  const [anchorOffset, setAnchorOffset] = useState<{ dx: number; dy: number } | null>(null) // click offset within anchor (day view)
+  const [anchorOffset, setAnchorOffset] = useState<{ dx: number; dy: number } | null>(null)
   const [statusFilter, setStatusFilter] = useState<AppointmentStatus[]>([])
   const [search, setSearch] = useState('')
   const hoverTimerRef = useRef<number | null>(null)
   const lastHoverIdRef = useRef<string | null>(null)
-  const { ref: inside } = useHoverWithin<HTMLDivElement>();
+  const { ref: hoverWithinRef, inside: isPointerInside } = useHoverWithin<HTMLElement>()
 
-
-  // Track anchor element rect on scroll/resize for dynamic popover positioning
   useEffect(() => {
     if (!active || !anchorEl) return
     function update() {
-      if (!anchorEl) return
-      const rect = anchorEl.getBoundingClientRect()
-      setAnchorRect(rect)
+      const rect = anchorEl?.getBoundingClientRect()
+      if (rect) setAnchorRect(rect)
     }
     update()
     window.addEventListener('scroll', update, true)
@@ -131,8 +142,8 @@ export default function AgendaPage() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data: Appointment[] = await res.json()
         if (!ignore) setAppointments(data)
-      } catch (e) {
-        console.error('Agenda fetch error', e)
+      } catch (error) {
+        console.error('Agenda fetch error', error)
         if (!ignore) setAppointments([])
       } finally {
         if (!ignore) setLoading(false)
@@ -150,20 +161,24 @@ export default function AgendaPage() {
   }, [date])
 
   const periodLabel = useMemo(() => {
-    const locale = LOCALE
     if (view === 'day') {
-      return date.toLocaleDateString(locale, { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' })
+      return date.toLocaleDateString(LOCALE, {
+        weekday: 'long',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      })
     }
     if (view === 'week') {
       const s = startOfWeek(date)
       const e = endOfWeek(date)
       const sameMonth = s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear()
       if (sameMonth) {
-        return `${s.getDate()}–${e.getDate()} ${s.toLocaleDateString(locale, { month: 'short', year: 'numeric' })}`
+        return `${s.getDate()}–${e.getDate()} ${s.toLocaleDateString(LOCALE, { month: 'short', year: 'numeric' })}`
       }
-      return `${s.getDate()} ${s.toLocaleDateString(locale, { month: 'short' })} – ${e.getDate()} ${e.toLocaleDateString(locale, { month: 'short', year: 'numeric' })}`
+      return `${s.getDate()} ${s.toLocaleDateString(LOCALE, { month: 'short' })} – ${e.getDate()} ${e.toLocaleDateString(LOCALE, { month: 'short', year: 'numeric' })}`
     }
-    return date.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+    return date.toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' })
   }, [view, date])
 
   function goPrev() {
@@ -171,197 +186,454 @@ export default function AgendaPage() {
     else if (view === 'week') setDate(addDays(date, -7))
     else setDate(new Date(date.getFullYear(), date.getMonth() - 1, 1))
   }
+
   function goNext() {
     if (view === 'day') setDate(addDays(date, 1))
     else if (view === 'week') setDate(addDays(date, 7))
     else setDate(new Date(date.getFullYear(), date.getMonth() + 1, 1))
   }
+
   function goToday() {
     setDate(new Date())
   }
 
-function navigateToAppointment(a: Appointment) {
-  window.location.href = `/profesional/agenda/consulta?id=${a.id}`;
-}
-
+  function navigateToAppointment(appointment: Appointment) {
+    window.location.href = `/profesional/agenda/consulta?id=${appointment.id}`
+  }
 
   function byDay(d: Date) {
     const y = d.getFullYear()
     const m = d.getMonth()
     const day = d.getDate()
-    return appointments.filter((a) => {
-      const s = new Date(a.start)
-      return s.getFullYear() === y && s.getMonth() === m && s.getDate() === day
+    return appointments.filter((appointment) => {
+      const start = new Date(appointment.start)
+      return start.getFullYear() === y && start.getMonth() === m && start.getDate() === day
     })
   }
 
-  const toggleStatus = (s: AppointmentStatus) => {
+  const toggleStatus = (status: AppointmentStatus) => {
     setActive(null)
     setAnchorRect(null)
     setAnchorEl(null)
     setAnchorOffset(null)
-    setStatusFilter((prev) => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
+    setStatusFilter((prev) => (prev.includes(status) ? prev.filter((item) => item !== status) : [...prev, status]))
   }
 
   const clearFilters = () => {
+    setActive(null)
+    setAnchorRect(null)
+    setAnchorEl(null)
+    setAnchorOffset(null)
     setStatusFilter([])
     setSearch('')
   }
 
   const filteredAppointments = useMemo(() => {
-    // Server already filters, but keep client-side guard if user changes quickly
     let data = appointments
-    if (statusFilter.length) data = data.filter(a => statusFilter.includes(a.status))
+    if (statusFilter.length) data = data.filter((appointment) => statusFilter.includes(appointment.status))
     if (search.trim()) {
-      const q = search.trim().toLowerCase()
-      data = data.filter(a => a.title.toLowerCase().includes(q) || a.notes?.toLowerCase().includes(q) || a.patientId?.toLowerCase().includes(q))
+      const query = search.trim().toLowerCase()
+      data = data.filter((appointment) => {
+        const titleMatch = appointment.title.toLowerCase().includes(query)
+        const notesMatch = appointment.notes?.toLowerCase().includes(query)
+        const patientMatch = appointment.patientId?.toLowerCase().includes(query)
+        return titleMatch || Boolean(notesMatch) || Boolean(patientMatch)
+      })
     }
     return data
   }, [appointments, statusFilter, search])
 
+  const hasActiveFilters = statusFilter.length > 0 || Boolean(search.trim())
+
+  const statusSummary = useMemo<StatusSummary[]>(() => {
+    const statuses = Object.values(AppointmentStatus) as AppointmentStatus[]
+    const base = new Map<AppointmentStatus, StatusSummary>()
+    statuses.forEach((status) => {
+      base.set(status, {
+        status,
+        total: 0,
+        filtered: 0,
+        percentage: 0,
+      })
+    })
+
+    appointments.forEach((appointment) => {
+      const entry = base.get(appointment.status)
+      if (entry) entry.total += 1
+    })
+
+    filteredAppointments.forEach((appointment) => {
+      const entry = base.get(appointment.status)
+      if (entry) entry.filtered += 1
+    })
+
+    const totalFiltered = filteredAppointments.length
+    return Array.from(base.values()).map((entry) => ({
+      ...entry,
+      percentage: totalFiltered > 0 ? Math.round((entry.filtered / totalFiltered) * 100) : 0,
+    }))
+  }, [appointments, filteredAppointments])
+
+  const todayCount = useMemo(() => {
+    const today = startOfDay(new Date())
+    return filteredAppointments.filter((appointment) => {
+      const start = new Date(appointment.start)
+      return (
+        start.getFullYear() === today.getFullYear() &&
+        start.getMonth() === today.getMonth() &&
+        start.getDate() === today.getDate()
+      )
+    }).length
+  }, [filteredAppointments])
+
   return (
-    <main className="px-6 lg:px-8 py-6 space-y-4 w-full">
-          <div className="flex flex-col gap-3">
-            <div className={`flex flex-wrap items-center gap-2 bg-white ${styles.borderAgenda} rounded-lg p-3 shadow-sm`}>
-              <div className="flex items-center gap-2">
-                <button onClick={goPrev} className={`inline-flex items-center rounded-md bg-white px-2.5 py-1.5 text-xs md:text-sm hover:bg-emerald-50 ${styles.borderCtrl} ${styles.textAgenda}`} aria-label="Anterior">‹</button>
-                <button onClick={goToday} className={`inline-flex items-center rounded-md bg-white px-2.5 py-1.5 text-xs md:text-sm hover:bg-emerald-50 ${styles.borderCtrl} ${styles.textAgenda}`}>Hoy</button>
-                <button onClick={goNext} className={`inline-flex items-center rounded-md bg-white px-2.5 py-1.5 text-xs md:text-sm hover:bg-emerald-50 ${styles.borderCtrl} ${styles.textAgenda}`} aria-label="Siguiente">›</button>
+    <main ref={hoverWithinRef} className="w-full px-6 py-6 lg:px-10">
+      <div className="space-y-8">
+        <section className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-8 shadow-sm">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-4">
+              <div className="rounded-2xl bg-emerald-600/90 p-3 text-white shadow-lg">
+                <Calendar className="h-6 w-6" />
               </div>
-              <span className={`text-sm font-medium ml-1 ${styles.textAgenda}`}>{periodLabel}</span>
-              <div className={`inline-flex rounded-lg border ${styles.borderCtrl} overflow-hidden ml-auto`}>
-                <button className={view === 'day' ? styles.viewActiveTail : styles.viewBtnTail} onClick={() => setView('day')}><span >Día</span></button>
-                <button className={view === 'week' ? styles.viewActiveTail : styles.viewBtnTail} onClick={() => setView('week')}><span >Semana</span></button>
-                <button className={view === 'month' ? styles.viewActiveTail : styles.viewBtnTail} onClick={() => setView('month')}><span >Mes</span></button>
-              </div>
-            </div>
-            <div className={`flex flex-col gap-2 bg-white ${styles.borderAgenda} rounded-lg p-3 shadow-sm`}>
-              <div className="flex flex-wrap gap-2 items-center">
-                <div className="flex gap-1 flex-wrap items-center">
-                  {(Object.values(AppointmentStatus) as AppointmentStatus[]).map(s => {
-                    const active = statusFilter.includes(s)
-                    return (
-                      <button key={s} type="button" onClick={() => toggleStatus(s)}
-                        className={`px-2.5 py-1 text-xs md:text-sm rounded-md border ${active ? 'bg-emerald-600 text-white border-emerald-600' : `bg-white ${styles.textAgenda} ${styles.borderCtrl} hover:bg-emerald-50`}`}
-                      ><span >{getStatusLabel(s)}</span></button>
-                    )
-                  })}
-                </div>
-                <div className="flex items-center gap-2 ml-auto w-full md:w-auto">
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Buscar (paciente, título, nota)" 
-                    className={`flex-1 md:flex-none md:w-64 rounded-md border ${styles.borderCtrl} px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 ${styles.textAgenda}`}
-                  />
-                  {(statusFilter.length > 0 || search.trim()) && (
-                    <button onClick={clearFilters} className={`text-xs hover:underline ${styles.textAgenda}`}>Limpiar</button>
+              <div>
+                <h1 className="text-2xl font-semibold text-emerald-950">Mi agenda</h1>
+                <p className="mt-1 text-sm text-emerald-800/80">{periodLabel}</p>
+                <div className="mt-4 flex flex-wrap gap-3 text-sm text-emerald-900/90">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 font-medium shadow-sm backdrop-blur-sm">
+                    <Clock className="h-4 w-4 text-emerald-600" />
+                    {filteredAppointments.length} turnos visibles
+                  </span>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 font-medium shadow-sm backdrop-blur-sm">
+                    <Calendar className="h-4 w-4 text-emerald-600" />
+                    {todayCount} hoy
+                  </span>
+                  {hasActiveFilters && (
+                    <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700 shadow-sm backdrop-blur-sm">
+                      Filtros activos
+                    </span>
                   )}
                 </div>
               </div>
-              <div className={`text-[11px] md:text-xs flex flex-wrap gap-3 ${styles.textAgenda}`}>
-                <span>Filtrando: {statusFilter.length ? statusFilter.map((status) => getStatusLabel(status)).join(', ') : 'Todos los estados'}</span>
-                {search && <span>Búsqueda: “{search}”</span>}
-                <span>Total: {filteredAppointments.length}</span>
+            </div>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="flex items-center gap-2 rounded-2xl bg-white/90 p-1 shadow-sm backdrop-blur">
+                <button
+                  onClick={goPrev}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-emerald-700 transition hover:bg-emerald-50"
+                  aria-label="Anterior"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={goToday}
+                  className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500"
+                >
+                  Hoy
+                </button>
+                <button
+                  onClick={goNext}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-emerald-700 transition hover:bg-emerald-50"
+                  aria-label="Siguiente"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="flex items-center gap-2 rounded-2xl bg-white/90 p-1 shadow-sm backdrop-blur">
+                <button
+                  type="button"
+                  onClick={() => setView('day')}
+                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition ${view === 'day' ? 'bg-emerald-600 text-white shadow-sm' : 'text-emerald-700 hover:bg-emerald-50'}`}
+                  aria-pressed={view === 'day'}
+                >
+                  <Clock className="h-4 w-4" />
+                  Día
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView('week')}
+                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition ${view === 'week' ? 'bg-emerald-600 text-white shadow-sm' : 'text-emerald-700 hover:bg-emerald-50'}`}
+                  aria-pressed={view === 'week'}
+                >
+                  <Calendar className="h-4 w-4" />
+                  Semana
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView('month')}
+                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition ${view === 'month' ? 'bg-emerald-600 text-white shadow-sm' : 'text-emerald-700 hover:bg-emerald-50'}`}
+                  aria-pressed={view === 'month'}
+                >
+                  <CalendarDays className="h-4 w-4" />
+                  Mes
+                </button>
               </div>
             </div>
-            <StatusLegend />
+          </div>
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[minmax(0,2.4fr)_minmax(280px,1fr)]">
+          <div className="flex flex-col gap-6">
+            <div className="rounded-3xl border border-emerald-100 bg-white p-6 shadow-sm">
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-2xl bg-emerald-100 p-2">
+                      <Filter className="h-4 w-4 text-emerald-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-semibold text-emerald-900">Herramientas de filtro</h2>
+                      <p className="text-sm text-emerald-700/80">Personaliza la vista de tu agenda</p>
+                    </div>
+                  </div>
+                  {hasActiveFilters && (
+                    <button
+                      type="button"
+                      onClick={clearFilters}
+                      className="inline-flex items-center gap-2 rounded-full border border-emerald-200 px-4 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-50"
+                    >
+                      <X className="h-4 w-4" />
+                      Limpiar filtros
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {statusSummary.map(({ status, filtered, total }) => {
+                    const active = statusFilter.includes(status)
+                    return (
+                      <button
+                        key={status}
+                        type="button"
+                        onClick={() => toggleStatus(status)}
+                        aria-pressed={active}
+                        className={`group inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition ${active ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm' : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-100'}`}
+                      >
+                        <span className={`${styles.badge} ${styles[`status_${status}`]}`} />
+                        <span>{getStatusLabel(status)}</span>
+                        <span className={`text-xs ${active ? 'text-emerald-100' : 'text-emerald-700/70'}`}>
+                          {filtered}/{total}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="flex flex-col gap-4 border-t border-emerald-50 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="relative w-full sm:max-w-xs">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-500" />
+                    <input
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                      placeholder="Buscar por paciente, título o notas"
+                      className="w-full rounded-xl border border-emerald-200 bg-white py-2.5 pl-10 pr-10 text-sm text-emerald-900 placeholder:text-emerald-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                    />
+                    {search && (
+                      <button
+                        type="button"
+                        onClick={() => setSearch('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400 transition hover:text-emerald-600"
+                        aria-label="Limpiar búsqueda"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-emerald-700/80">
+                    <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 font-medium text-emerald-700">
+                      <Calendar className="h-3 w-3" />
+                      {periodLabel}
+                    </span>
+                    <span className="inline-flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                      {statusFilter.length ? statusFilter.map((status) => getStatusLabel(status)).join(', ') : 'Todos los estados'}
+                    </span>
+                    {search && (
+                      <span className="inline-flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-emerald-300" />
+                        Buscando &ldquo;{search}&rdquo;
+                      </span>
+                    )}
+                    <span className="inline-flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                      {filteredAppointments.length} turnos en la vista
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="relative">
+              {loading && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/80 backdrop-blur-sm">
+                  <div className="flex items-center gap-3 text-emerald-700">
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+                    <span className="text-sm font-semibold">Cargando agenda...</span>
+                  </div>
+                </div>
+              )}
+              <div className={loading ? 'pointer-events-none opacity-40' : ''}>
+                {view === 'day' && (
+                  <DayView
+                    date={date}
+                    items={byDay(date).filter((appointment) => filteredAppointments.includes(appointment))}
+                    onOpen={(appointment, element, point) => {
+                      if (lastHoverIdRef.current !== appointment.id) {
+                        if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
+                        lastHoverIdRef.current = appointment.id
+                      }
+                      const doOpen = () => {
+                        setActive(appointment)
+                        setAnchorEl(element)
+                        const rect = element.getBoundingClientRect()
+                        setAnchorRect(rect)
+                        if (point) {
+                          setAnchorOffset({ dx: point.x - rect.left, dy: point.y - rect.top })
+                        } else {
+                          setAnchorOffset(null)
+                        }
+                      }
+                      if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
+                      hoverTimerRef.current = window.setTimeout(doOpen, 400)
+                    }}
+                    onHoverLeave={() => {
+                      if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
+                    }}
+                    onClickOpen={(appointment: Appointment) => navigateToAppointment(appointment)}
+                  />
+                )}
+                {view === 'week' && (
+                  <WeekView
+                    days={weekDays}
+                    items={filteredAppointments}
+                    onOpen={(appointment, element) => {
+                      if (lastHoverIdRef.current !== appointment.id) {
+                        if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
+                        lastHoverIdRef.current = appointment.id
+                      }
+                      const doOpen = () => {
+                        setActive(appointment)
+                        setAnchorEl(element)
+                        setAnchorRect(element.getBoundingClientRect())
+                        setAnchorOffset(null)
+                      }
+                      if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
+                      hoverTimerRef.current = window.setTimeout(doOpen, 400)
+                    }}
+                    onHoverLeave={() => {
+                      if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
+                    }}
+                    onClickOpen={(appointment: Appointment) => navigateToAppointment(appointment)}
+                  />
+                )}
+                {view === 'month' && (
+                  <MonthView
+                    date={date}
+                    items={filteredAppointments}
+                    onSelectDay={(selectedDate) => {
+                      setDate(selectedDate)
+                      setView('day')
+                    }}
+                    onOpen={(appointment, element) => {
+                      if (lastHoverIdRef.current !== appointment.id) {
+                        if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
+                        lastHoverIdRef.current = appointment.id
+                      }
+                      const doOpen = () => {
+                        setActive(appointment)
+                        setAnchorEl(element)
+                        setAnchorRect(element.getBoundingClientRect())
+                        setAnchorOffset(null)
+                      }
+                      if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
+                      hoverTimerRef.current = window.setTimeout(doOpen, 400)
+                    }}
+                    onHoverLeave={() => {
+                      if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
+                    }}
+                    onClickOpen={(appointment: Appointment) => navigateToAppointment(appointment)}
+                  />
+                )}
+              </div>
+            </div>
           </div>
 
-          {loading && <div className="text-sm text-emerald-700">Cargando…</div>}
+          <aside className="flex flex-col gap-6">
+            <StatusLegend summary={statusSummary} total={filteredAppointments.length} />
+          </aside>
+        </section>
 
-          {view === 'day' && <DayView date={date} items={byDay(date).filter(a => filteredAppointments.includes(a))} onOpen={(a, el, point) => {
-            // Hover delay (200ms)
-            if (lastHoverIdRef.current !== a.id) {
-              if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
-              lastHoverIdRef.current = a.id
-            }
-            const doOpen = () => {
-              setActive(a)
-              setAnchorEl(el)
-              const rect = el.getBoundingClientRect()
-              setAnchorRect(rect)
-              if (point) {
-                setAnchorOffset({ dx: point.x - rect.left, dy: point.y - rect.top })
-              } else {
-                setAnchorOffset(null)
-              }
-            }
-            if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
-            hoverTimerRef.current = window.setTimeout(doOpen, 400)
-          }} onHoverLeave={() => { if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current) }} onClickOpen={(a: Appointment) => navigateToAppointment(a)} />}
-          {view === 'week' && <WeekView days={weekDays} items={filteredAppointments} onOpen={(a, el) => {
-            if (lastHoverIdRef.current !== a.id) {
-              if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
-              lastHoverIdRef.current = a.id
-            }
-            const doOpen = () => {
-              setActive(a)
-              setAnchorEl(el)
-              setAnchorRect(el.getBoundingClientRect())
-              setAnchorOffset(null)
-            }
-            if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
-            hoverTimerRef.current = window.setTimeout(doOpen, 400)
-          }} onHoverLeave={() => { if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current) }} onClickOpen={(a: Appointment) => navigateToAppointment(a)} />} 
-          {view === 'month' && (
-            <MonthView
-              date={date}
-              items={filteredAppointments}
-              onSelectDay={(d) => {
-                setDate(d)
-                setView('day')
-              }}
-              onOpen={(a, el) => {
-                if (lastHoverIdRef.current !== a.id) {
-                  if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
-                  lastHoverIdRef.current = a.id
-                }
-                const doOpen = () => {
-                  setActive(a)
-                  setAnchorEl(el)
-                  setAnchorRect(el.getBoundingClientRect())
-                  setAnchorOffset(null)
-                }
-                if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
-                hoverTimerRef.current = window.setTimeout(doOpen, 400)
-              }}
-              onHoverLeave={() => { if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current) }}
-              onClickOpen={(a: Appointment) => navigateToAppointment(a)}
-            />
-          )}
-          <AppointmentPopover
-            appointment={active}
-            anchorRect={anchorRect}
-            anchorOffset={anchorOffset}
-            inside={inside.current !== null}
-            onClose={() => {
-              setActive(null)
-              setAnchorRect(null)
-              setAnchorEl(null)
-              setAnchorOffset(null)
-            }}
-          />
-        </main>
+        <AppointmentPopover
+          appointment={active}
+          anchorRect={anchorRect}
+          anchorOffset={anchorOffset}
+          inside={isPointerInside}
+          onClose={() => {
+            setActive(null)
+            setAnchorRect(null)
+            setAnchorEl(null)
+            setAnchorOffset(null)
+          }}
+        />
+      </div>
+    </main>
   )
 }
 
-function StatusLegend() {
+function StatusLegend({ summary, total }: { summary: StatusSummary[]; total: number }) {
   return (
-    <div className={styles.legend}> 
-      {(Object.values(AppointmentStatus) as AppointmentStatus[]).map((s) => (
-        <div key={s} className={styles.legendItem}>
-          <span className={`${styles.badge} ${styles[`status_${s}`]}`} />
-          <span>{getStatusLabel(s)}</span>
+    <div className="rounded-3xl border border-emerald-100 bg-white p-6 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="rounded-2xl bg-emerald-100 p-2">
+            <ListChecks className="h-4 w-4 text-emerald-600" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-emerald-900">Resumen de estados</h3>
+            <p className="text-xs text-emerald-700/70">
+              {total > 0 ? `${total} turnos en la vista actual` : 'Sin turnos en la vista actual'}
+            </p>
+          </div>
         </div>
-      ))}
+      </div>
+      <div className="mt-6 space-y-4">
+        {summary.map(({ status, filtered, total: stateTotal, percentage }) => (
+          <div key={status} className="flex items-center gap-3">
+            <span className={`${styles.badge} ${styles[`status_${status}`]}`} />
+            <div className="flex-1">
+              <div className="flex items-center justify-between text-sm font-medium text-emerald-900">
+                <span>{getStatusLabel(status)}</span>
+                <span className="text-xs font-semibold text-emerald-700/80">{filtered}</span>
+              </div>
+              <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-emerald-50">
+                <div
+                  className={`${styles[`status_${status}`]} h-full rounded-full transition-all`}
+                  style={{ width: `${percentage}%` }}
+                />
+              </div>
+              <p className="mt-1 text-[11px] text-emerald-700/70">
+                {stateTotal > 0 ? `${filtered} de ${stateTotal} turnos (${percentage}%)` : 'Sin turnos con este estado'}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
 
-function DayView({ date, items, onOpen, onHoverLeave, onClickOpen }: { date: Date; items: Appointment[]; onOpen: (a: Appointment, el: HTMLElement, point?: { x: number; y: number }) => void; onHoverLeave: () => void; onClickOpen: (a: Appointment) => void }) {
+function DayView({
+  date,
+  items,
+  onOpen,
+  onHoverLeave,
+  onClickOpen,
+}: {
+  date: Date
+  items: Appointment[]
+  onOpen: (appointment: Appointment, element: HTMLElement, point?: { x: number; y: number }) => void
+  onHoverLeave: () => void
+  onClickOpen: (appointment: Appointment) => void
+}) {
   const hours = Array.from({ length: getHoursRange().endHour - getHoursRange().startHour + 1 }, (_, i) => getHoursRange().startHour + i)
-  const hourHeight = 56 // px per hour
+  const hourHeight = 56
   return (
     <div
       className={styles.dayContainer}
@@ -378,42 +650,106 @@ function DayView({ date, items, onOpen, onHoverLeave, onClickOpen }: { date: Dat
       <div className={styles.dayScroll}>
         <div className={styles.dayGrid}>
           <div className={styles.timeCol}>
-            {hours.map((h) => (
-              <div key={h} className={styles.timeCell}>
-                {String(h).padStart(2, '0')}:00
+            {hours.map((hour) => (
+              <div key={hour} className={styles.timeCell}>
+                {String(hour).padStart(2, '0')}:00
               </div>
             ))}
           </div>
           <div className={styles.dayCol}>
             <div className={styles.eventsLayer}>
-              {items.map((a) => {
-                const s = new Date(a.start)
-                const e = new Date(a.end)
-                const topPx = Math.max(0, (minutesSinceStartOfGrid(s) / 60) * hourHeight)
-                const heightPx = Math.max(18, ((e.getTime() - s.getTime()) / 60000 / 60) * hourHeight)
+              {items.map((appointment) => {
+                const start = new Date(appointment.start)
+                const end = new Date(appointment.end)
+                const timeLabel = `${start.toLocaleTimeString(LOCALE, {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })} – ${end.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' })}`
+                const patientOrTitle = appointment.title || 'Turno sin título'
+                const notePreview = appointment.notes?.trim()
+                const statusLabel = getStatusLabel(appointment.status)
+                const topPx = Math.max(0, (minutesSinceStartOfGrid(start) / 60) * hourHeight)
+                const heightPx = Math.max(24, ((end.getTime() - start.getTime()) / 60000 / 60) * hourHeight)
+                const isCompact = heightPx < 72
+                const isTiny = heightPx < 48
+                const eventClassName = [
+                  styles.event,
+                  styles[`status_${appointment.status}`],
+                  isCompact ? styles.eventCompact : '',
+                  isTiny ? styles.eventTiny : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')
+
+                const eventTitleClass = [
+                  styles.eventTitle,
+                  isCompact ? styles.eventTitleCompact : '',
+                  isTiny ? styles.eventTitleTiny : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')
+
                 return (
                   <div
-                    key={a.id}
-                    className={`${styles.event} ${styles[`status_${a.status}`]} status_${a.status}`}
+                    key={appointment.id}
+                    className={eventClassName}
                     style={{ top: `${topPx}px`, height: `${heightPx}px` }}
-                    title={`${a.title} (${getStatusLabel(a.status)})`}
-                    onMouseEnter={(e) => { onOpen(a, e.currentTarget as HTMLElement, { x: e.clientX, y: e.clientY }) }}
-                    onMouseMove={(e) => { onOpen(a, e.currentTarget as HTMLElement, { x: e.clientX, y: e.clientY }) }}
-                    onMouseLeave={() => { onHoverLeave() }}
-                    onClick={(e) => { e.stopPropagation(); onClickOpen(a) }}
+                    title={`${patientOrTitle} · ${statusLabel} · ${timeLabel}`}
+                    onMouseEnter={(event) => {
+                      onOpen(appointment, event.currentTarget as HTMLElement, {
+                        x: event.clientX,
+                        y: event.clientY,
+                      })
+                    }}
+                    onMouseMove={(event) => {
+                      onOpen(appointment, event.currentTarget as HTMLElement, {
+                        x: event.clientX,
+                        y: event.clientY,
+                      })
+                    }}
+                    onMouseLeave={() => {
+                      onHoverLeave()
+                    }}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onClickOpen(appointment)
+                    }}
                   >
-                    <div className={styles.eventTitle}>
-                      <span className={styles.ellipsis}>{a.title}</span>
+                    <div className={styles.eventHeader}>
+                      <span className={styles.eventTime}>{timeLabel}</span>
+                      {isTiny ? (
+                        <span
+                          className={`${styles.eventStatusDot} ${styles[`status_${appointment.status}`]}`}
+                          aria-label={statusLabel}
+                          title={statusLabel}
+                        />
+                      ) : (
+                        <span className={`${styles.eventStatus} ${styles[`status_${appointment.status}`]}`}>
+                          {statusLabel}
+                        </span>
+                      )}
                     </div>
+                    <div className={eventTitleClass}>
+                      <span className={styles.ellipsis}>{patientOrTitle}</span>
+                    </div>
+                    {!isTiny && notePreview && (
+                      <div className={styles.eventNotes}>
+                        <span className={styles.ellipsis}>{notePreview}</span>
+                      </div>
+                    )}
+                    {isTiny && notePreview && (
+                      <div className={styles.eventNotesCompact}>
+                        <span className={styles.ellipsis}>{notePreview}</span>
+                      </div>
+                    )}
                   </div>
                 )
               })}
             </div>
             <div className={styles.hourLines}>
-              {hours.map((h) => (
-                <div key={h} className={styles.hourLine} />
+              {hours.map((hour) => (
+                <div key={hour} className={styles.hourLine} />
               ))}
-              {/* Dedicated bottom border for last row */}
               <div className={styles.hourLineBottom} />
             </div>
           </div>
@@ -423,14 +759,26 @@ function DayView({ date, items, onOpen, onHoverLeave, onClickOpen }: { date: Dat
   )
 }
 
-function WeekView({ days, items, onOpen, onHoverLeave, onClickOpen }: { days: Date[]; items: Appointment[]; onOpen: (a: Appointment, el: HTMLElement) => void; onHoverLeave: () => void; onClickOpen: (a: Appointment) => void }) {
+function WeekView({
+  days,
+  items,
+  onOpen,
+  onHoverLeave,
+  onClickOpen,
+}: {
+  days: Date[]
+  items: Appointment[]
+  onOpen: (appointment: Appointment, element: HTMLElement) => void
+  onHoverLeave: () => void
+  onClickOpen: (appointment: Appointment) => void
+}) {
   const hours = Array.from({ length: getHoursRange().endHour - getHoursRange().startHour + 1 }, (_, i) => getHoursRange().startHour + i)
   const hourHeight = 56
 
   function itemsForDay(d: Date) {
-    return items.filter((a) => {
-      const s = new Date(a.start)
-      return s.toDateString() === d.toDateString()
+    return items.filter((appointment) => {
+      const start = new Date(appointment.start)
+      return start.toDateString() === d.toDateString()
     })
   }
 
@@ -441,52 +789,110 @@ function WeekView({ days, items, onOpen, onHoverLeave, onClickOpen }: { days: Da
     >
       <div className={styles.gridHeader}>
         <div className={styles.cornerCell} />
-        {days.map((d) => (
-          <div key={d.toISOString()} className={styles.headerCell}>
-            <div className={styles.headerDayName}>{d.toLocaleDateString(LOCALE, { weekday: 'short' })}</div>
-            <div className={styles.headerDayNum}>{d.getDate()}</div>
+        {days.map((day) => (
+          <div key={day.toISOString()} className={styles.headerCell}>
+            <div className={styles.headerDayName}>{day.toLocaleDateString(LOCALE, { weekday: 'short' })}</div>
+            <div className={styles.headerDayNum}>{day.getDate()}</div>
           </div>
         ))}
       </div>
       <div className={styles.gridBody}>
         <div className={styles.timeCol}>
-          {hours.map((h) => (
-            <div key={h} className={styles.timeCell}>
-              {String(h).padStart(2, '0')}:00
+          {hours.map((hour) => (
+            <div key={hour} className={styles.timeCell}>
+              {String(hour).padStart(2, '0')}:00
             </div>
           ))}
         </div>
-        {days.map((d) => (
-          <div key={d.toISOString()} className={styles.dayCol}>
+        {days.map((day) => (
+          <div key={day.toISOString()} className={styles.dayCol}>
             <div className={styles.eventsLayer}>
-              {itemsForDay(d).map((a) => {
-                const s = new Date(a.start)
-                const e = new Date(a.end)
-                const topPx = Math.max(0, (minutesSinceStartOfGrid(s) / 60) * hourHeight)
-                const heightPx = Math.max(18, ((e.getTime() - s.getTime()) / 60000 / 60) * hourHeight)
+              {itemsForDay(day).map((appointment) => {
+                const start = new Date(appointment.start)
+                const end = new Date(appointment.end)
+                const timeLabel = `${start.toLocaleTimeString(LOCALE, {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })} – ${end.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' })}`
+                const patientOrTitle = appointment.title || 'Turno sin título'
+                const notePreview = appointment.notes?.trim()
+                const statusLabel = getStatusLabel(appointment.status)
+                const topPx = Math.max(0, (minutesSinceStartOfGrid(start) / 60) * hourHeight)
+                const heightPx = Math.max(24, ((end.getTime() - start.getTime()) / 60000 / 60) * hourHeight)
+                const isCompact = heightPx < 72
+                const isTiny = heightPx < 48
+                const eventClassName = [
+                  styles.event,
+                  styles[`status_${appointment.status}`],
+                  isCompact ? styles.eventCompact : '',
+                  isTiny ? styles.eventTiny : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')
+
+                const eventTitleClass = [
+                  styles.eventTitle,
+                  isCompact ? styles.eventTitleCompact : '',
+                  isTiny ? styles.eventTitleTiny : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')
+
                 return (
                   <div
-                    key={a.id}
-                    className={`${styles.event} ${styles[`status_${a.status}`]} status_${a.status}`}
+                    key={appointment.id}
+                    className={eventClassName}
                     style={{ top: `${topPx}px`, height: `${heightPx}px` }}
-                    title={`${a.title} (${getStatusLabel(a.status)})`}
-                    onMouseEnter={(e) => { onOpen(a, e.currentTarget as HTMLElement) }}
-                    onMouseMove={(e) => { onOpen(a, e.currentTarget as HTMLElement) }}
-                    onClick={(e) => { e.stopPropagation(); onClickOpen(a) }}
-                    onMouseLeave={() => { onHoverLeave() }}
+                    title={`${patientOrTitle} · ${statusLabel} · ${timeLabel}`}
+                    onMouseEnter={(event) => {
+                      onOpen(appointment, event.currentTarget as HTMLElement)
+                    }}
+                    onMouseMove={(event) => {
+                      onOpen(appointment, event.currentTarget as HTMLElement)
+                    }}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onClickOpen(appointment)
+                    }}
+                    onMouseLeave={() => {
+                      onHoverLeave()
+                    }}
                   >
-                    <div className={styles.eventTitle}>
-                      <span className={styles.ellipsis}>{a.title}</span>
+                    <div className={styles.eventHeader}>
+                      <span className={styles.eventTime}>{timeLabel}</span>
+                      {isTiny ? (
+                        <span
+                          className={`${styles.eventStatusDot} ${styles[`status_${appointment.status}`]}`}
+                          aria-label={statusLabel}
+                          title={statusLabel}
+                        />
+                      ) : (
+                        <span className={`${styles.eventStatus} ${styles[`status_${appointment.status}`]}`}>
+                          {statusLabel}
+                        </span>
+                      )}
                     </div>
+                    <div className={eventTitleClass}>
+                      <span className={styles.ellipsis}>{patientOrTitle}</span>
+                    </div>
+                    {!isTiny && notePreview && (
+                      <div className={styles.eventNotes}>
+                        <span className={styles.ellipsis}>{notePreview}</span>
+                      </div>
+                    )}
+                    {isTiny && notePreview && (
+                      <div className={styles.eventNotesCompact}>
+                        <span className={styles.ellipsis}>{notePreview}</span>
+                      </div>
+                    )}
                   </div>
                 )
               })}
             </div>
             <div className={styles.hourLines}>
-              {hours.map((h) => (
-                <div key={h} className={styles.hourLine} />
+              {hours.map((hour) => (
+                <div key={hour} className={styles.hourLine} />
               ))}
-              {/* Dedicated bottom border for last row */}
               <div className={styles.hourLineBottom} />
             </div>
           </div>
@@ -496,62 +902,108 @@ function WeekView({ days, items, onOpen, onHoverLeave, onClickOpen }: { days: Da
   )
 }
 
-  function MonthView({ date, items, onSelectDay, onOpen, onHoverLeave, onClickOpen }: { date: Date; items: Appointment[]; onSelectDay: (d: Date) => void; onOpen: (a: Appointment, el: HTMLElement) => void; onHoverLeave: () => void; onClickOpen: (a: Appointment) => void }) {
+function MonthView({
+  date,
+  items,
+  onSelectDay,
+  onOpen,
+  onHoverLeave,
+  onClickOpen,
+}: {
+  date: Date
+  items: Appointment[]
+  onSelectDay: (day: Date) => void
+  onOpen: (appointment: Appointment, element: HTMLElement) => void
+  onHoverLeave: () => void
+  onClickOpen: (appointment: Appointment) => void
+}) {
   const start = startOfWeek(startOfMonth(date))
   const end = endOfWeek(endOfMonth(date))
   const days: Date[] = []
-  {
-    const msPerDay = 24 * 60 * 60 * 1000
-    const totalDays = Math.floor((end.getTime() - start.getTime()) / msPerDay) + 1
-    for (let i = 0; i < totalDays; i++) {
-      const d = new Date(start.getTime() + i * msPerDay)
-      days.push(d)
-    }
+  const msPerDay = 24 * 60 * 60 * 1000
+  const totalDays = Math.floor((end.getTime() - start.getTime()) / msPerDay) + 1
+  for (let i = 0; i < totalDays; i++) {
+    const day = new Date(start.getTime() + i * msPerDay)
+    days.push(day)
   }
+
   function itemsForDay(d: Date) {
-    return items.filter((a) => {
-      const s = new Date(a.start)
-      return s.toDateString() === d.toDateString()
+    return items.filter((appointment) => {
+      const startDate = new Date(appointment.start)
+      return startDate.toDateString() === d.toDateString()
     })
   }
+
   const currentMonth = date.getMonth()
 
   return (
     <div className={styles.monthGrid}>
-      {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((lbl) => (
-        <div key={lbl} className={styles.monthHeaderCell}>
-          {lbl}
+      {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((label) => (
+        <div key={label} className={styles.monthHeaderCell}>
+          {label}
         </div>
       ))}
-      {days.map((d) => (
+      {days.map((day) => (
         <button
-          key={d.toISOString()}
-          className={`${styles.monthCell} ${d.getMonth() === currentMonth ? '' : styles.monthCellMuted}`}
-          onClick={() => onSelectDay(d)}
+          key={day.toISOString()}
+          className={`${styles.monthCell} ${day.getMonth() === currentMonth ? '' : styles.monthCellMuted}`}
+          onClick={() => onSelectDay(day)}
         >
           <div className={styles.monthCellDateWrap}>
-            <span className={styles.monthCellDate}>{d.getDate()}</span>
-            {itemsForDay(d).length > 0 && (
-              <span className={`${styles.countBadge} ${itemsForDay(d).length > 6 ? styles.countBadgeDense : ''}`}>{itemsForDay(d).length}</span>
+            <span className={styles.monthCellDate}>{day.getDate()}</span>
+            {itemsForDay(day).length > 0 && (
+              <span className={`${styles.countBadge} ${itemsForDay(day).length > 6 ? styles.countBadgeDense : ''}`}>
+                {itemsForDay(day).length}
+              </span>
             )}
           </div>
           {(() => {
-            const itemsFor = itemsForDay(d)
+            const itemsFor = itemsForDay(day)
             const dense = itemsFor.length > 3
             const max = dense ? 6 : 4
             return (
               <div className={`${styles.monthEvents} ${dense ? styles.monthEventsDense : ''}`}>
-                {itemsFor.slice(0, max).map((a) => (
-                  <div key={a.id} className={`${styles.monthEvent} ${styles[`status_${a.status}`]} status_${a.status}`}
-                    onMouseEnter={(e) => { e.stopPropagation(); onOpen(a, e.currentTarget as HTMLElement) }}
-                    onMouseMove={(e) => { e.stopPropagation(); onOpen(a, e.currentTarget as HTMLElement) }}
-                    onMouseLeave={() => { if (onHoverLeave) onHoverLeave() }}
-                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); onClickOpen(a) }}
-                  >
-                    <span className={styles.monthEventDot} />
-                    <span className={styles.ellipsis}>{a.title}</span>
-                  </div>
-                ))}
+                {itemsFor.slice(0, max).map((appointment) => {
+                  const start = new Date(appointment.start)
+                  const end = new Date(appointment.end)
+                  const timeLabel = `${start.toLocaleTimeString(LOCALE, {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })} – ${end.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' })}`
+                  const statusLabel = getStatusLabel(appointment.status)
+                  const displayTitle = appointment.title || 'Turno sin título'
+                  return (
+                    <div
+                      key={appointment.id}
+                      className={`${styles.monthEvent} ${styles[`status_${appointment.status}`]} status_${appointment.status}`}
+                      title={`${appointment.title} · ${statusLabel} · ${timeLabel}`}
+                      onMouseEnter={(event) => {
+                        event.stopPropagation()
+                        onOpen(appointment, event.currentTarget as HTMLElement)
+                      }}
+                      onMouseMove={(event) => {
+                        event.stopPropagation()
+                        onOpen(appointment, event.currentTarget as HTMLElement)
+                      }}
+                      onMouseLeave={() => {
+                        if (onHoverLeave) onHoverLeave()
+                      }}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        event.preventDefault()
+                        onClickOpen(appointment)
+                      }}
+                    >
+                      <div className={styles.monthEventHeader}>
+                        <span className={styles.monthEventTime}>{timeLabel}</span>
+                        <span className={`${styles.monthEventStatus} ${styles[`status_${appointment.status}`]}`}>
+                          {statusLabel}
+                        </span>
+                      </div>
+                      <span className={`${styles.ellipsis} ${styles.monthEventTitle}`}>{displayTitle}</span>
+                    </div>
+                  )
+                })}
                 {itemsFor.length > max && <div className={styles.more}>+{itemsFor.length - max} más</div>}
               </div>
             )
@@ -562,7 +1014,6 @@ function WeekView({ days, items, onOpen, onHoverLeave, onClickOpen }: { days: Da
   )
 }
 
-// Popover component with intelligent positioning
 function AppointmentPopover({
   appointment,
   anchorRect,
@@ -578,20 +1029,18 @@ function AppointmentPopover({
 }) {
   const ref = useRef<HTMLDivElement | null>(null)
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
-  const [obs, setObs] = useState<string>("")
+  const [obs, setObs] = useState<string>('')
 
-  // Id derivado y seguro
-  const apptId = appointment?.id ?? null
+  const appointmentId = appointment?.id ?? null
 
-  // Posicionamiento del popover
   useLayoutEffect(() => {
     if (!appointment || !anchorRect) return
-    const el = ref.current
-    const margin = 8
-    const fallbackWidth = 260
-    const fallbackHeight = 140
-    const width = el?.offsetWidth ?? fallbackWidth
-    const height = el?.offsetHeight ?? fallbackHeight
+    const element = ref.current
+    const margin = 12
+    const fallbackWidth = 320
+    const fallbackHeight = 160
+    const width = element?.offsetWidth ?? fallbackWidth
+    const height = element?.offsetHeight ?? fallbackHeight
 
     let baseX: number
     let baseY: number
@@ -614,50 +1063,49 @@ function AppointmentPopover({
     setPos({ x, y })
   }, [appointment, anchorRect, anchorOffset])
 
-  // Cargar/actualizar "Observación" desde la API (y refrescar al guardar)
   useEffect(() => {
-    if (!apptId) return
+    if (!appointmentId) return
     let cancelled = false
 
-    // valor inicial
-    setObs((appointment?.notes ?? "").trim())
+    setObs((appointment?.notes ?? '').trim())
 
     async function fetchObs() {
       try {
-        const res = await fetch(`/api/appointments/${apptId}/observaciones`, { cache: "no-store" })
+        const res = await fetch(`/api/appointments/${appointmentId}/observaciones`, { cache: 'no-store' })
         if (!cancelled) {
           if (res.ok) {
             const data = await res.json()
-            const txt = (data?.text ?? "").trim()
-            setObs(txt || "Sin observaciones.")
+            const text = (data?.text ?? '').trim()
+            setObs(text || 'Sin observaciones.')
           } else if (res.status === 404) {
-            setObs("Sin observaciones.")
+            setObs('Sin observaciones.')
           } else {
-            setObs("Sin observaciones.")
+            setObs('Sin observaciones.')
           }
         }
       } catch {
-        if (!cancelled) setObs("Sin observaciones.")
+        if (!cancelled) setObs('Sin observaciones.')
       }
     }
 
     if (inside) fetchObs()
 
-    const handler = (e: Event) => {
-      const id = (e as CustomEvent).detail?.id as string | undefined
-      if (id && id === apptId) fetchObs()
+    const handler = (event: Event) => {
+      const detailId = (event as CustomEvent).detail?.id as string | undefined
+      if (detailId && detailId === appointmentId) fetchObs()
     }
-    window.addEventListener("obs:saved", handler as EventListener)
+    window.addEventListener('obs:saved', handler as EventListener)
 
     return () => {
       cancelled = true
-      window.removeEventListener("obs:saved", handler as EventListener)
+      window.removeEventListener('obs:saved', handler as EventListener)
     }
-  }, [apptId, inside, appointment?.notes])
+  }, [appointmentId, inside, appointment?.notes])
 
   if (!appointment || !anchorRect || !pos) return null
-  const s = new Date(appointment.start)
-  const e = new Date(appointment.end)
+
+  const start = new Date(appointment.start)
+  const end = new Date(appointment.end)
 
   return (
     <div className={styles.popoverBackdrop} onClick={onClose}>
@@ -665,42 +1113,49 @@ function AppointmentPopover({
         ref={ref}
         className={styles.popover}
         style={{ top: pos.y, left: pos.x }}
-        onClick={(evt) => evt.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
       >
-        {/* Horario */}
+        <div className={styles.popoverHeader}>
+          <div className={`${styles.popoverStatus} ${styles[`status_${appointment.status}`]}`} />
+          <div className={styles.popoverTitle}>{appointment.title}</div>
+        </div>
         <div className={styles.popoverSection}>
-          <div className={styles.popoverLabel}>Horario</div>
+          <div className={styles.popoverLabel}>
+            <Clock className="mr-1 inline h-3 w-3" />
+            Horario
+          </div>
           <div className={styles.popoverValue}>
-            {s.toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit" })} –{" "}
-            {e.toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit" })}
+            {start.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' })} –{' '}
+            {end.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' })}
           </div>
         </div>
-
-        {/* Estado */}
         <div className={styles.popoverSection}>
-          <div className={styles.popoverLabel}>Estado</div>
+          <div className={styles.popoverLabel}>
+            <Filter className="mr-1 inline h-3 w-3" />
+            Estado
+          </div>
           <div className={styles.popoverValue}>{getStatusLabel(appointment.status)}</div>
         </div>
-
         {appointment.patientId && (
           <div className={styles.popoverSection}>
-            <div className={styles.popoverLabel}>Paciente</div>
+            <div className={styles.popoverLabel}>
+              <Users className="mr-1 inline h-3 w-3" />
+              Paciente
+            </div>
             <Link
               href={`/profesional/pacientes?patientId=${appointment.patientId}`}
-              className={`${styles.popoverValue} text-emerald-700 underline`}
+              className="font-medium text-emerald-600 underline transition-colors hover:text-emerald-700"
             >
+              <Eye className="mr-1 inline h-4 w-4" />
               Ver ficha completa
             </Link>
           </div>
         )}
-
-        {/* Observación */}
         <div className={styles.popoverSection}>
-          <div className={styles.popoverLabel}>Observación</div>
-          <div className={styles.popoverValue}>{obs || "Sin observaciones."}</div>
+          <div className={styles.popoverLabel}>Observaciones</div>
+          <div className={styles.popoverNotes}>{obs || 'Sin observaciones.'}</div>
         </div>
-
-        <div className={styles.popoverActionsInfo}>Click fuera para cerrar</div>
+        <div className={styles.popoverActionsInfo}>Haz click fuera para cerrar</div>
       </div>
     </div>
   )
