@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { FormularioReprogramarTurno } from "@/components/turnos/FormularioReprogramarTurno";
 import Link from "next/link";
 import { AppointmentStatus } from "@prisma/client";
 import {
@@ -110,11 +111,17 @@ function AppointmentDetailsDialog({
   appointment,
   open,
   onClose,
+  professionals,
 }: {
   appointment: Appointment | null;
   open: boolean;
   onClose: () => void;
+  professionals: Professional[];
 }) {
+  // Estado para mostrar el dialog de éxito
+  const [showSuccess, setShowSuccess] = useState(false);
+  // Estado para mostrar el dialog de reprogramación
+  const [showReprogramar, setShowReprogramar] = useState(false);
   // Hooks deben ir siempre al inicio del componente
   const [selectedAction, setSelectedAction] = useState<string>("");
   const [cancelReason, setCancelReason] = useState("");
@@ -234,154 +241,233 @@ function AppointmentDetailsDialog({
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={handleDialogOpenChange}
-    >
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Detalles del turno</DialogTitle>
-          <DialogDescription>
-            Información del turno seleccionado
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 text-sm text-slate-700">
-          <div>
-            <p className="text-xs font-medium uppercase text-slate-500">
-              Paciente
-            </p>
-            <p className="mt-1 font-medium text-slate-900">
-              {appointment.title}
-            </p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={handleDialogOpenChange}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Detalles del turno</DialogTitle>
+            <DialogDescription>
+              Información del turno seleccionado
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 text-sm text-slate-700">
             <div>
               <p className="text-xs font-medium uppercase text-slate-500">
-                Fecha
+                Paciente
               </p>
-              <p className="mt-1 capitalize text-slate-900">{fullDate}</p>
+              <p className="mt-1 font-medium text-slate-900">
+                {appointment.title}
+              </p>
             </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <p className="text-xs font-medium uppercase text-slate-500">
+                  Fecha
+                </p>
+                <p className="mt-1 capitalize text-slate-900">{fullDate}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase text-slate-500">
+                  Horario
+                </p>
+                <p className="mt-1 text-slate-900">
+                  {startTime} - {endTime}
+                </p>
+              </div>
+            </div>
+
             <div>
               <p className="text-xs font-medium uppercase text-slate-500">
-                Horario
+                Estado
               </p>
-              <p className="mt-1 text-slate-900">
-                {startTime} - {endTime}
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-xs font-medium uppercase text-slate-500">
-              Estado
-            </p>
-            <Badge
-              className={cn(
-                "mt-1 gap-1.5 text-xs font-medium",
-                statusMeta.badgeClassName
-              )}
-            >
-              {statusMeta.label}
-            </Badge>
-            {/* Selector de acción para cambiar estado */}
-            <div className="mt-4">
-              <label className="text-xs font-medium uppercase text-slate-500">
-                Cambiar estado
-              </label>
-                <select
-                  className="mt-1 w-full rounded-md border border-slate-300 p-2 text-sm"
-                  value={selectedAction}
-                  onChange={(e) => setSelectedAction(e.target.value)}
-                  disabled={loadingAction}
-                >
-                  <option value="">Seleccionar acción...</option>
-                  {opcionesFiltradas.map((op) => (
-                    <option key={op.value} value={op.value}>
-                      {op.label}
-                    </option>
-                  ))}
-                </select>
-              {selectedAction && (
-                <Button
-                  className="mt-2"
-                  type="button"
-                  variant="destructive"
-                  onClick={() => handleChangeStatus(selectedAction)}
-                  disabled={loadingAction}
-                >
-                  {loadingAction ? "Procesando..." : "Confirmar cambio"}
-                </Button>
-              )}
-              {errorAction && (
-                <p className="mt-2 text-xs text-red-600">{errorAction}</p>
-              )}
-            </div>
-            {/* Diálogo para motivo de cancelación */}
-            {showCancelDialog && (
-              <Dialog
-                open={showCancelDialog}
-                onOpenChange={setShowCancelDialog}
+              <Badge
+                className={cn(
+                  "mt-1 gap-1.5 text-xs font-medium",
+                  statusMeta.badgeClassName
+                )}
               >
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Cancelar turno</DialogTitle>
-                    <DialogDescription>
-                      Ingrese el motivo de la cancelación
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-3">
-                    <Input
-                      value={cancelReason}
-                      onChange={(e) => setCancelReason(e.target.value)}
-                      placeholder="Motivo de cancelación"
-                      className="w-full"
-                    />
-                    <div className="flex gap-2 justify-end">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setShowCancelDialog(false)}
-                        disabled={loadingAction}
-                      >
-                        Cancelar
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        onClick={handleCancelTurn}
-                        disabled={loadingAction || !cancelReason}
-                      >
-                        {loadingAction ? "Procesando..." : "Confirmar"}
-                      </Button>
+                {statusMeta.label}
+              </Badge>
+              {/* Selector de acción para cambiar estado */}
+              <div className="mt-4">
+                <label className="text-xs font-medium uppercase text-slate-500">
+                  Cambiar estado
+                </label>
+                  <select
+                    className="mt-1 w-full rounded-md border border-slate-300 p-2 text-sm"
+                    value={selectedAction}
+                    onChange={(e) => setSelectedAction(e.target.value)}
+                    disabled={loadingAction}
+                  >
+                    <option value="">Seleccionar acción...</option>
+                    {opcionesFiltradas.map((op) => (
+                      <option key={op.value} value={op.value}>
+                        {op.label}
+                      </option>
+                    ))}
+                  </select>
+                {selectedAction && (
+                  <Button
+                    className="mt-2"
+                    type="button"
+                    variant="destructive"
+                    onClick={() => handleChangeStatus(selectedAction)}
+                    disabled={loadingAction}
+                  >
+                    {loadingAction ? "Procesando..." : "Confirmar cambio"}
+                  </Button>
+                )}
+                {errorAction && (
+                  <p className="mt-2 text-xs text-red-600">{errorAction}</p>
+                )}
+              </div>
+              {/* Diálogo para motivo de cancelación */}
+              {showCancelDialog && (
+                <Dialog
+                  open={showCancelDialog}
+                  onOpenChange={setShowCancelDialog}
+                >
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Cancelar turno</DialogTitle>
+                      <DialogDescription>
+                        Ingrese el motivo de la cancelación
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                      <Input
+                        value={cancelReason}
+                        onChange={(e) => setCancelReason(e.target.value)}
+                        placeholder="Motivo de cancelación"
+                        className="w-full"
+                      />
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setShowCancelDialog(false)}
+                          disabled={loadingAction}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          onClick={handleCancelTurn}
+                          disabled={loadingAction || !cancelReason}
+                        >
+                          {loadingAction ? "Procesando..." : "Confirmar"}
+                        </Button>
+                      </div>
+                      {errorAction && (
+                        <p className="text-xs text-red-600">{errorAction}</p>
+                      )}
                     </div>
-                    {errorAction && (
-                      <p className="text-xs text-red-600">{errorAction}</p>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
-            )}
-          </div>
-
-          {appointment.notes && (
-            <div>
-              <p className="text-xs font-medium uppercase text-slate-500">
-                Notas
-              </p>
-              <p className="mt-1 rounded-md border border-slate-200 bg-slate-50 p-3 text-slate-700">
-                {appointment.notes}
-              </p>
+                  </DialogContent>
+                </Dialog>
+              )}
             </div>
-          )}
 
-          <p className="text-xs text-slate-500">
-            Próximamente se agregarán acciones y herramientas adicionales para
-            gestionar este turno.
-          </p>
-        </div>
-      </DialogContent>
-    </Dialog>
+            {appointment.notes && (
+              <div>
+                <p className="text-xs font-medium uppercase text-slate-500">
+                  Notas
+                </p>
+                <p className="mt-1 rounded-md border border-slate-200 bg-slate-50 p-3 text-slate-700">
+                  {appointment.notes}
+                </p>
+              </div>
+            )}
+
+            {/* Botón para abrir el formulario de reprogramación solo si el estado no es CANCELADO ni COMPLETADO */}
+            {!(appointment.status === 'CANCELADO' || appointment.status === 'COMPLETADO') && (
+              <div className="flex justify-end mt-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setShowReprogramar(true)}
+                  className="text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100"
+                >
+                  Reprogramar turno
+                </Button>
+              </div>
+            )}
+
+            <p className="text-xs text-slate-500">
+              Próximamente se agregarán acciones y herramientas adicionales para
+              gestionar este turno.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para el formulario de reprogramación */}
+      {showReprogramar && (
+        <Dialog open={showReprogramar} onOpenChange={setShowReprogramar}>
+          <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+            <DialogHeader>
+              <DialogTitle>Reprogramar turno</DialogTitle>
+              <DialogDescription>
+                Seleccione el nuevo profesional y horario para reprogramar el turno.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="min-w-0">
+              <FormularioReprogramarTurno
+                turno={{
+                  id: appointment.id,
+                  profesional: {
+                    id: appointment.professionalId,
+                    name: (professionals.find((p: Professional) => p.id === appointment.professionalId)?.name || '')
+                  },
+                  paciente: { nombre: appointment.title, apellido: '', id: appointment.patientId || '', dni: '' },
+                  fecha: new Date(appointment.start),
+                  motivo: appointment.notes || '',
+                  duracion: 30,
+                  estado: appointment.status || 'PROGRAMADO',
+                  tipoConsulta: 'PARTICULAR',
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                }}
+                onReprogramar={async ({ fecha, profesionalId }) => {
+                  // Lógica para reprogramar el turno
+                  const res = await fetch(`/api/turnos/${appointment.id}/reprogramar`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fecha: fecha.toISOString(), profesionalId })
+                  });
+                  if (res.ok) {
+                    setShowReprogramar(false);
+                    setShowSuccess(true);
+                  }
+                }}
+                onCancel={() => setShowReprogramar(false)}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Dialog de éxito al reprogramar */}
+      {showSuccess && (
+        <Dialog open={showSuccess} onOpenChange={setShowSuccess}>
+          <DialogContent className="max-w-sm text-center">
+            <DialogHeader>
+              <DialogTitle className="text-green-700">¡Turno reprogramado con éxito!</DialogTitle>
+              <DialogDescription>
+                El turno fue reprogramado correctamente.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="mt-4 flex justify-center">
+              <Button type="button" onClick={() => { setShowSuccess(false); window.location.reload(); }} className="bg-green-600 hover:bg-green-700 text-white">Aceptar</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
 }
 
@@ -849,6 +935,7 @@ export default function ListaTurnosPage() {
         appointment={selectedAppointment}
         open={modalOpen}
         onClose={handleModalClose}
+        professionals={professionals}
       />
     </div>
   );
