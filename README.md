@@ -31,7 +31,7 @@ CareLink es una aplicación web moderna que permite:
 1. Clona el repositorio:
 ```bash
 git clone <url-del-repositorio>
-cd carelink
+cd carelink-clinic-management
 ```
 
 2. Instala las dependencias:
@@ -70,9 +70,9 @@ La aplicación estará disponible en `http://localhost:3000`.
 
 Credenciales de prueba (seed):
 
-- Profesional: profesional@carelink.com / admin123
-- Mesa de entrada: mesa@carelink.com / admin123
-- Gerente: gerente@carelink.com / admin123
+- Profesional: ana.cardiologa@carelink.com / admin1234
+- Mesa de entrada: mesa@carelink.com / admin1234
+- Gerente: gerente@carelink.com / admin1234
 
 
 ## 📁 Scripts disponibles
