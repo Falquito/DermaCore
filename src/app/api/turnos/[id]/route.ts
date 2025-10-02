@@ -21,13 +21,11 @@ function isCancelBody(x: unknown): x is CancelBody {
   );
 }
 
-// 👇 En Next 15, el contexto tiene params como Promise.
-// RouteContext es global (no hace falta importarlo).
 export async function POST(
   req: NextRequest,
-  ctx: RouteContext<"/api/turnos/[id]">
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await ctx.params; // <- importante: await
+  const { id } = await context.params;
 
   if (!id) {
     return NextResponse.json(
@@ -60,11 +58,10 @@ export async function POST(
     );
   }
 
-  // Evitar cancelar si ya está finalizado/cancelado/no asistió
+  // Evitar cancelar si ya está finalizado o cancelado
   const ESTADOS_BLOQUEADOS = new Set<AppointmentStatus>([
     AppointmentStatus.COMPLETADO,
     AppointmentStatus.CANCELADO,
-    AppointmentStatus.NO_ASISTIO,
   ]);
 
   if (ESTADOS_BLOQUEADOS.has(turno.estado as AppointmentStatus)) {

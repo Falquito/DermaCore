@@ -180,7 +180,7 @@ model Appointment {
 
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
-  AppointmentCancellation AppointmentCancellation?
+  AppointmentCancellation AppointmentCancellation[]
   diagnoses               Diagnosis[]
   prescriptions           Prescription[]
   studyOrders             StudyOrder[]
@@ -192,7 +192,7 @@ model AppointmentCancellation {
   id String @id @default(cuid())
 
   // Relación al turno
-  appointmentId String      @unique
+  appointmentId String
   appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
 
   // Relación al paciente del turno

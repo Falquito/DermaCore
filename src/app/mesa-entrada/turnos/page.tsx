@@ -99,7 +99,8 @@ export default function TurnosPage() {
   const [filtroProfesional, setFiltroProfesional] = useState<string>('TODOS')
   const [busqueda, setBusqueda] = useState('')
   const [busquedaDebounced, setBusquedaDebounced] = useState('')
-  const [turnoACancelar, setTurnoACancelar] = useState<TurnoCompleto | null>(null)
+  const [turnoACambiarEstado, setTurnoACambiarEstado] = useState<TurnoCompleto | null>(null)
+  const [estadoSeleccionado, setEstadoSeleccionado] = useState<'CANCELADO' | 'EN_SALA_DE_ESPERA' | 'NO_ASISTIO' | null>(null)
   const [motivoCancelacion, setMotivoCancelacion] = useState('')
   const [errorCancelacion, setErrorCancelacion] = useState<string | null>(null)
   const [cancelando, setCancelando] = useState(false)
@@ -158,7 +159,12 @@ export default function TurnosPage() {
 
       const response = await fetch(`/api/turnos?${params.toString()}`, { cache: 'no-store' })
       if (!response.ok) {
-        throw new Error('No se pudo obtener la agenda del día')
+        let errorMsg = 'No se pudo obtener la agenda del día'
+        try {
+          const data = await response.json()
+          if (data?.error) errorMsg = data.error
+        } catch {}
+        throw new Error(errorMsg)
       }
       const data = await response.json()
       const turnosObtenidos: TurnoCompleto[] = (data.turnos || []).map((turno: TurnoCompleto) => ({
@@ -265,49 +271,67 @@ export default function TurnosPage() {
     }, 5000)
   }
 
-  const cerrarDialogoCancelacion = () => {
-    setTurnoACancelar(null)
+  const cerrarDialogoCambioEstado = () => {
+    setTurnoACambiarEstado(null)
+    setEstadoSeleccionado(null)
     setMotivoCancelacion('')
     setErrorCancelacion(null)
   }
 
-  const confirmarCancelacion = async () => {
-    if (!turnoACancelar || !perfil) return
+  const [mostrarConfirmacionCancelacion, setMostrarConfirmacionCancelacion] = useState(false)
 
+  const handleIntentarCancelar = () => {
     const motivo = motivoCancelacion.trim()
     if (motivo.length < 4) {
       setErrorCancelacion('Ingrese un motivo para registrar la cancelación.')
       return
     }
+    setMostrarConfirmacionCancelacion(true)
+  }
+
+  const confirmarCambioEstado = async () => {
+    if (!turnoACambiarEstado || !perfil || !estadoSeleccionado) return
 
     try {
       setCancelando(true)
       setErrorCancelacion(null)
-      const response = await fetch(`/api/turnos/${turnoACancelar.id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          motivo,
-          cancelledById: perfil.id
+      let response
+      if (estadoSeleccionado === 'CANCELADO') {
+        response = await fetch(`/api/turnos/${turnoACambiarEstado.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            motivo: motivoCancelacion.trim(),
+            cancelledById: perfil.id
+          })
         })
-      })
+      } else {
+        response = await fetch(`/api/turnos/${turnoACambiarEstado.id}/estado`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ estado: estadoSeleccionado })
+        })
+      }
 
       if (!response.ok) {
         const data = await response.json().catch(() => null)
-        throw new Error(data?.error || 'No se pudo cancelar el turno')
+        throw new Error(data?.error || 'No se pudo cambiar el estado del turno')
       }
 
-      setCancelacionReciente({
-        turno: { ...turnoACancelar, estado: AppointmentStatus.CANCELADO },
-        motivo
-      })
-      setTimeout(() => setCancelacionReciente(null), 5000)
+      if (estadoSeleccionado === 'CANCELADO') {
+        setCancelacionReciente({
+          turno: { ...turnoACambiarEstado, estado: AppointmentStatus.CANCELADO },
+          motivo: motivoCancelacion.trim()
+        })
+        setTimeout(() => setCancelacionReciente(null), 5000)
+      }
 
-      cerrarDialogoCancelacion()
+      cerrarDialogoCambioEstado()
+      setMostrarConfirmacionCancelacion(false)
       await cargarTurnosHoy()
     } catch (error) {
-      console.error('Error al cancelar turno:', error)
-      setErrorCancelacion(error instanceof Error ? error.message : 'No se pudo cancelar el turno')
+      console.error('Error al cambiar estado:', error)
+      setErrorCancelacion(error instanceof Error ? error.message : 'No se pudo cambiar el estado del turno')
     } finally {
       setCancelando(false)
     }
@@ -562,8 +586,8 @@ export default function TurnosPage() {
                 </div>
                 {turnos.map((turno) => {
                   const estado = estadoConfig[turno.estado]
-                  const puedeCancelar = CANCELABLE_STATUSES.includes(turno.estado)
-                  const canceladoEnProceso = cancelando && turnoACancelar?.id === turno.id
+
+                  const canceladoEnProceso = cancelando && turnoACambiarEstado?.id === turno.id
 
                   return (
                     <div
@@ -599,20 +623,21 @@ export default function TurnosPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          disabled={!puedeCancelar || !perfil || canceladoEnProceso}
+                          disabled={!perfil}
                           onClick={() => {
-                            setTurnoACancelar(turno)
-                            setMotivoCancelacion('Cancelación solicitada por paciente')
+                            setTurnoACambiarEstado(turno)
+                            setEstadoSeleccionado(null)
+                            setMotivoCancelacion('')
                             setErrorCancelacion(null)
                           }}
-                          className="w-full border-red-200 text-red-600 hover:bg-red-50 sm:w-auto"
+                          className="w-full border-blue-200 text-blue-600 hover:bg-blue-50 sm:w-auto"
                         >
                           {canceladoEnProceso ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           ) : (
-                            <XCircle className="mr-2 h-4 w-4" />
+                            <RefreshCcw className="mr-2 h-4 w-4" />
                           )}
-                          Cancelar
+                          Cambiar estado
                         </Button>
                         <Button
                           asChild
@@ -635,7 +660,7 @@ export default function TurnosPage() {
                 {turnos.map((turno) => {
                   const estado = estadoConfig[turno.estado]
                   const puedeCancelar = CANCELABLE_STATUSES.includes(turno.estado)
-                  const canceladoEnProceso = cancelando && turnoACancelar?.id === turno.id
+                  const canceladoEnProceso = cancelando && turnoACambiarEstado?.id === turno.id
 
                   return (
                     <div key={turno.id} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
@@ -666,8 +691,9 @@ export default function TurnosPage() {
                           size="sm"
                           disabled={!puedeCancelar || !perfil || canceladoEnProceso}
                           onClick={() => {
-                            setTurnoACancelar(turno)
-                            setMotivoCancelacion('Cancelación solicitada por paciente')
+                            setTurnoACambiarEstado(turno)
+                            setEstadoSeleccionado(null)
+                            setMotivoCancelacion('')
                             setErrorCancelacion(null)
                           }}
                           className="border-red-200 text-red-600 hover:bg-red-50"
@@ -782,54 +808,125 @@ export default function TurnosPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={Boolean(turnoACancelar)} onOpenChange={(open) => !open && cerrarDialogoCancelacion()}>
+      <Dialog open={Boolean(turnoACambiarEstado)} onOpenChange={(open) => { if (!open) { cerrarDialogoCambioEstado(); setMostrarConfirmacionCancelacion(false); } }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Cancelar turno</DialogTitle>
+            <DialogTitle>Cambiar estado del turno</DialogTitle>
             <DialogDescription>
-              Esta acción registrará la cancelación y liberará el horario seleccionado.
+              Selecciona el nuevo estado para el turno.
             </DialogDescription>
           </DialogHeader>
 
-          {turnoACancelar && (
+          {turnoACambiarEstado && (
             <div className="space-y-3 text-sm">
               <div className="rounded-md bg-gray-50 p-3">
                 <p className="font-medium text-gray-900">
-                  {turnoACancelar.paciente.apellido}, {turnoACancelar.paciente.nombre}
+                  {turnoACambiarEstado.paciente.apellido}, {turnoACambiarEstado.paciente.nombre}
                 </p>
-                <p className="text-gray-700">{turnoACancelar.profesional.name}</p>
+                <p className="text-gray-700">{turnoACambiarEstado.profesional.name}</p>
                 <p className="text-gray-600">
-                  {formatFechaLarga(turnoACancelar.fecha)} · {formatHora(turnoACancelar.fecha)}
+                  {formatFechaLarga(turnoACambiarEstado.fecha)} · {formatHora(turnoACambiarEstado.fecha)}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700" htmlFor="cancel-reason">
-                  Motivo de cancelación
+                <label className="text-sm font-medium text-gray-700" htmlFor="estado-select">
+                  Nuevo estado
                 </label>
-                <textarea
-                  id="cancel-reason"
-                  placeholder="Ej: El paciente avisó que no podrá asistir"
-                  value={motivoCancelacion}
-                  onChange={(event) => setMotivoCancelacion(event.target.value)}
-                  rows={3}
-                  className="min-h-[100px] w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-50"
-                />
-                {errorCancelacion && (
-                  <p className="text-xs text-rose-600">{errorCancelacion}</p>
-                )}
+                <Select
+                  value={estadoSeleccionado || ''}
+                  onValueChange={(value) => {
+                    setEstadoSeleccionado(value as 'CANCELADO' | 'EN_SALA_DE_ESPERA' | 'NO_ASISTIO')
+                    setErrorCancelacion(null)
+                  }}
+                >
+                  <SelectTrigger id="estado-select">
+                    <SelectValue placeholder="Selecciona estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {['CANCELADO', 'EN_SALA_DE_ESPERA', 'NO_ASISTIO']
+                      .filter((estado) => estado !== String(turnoACambiarEstado.estado))
+                      .map((estado) => (
+                        <SelectItem key={estado} value={estado}>
+                          {estado === 'CANCELADO'
+                            ? 'Cancelar'
+                            : estado === 'EN_SALA_DE_ESPERA'
+                            ? 'En sala de espera'
+                            : 'No asistió'}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
+
+              {estadoSeleccionado === 'CANCELADO' && !mostrarConfirmacionCancelacion && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700" htmlFor="cancel-reason">
+                    Motivo de cancelación
+                  </label>
+                  <textarea
+                    id="cancel-reason"
+                    placeholder="Ej: El paciente avisó que no podrá asistir"
+                    value={motivoCancelacion}
+                    onChange={(event) => setMotivoCancelacion(event.target.value)}
+                    rows={3}
+                    className="min-h-[100px] w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                  {errorCancelacion && (
+                    <p className="text-xs text-rose-600">{errorCancelacion}</p>
+                  )}
+                </div>
+              )}
+
+              {estadoSeleccionado === 'CANCELADO' && mostrarConfirmacionCancelacion && (
+                <div className="space-y-3">
+                  <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-900">
+                    <strong>¿Está seguro que desea cancelar el turno?</strong>
+                    <p className="mt-1 text-sm">Esta acción no se puede deshacer y se registrará el motivo: <span className="font-semibold">{motivoCancelacion.trim()}</span></p>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="ghost" onClick={() => setMostrarConfirmacionCancelacion(false)} disabled={cancelando}>
+                      Volver
+                    </Button>
+                    <Button variant="destructive" onClick={confirmarCambioEstado} disabled={cancelando}>
+                      {cancelando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
+                      Confirmar cancelación
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           <DialogFooter className="pt-2">
-            <Button variant="ghost" onClick={cerrarDialogoCancelacion} disabled={cancelando}>
-              Cerrar
-            </Button>
-            <Button variant="destructive" onClick={confirmarCancelacion} disabled={cancelando}>
-              {cancelando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
-              Confirmar cancelación
-            </Button>
+            {estadoSeleccionado === 'CANCELADO' ? (
+              !mostrarConfirmacionCancelacion && (
+                <>
+                  <Button variant="ghost" onClick={cerrarDialogoCambioEstado} disabled={cancelando}>
+                    Cerrar
+                  </Button>
+                  <Button variant="destructive" onClick={handleIntentarCancelar} disabled={cancelando || motivoCancelacion.trim().length < 4}>
+                    {cancelando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
+                    Cancelar turno
+                  </Button>
+                </>
+              )
+            ) : (
+              <>
+                <Button variant="ghost" onClick={cerrarDialogoCambioEstado} disabled={cancelando}>
+                  Cerrar
+                </Button>
+                <Button
+                  variant="default"
+                  onClick={confirmarCambioEstado}
+                  disabled={cancelando || !estadoSeleccionado}
+                  className="bg-blue-600 text-white hover:bg-blue-700"
+                >
+                  {cancelando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+                  Confirmar
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

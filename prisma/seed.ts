@@ -559,7 +559,7 @@ async function main() {
     const cancelledById = mesa?.id ?? turno.createdBy ?? turno.profesionalId
 
     await prisma.appointmentCancellation.upsert({
-      where: { appointmentId: turno.id },
+      where: { id: turno.id },
       update: {
         motivo,
         cancelledById,
