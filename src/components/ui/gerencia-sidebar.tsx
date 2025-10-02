@@ -15,6 +15,7 @@ import {
   Stethoscope,
   User,
   Clock,
+  CreditCard,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -69,6 +70,13 @@ const sidebarItems = [
     icon: Stethoscope,
     href: '/gerente/especialidades',
     description: 'ABM de especialidades médicas',
+  },
+  {
+    id: 'obras-sociales',
+    name: 'Obras Sociales',
+    icon: CreditCard,
+    href: '/gerente/obras-sociales',
+    description: 'Gestión de obras sociales',
   },
   {
     id: 'configuracion',
