@@ -5,6 +5,89 @@ import { Prisma, PrismaClient, AppointmentStatus } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+export async function GET(
+  _req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await context.params;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Falta el ID del turno en la URL" },
+        { status: 400 }
+      );
+    }
+
+    const turno = await prisma.appointment.findUnique({
+      where: { id },
+      include: {
+        paciente: {
+          select: {
+            id: true,
+            nombre: true,
+            apellido: true,
+            dni: true,
+            fechaNacimiento: true,
+            telefono: true,
+            celular: true,
+            email: true
+          }
+        },
+        profesional: {
+          select: {
+            id: true,
+            name: true,
+            apellido: true,
+            email: true,
+            especialidad: {
+              select: {
+                id: true,
+                nombre: true
+              }
+            }
+          }
+        },
+        obraSocial: {
+          select: {
+            id: true,
+            nombre: true
+          }
+        },
+        AppointmentCancellation: {
+          select: {
+            id: true,
+            motivo: true,
+            cancelledAt: true,
+            cancelledBy: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!turno) {
+      return NextResponse.json(
+        { error: "Turno no encontrado" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(turno);
+
+  } catch (error) {
+    console.error('Error al obtener turno:', error);
+    return NextResponse.json(
+      { error: "Error al obtener el turno" },
+      { status: 500 }
+    );
+  }
+}
+
 type CancelBody = {
   motivo: string;
   cancelledById: string;
