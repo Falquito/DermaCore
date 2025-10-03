@@ -206,8 +206,10 @@ export default function AgendaPage() {
   }
 
   function navigateToAppointment(appointment: Appointment) {
-    // Redirect to consultas page focusing the selected appointment
-    window.location.href = `/profesional/consultas?appointmentId=${appointment.id}`
+    // Redirección: siempre incluir appointmentId; agregar patientId si existe
+    const params = new URLSearchParams({ appointmentId: appointment.id })
+    if (appointment.patientId) params.set('patientId', appointment.patientId)
+    window.location.href = `/profesional/consultas?${params.toString()}`
   }
 
   function byDay(d: Date) {
@@ -439,7 +441,8 @@ export default function AgendaPage() {
                         }
                       }
                       if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
-                      hoverTimerRef.current = window.setTimeout(doOpen, 400)
+                      // Hover delay ajustado a 600ms
+                      hoverTimerRef.current = window.setTimeout(doOpen, 600)
                     }}
                     onHoverLeave={() => {
                       if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
@@ -463,7 +466,8 @@ export default function AgendaPage() {
                         setAnchorOffset(null)
                       }
                       if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
-                      hoverTimerRef.current = window.setTimeout(doOpen, 400)
+                      // Hover delay ajustado a 600ms
+                      hoverTimerRef.current = window.setTimeout(doOpen, 600)
                     }}
                     onHoverLeave={() => {
                       if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
@@ -491,7 +495,8 @@ export default function AgendaPage() {
                         setAnchorOffset(null)
                       }
                       if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
-                      hoverTimerRef.current = window.setTimeout(doOpen, 400)
+                      // Hover delay ajustado a 600ms
+                      hoverTimerRef.current = window.setTimeout(doOpen, 600)
                     }}
                     onHoverLeave={() => {
                       if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current)
@@ -1168,14 +1173,14 @@ function AppointmentPopover({
           <div className={styles.popoverSection}>
             <div className={styles.popoverLabel}>
               <Users className="mr-1 inline h-3 w-3" />
-              Paciente
+              Consulta
             </div>
             <Link
-              href={`/profesional/pacientes?patientId=${appointment.patientId}`}
-              className="font-medium text-emerald-600 underline transition-colors hover:text-emerald-700"
+              href={`/profesional/consultas?patientId=${appointment.patientId}&appointmentId=${appointment.id}`}
+              className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-300"
             >
-              <Eye className="mr-1 inline h-4 w-4" />
-              Ver ficha completa
+              <Eye className="h-4 w-4" />
+              Ver consulta
             </Link>
           </div>
         )}

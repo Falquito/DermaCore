@@ -212,11 +212,15 @@ export default function ConsultasContent() {
     status: '',
     patient: '',
   })
-  const [patientFilterId, setPatientFilterId] = useState<string | null>(null)
+  // Permitir que un patientId pasado en la URL inicialice el filtro.
+  const [patientFilterId, setPatientFilterId] = useState<string | null>(() => {
+    const pid = searchParams.get('patientId')
+    return pid || null
+  })
   const [patientSuggestions, setPatientSuggestions] = useState<PatientSummary[]>([])
   const [isFetchingPatientSuggestions, setIsFetchingPatientSuggestions] = useState(false)
   const [skipPatientSuggestionFetch, setSkipPatientSuggestionFetch] = useState(false)
-  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null)
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(() => searchParams.get('appointmentId'))
   const [activeTab, setActiveTab] = useState<(typeof Tabs)[number]>('diagnosticos')
   const [feedback, setFeedback] = useState<FeedbackState>(null)
 
@@ -251,6 +255,8 @@ export default function ConsultasContent() {
   const currentYear = new Date().getFullYear()
 
   const singleFetchTriedRef = useRef(false)
+  const justClearedPatientFilterRef = useRef(false)
+
   const loadAppointments = async () => {
     try {
       setLoadingAppointments(true)
@@ -273,11 +279,28 @@ export default function ConsultasContent() {
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'No se pudieron cargar las consultas')
 
-      setAppointments(data.appointments)
+      // Utilidad para eliminar duplicados por id
+      const dedupe = (list: Appointment[]) => {
+        const seen = new Set<string>()
+        const result: Appointment[] = []
+        for (const a of list) {
+          if (!seen.has(a.id)) {
+            seen.add(a.id)
+            result.push(a)
+          }
+        }
+        return result
+      }
+
+      setAppointments(dedupe(data.appointments))
+
+      // Si tenemos un patientFilterId pero el input de paciente está vacío, intentar poblarlo con el nombre del paciente (primer turno coincidente)
+      // Eliminado autopopulate para evitar re-fetch y necesidad de doble click en limpiar.
       setTotalAppointments(data.total)
 
       const qId = searchParams.get('appointmentId')
       if (qId) {
+        // Keep existing behavior: try to select requested appointmentId (fetch individually if needed)
         if (data.appointments.some((a: Appointment) => a.id === qId)) {
           setSelectedAppointmentId(qId)
         } else if (!singleFetchTriedRef.current) {
@@ -286,20 +309,19 @@ export default function ConsultasContent() {
             const res = await fetch(`/api/professional/appointments/${qId}`)
             const single = await res.json()
             if (res.ok && single?.appointment) {
-              setAppointments((prev) => [single.appointment, ...prev])
+              setAppointments((prev) => {
+                // Evitar duplicar si ya existe
+                if (prev.some((a) => a.id === single.appointment.id)) return prev
+                return [single.appointment, ...prev]
+              })
               setSelectedAppointmentId(qId)
             }
           } catch {/* ignore */}
         }
       } else {
-        if (data.appointments.length > 0) {
-          setSelectedAppointmentId((prev) => {
-            if (prev && data.appointments.some((appointment: Appointment) => appointment.id === prev)) return prev
-            return data.appointments[0].id
-          })
-        } else {
-          setSelectedAppointmentId(null)
-        }
+        // New behavior: do NOT auto-select the first appointment when landing without appointmentId.
+        // Preserve previous selection if it still exists; otherwise clear selection.
+        setSelectedAppointmentId((prev) => (prev && data.appointments.some((a: Appointment) => a.id === prev) ? prev : null))
       }
     } catch (error) {
       console.error(error)
@@ -313,6 +335,20 @@ export default function ConsultasContent() {
     loadAppointments()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.dateFrom, filters.dateTo, filters.status, filters.patient, patientFilterId, refreshTicker, page, pageSize, onlyMine])
+
+  // Si cambia el patientId en la URL y no coincide con el estado local, sincronizar.
+  useEffect(() => {
+    const pid = searchParams.get('patientId')
+    if (pid && pid !== patientFilterId && !justClearedPatientFilterRef.current) {
+      setPatientFilterId(pid)
+      // reset page when patient changes
+      setPage(1)
+    } else if (!pid && patientFilterId) {
+      // Si ya no está en URL y el estado lo conserva, limpiarlo.
+      setPatientFilterId(null)
+    }
+    if (!pid) justClearedPatientFilterRef.current = false
+  }, [searchParams, patientFilterId])
 
   // (Removed separate preselection effect; logic handled in loadAppointments)
 
@@ -1316,9 +1352,9 @@ export default function ConsultasContent() {
                   setPatientFilterId(null)
                   setFilters((prev) => ({ ...prev, patient: event.target.value }))
                 }}
-                className="pl-9 pr-16"
+                className="pl-9 pr-20"
               />
-              {filters.patient && (
+              {(filters.patient || patientFilterId) && (
                 <button
                   type="button"
                   onClick={() => {
@@ -1326,6 +1362,12 @@ export default function ConsultasContent() {
                     setPatientFilterId(null)
                     setFilters((prev) => ({ ...prev, patient: '' }))
                     setPatientSuggestions([])
+                    // Limpiar patientId de la URL
+                    const params = new URLSearchParams(Array.from(searchParams.entries()))
+                    params.delete('patientId')
+                    params.delete('appointmentId') // también eliminamos selección forzada
+                    justClearedPatientFilterRef.current = true
+                    router.replace(`/profesional/consultas?${params.toString()}`)
                   }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 hover:text-gray-700"
                 >
@@ -1433,12 +1475,12 @@ export default function ConsultasContent() {
               </div>
             ) : (
               <div className="divide-y max-h-[70vh] overflow-y-auto">
-                {appointments.map((appointment) => {
+                {appointments.map((appointment, idx) => {
                   const statusMeta = APPOINTMENT_STATUS_META[appointment.estado]
                   const selected = appointment.id === selectedAppointmentId
                   return (
                     <button
-                      key={appointment.id}
+                      key={`appt-${appointment.id}-${idx}`}
                       onClick={() => handleSelectAppointment(appointment.id)}
                       className={`w-full text-left px-4 py-3 transition ${selected ? 'bg-sky-50 border-l-4 border-sky-500' : 'hover:bg-slate-50'}`}
                     >
@@ -1640,6 +1682,11 @@ export default function ConsultasContent() {
                     resetToFirstPage()
                     setPatientFilterId(null)
                     setFilters((prev) => ({ ...prev, patient: '' }))
+                    justClearedPatientFilterRef.current = true
+                    const params = new URLSearchParams(Array.from(searchParams.entries()))
+                    params.delete('patientId')
+                    params.delete('appointmentId')
+                    router.replace(`/profesional/consultas?${params.toString()}`)
                   }}
                   className="ml-1 text-gray-400 hover:text-gray-600"
                 >

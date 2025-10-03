@@ -84,25 +84,22 @@ export async function GET(request: NextRequest) {
     }
 
     if (fecha) {
+      // Evitar desfase: parsear manualmente YYYY-MM-DD como fecha local
+      // En lugar de new Date('2025-10-02') que interpreta UTC en algunos entornos
       const match = fecha.match(/^(\d{4})-(\d{2})-(\d{2})$/)
       if (match) {
         const [, yStr, mStr, dStr] = match
         const y = parseInt(yStr, 10)
         const m = parseInt(mStr, 10) - 1
         const d = parseInt(dStr, 10)
-        // Offset (minutos) configurable. Default: -180 (UTC-3)
-        const clinicOffsetMinutes = Number(process.env.CLINIC_TZ_OFFSET_MINUTES ?? -180)
-        // Base UTC medianoche del día indicado
-        const baseUTC = Date.UTC(y, m, d, 0, 0, 0, 0)
-        // 00:00 local = baseUTC - offset
-        const start = new Date(baseUTC - clinicOffsetMinutes * 60000)
-        const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1)
-        where.fecha = { gte: start, lte: end }
+        const fechaStart = new Date(y, m, d, 0, 0, 0, 0)
+        const fechaEnd = new Date(y, m, d, 23, 59, 59, 999)
+        where.fecha = { gte: fechaStart, lte: fechaEnd }
       } else {
-        // Fallback seguro: intentar mantener antigua lógica local
+        // Fallback a comportamiento previo si el formato no coincide
         const fechaDate = new Date(fecha)
         const fechaStart = new Date(fechaDate.getFullYear(), fechaDate.getMonth(), fechaDate.getDate(), 0, 0, 0)
-        const fechaEnd = new Date(fechaDate.getFullYear(), fechaDate.getMonth(), fechaDate.getDate(), 23, 59, 59, 999)
+        const fechaEnd = new Date(fechaDate.getFullYear(), fechaDate.getMonth(), fechaDate.getDate(), 23, 59, 59)
         where.fecha = { gte: fechaStart, lte: fechaEnd }
       }
     }
