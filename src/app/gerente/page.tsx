@@ -26,6 +26,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 
 ChartJS.register(
   ArcElement,
@@ -216,18 +217,34 @@ type KpiCardProps = {
   accent?: string;
 };
 
-const KpiCard = ({ title, value, subtitle, Icon, accent = "bg-blue-50" }: KpiCardProps) => (
-  <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm flex items-start gap-4">
-    <div className={`p-2 rounded-lg ${accent}`}>
-      <Icon className="h-5 w-5 text-gray-700" />
+const KpiCard = ({ title, value, subtitle, Icon, accent = "bg-blue-50" }: KpiCardProps) => {
+  // Map accent colors to gradients similar to profesionales page
+  const gradientMap: Record<string, string> = {
+    "bg-emerald-50": "from-emerald-500 to-emerald-600",
+    "bg-blue-50": "from-blue-500 to-blue-600", 
+    "bg-indigo-50": "from-indigo-500 to-indigo-600",
+    "bg-amber-50": "from-amber-500 to-amber-600"
+  };
+  
+  const gradient = gradientMap[accent] || "from-gray-500 to-gray-600";
+
+  return (
+    <div className="rounded-2xl border border-emerald-200 bg-white/70 backdrop-blur-sm p-6 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-600">{title}</p>
+          <p className="text-2xl font-bold text-gray-900">{value}</p>
+        </div>
+        <div className={`h-12 w-12 bg-gradient-to-br ${gradient} rounded-2xl flex items-center justify-center shadow-lg`}>
+          <Icon className="h-6 w-6 text-white" />
+        </div>
+      </div>
+      {subtitle && (
+        <p className="text-sm text-gray-500 mt-2">{subtitle}</p>
+      )}
     </div>
-    <div className="flex-1">
-      <p className="text-sm text-gray-500">{title}</p>
-      <p className="text-2xl font-semibold text-gray-900 leading-tight">{value}</p>
-      {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
-    </div>
-  </div>
-);
+  );
+};
 
 /** Mensaje “Sin datos” reutilizable */
 const NoData = ({
@@ -440,67 +457,85 @@ export default function GerenteDashboard() {
   const displayedRanges = ranges;
 
   return (
-    <main className="flex-1 p-6 md:p-10 bg-gray-50">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <main className="flex-1 p-5 md:p-8">
+      <div className="w-full space-y-4">
+        {/* Header section */}
+        <section className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-8 shadow-sm">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Panel de Gerencia</h1>
+              <p className="text-lg text-gray-600">Análisis completo de consultas por especialidad y distribución etaria</p>
+            </div>
+          </div>
+        </section>
+
         {/* Filtros */}
         <div className="flex flex-col gap-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">📊 Reportes de Gerencia</h1>
-              <p className="text-gray-600">Análisis de consultas por especialidad y distribución etaria</p>
-            </div>
 
-            <div className="flex items-center gap-3 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-              <Filter className="h-4 w-4 text-gray-500" />
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-700">Desde:</label>
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="px-2 py-1 border border-gray-300 rounded text-sm"
-                />
+            <div className="w-full rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <Filter className="h-4 w-4 text-gray-500" />
+                <span>Filtrar por fecha</span>
               </div>
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-700">Hasta:</label>
-                <input
-                  type="date"
-                  value={dateTo}
-                  min={dateFrom}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="px-2 py-1 border border-gray-300 rounded text-sm"
-                />
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-gray-700">Desde</label>
+                  <DatePicker
+                    date={dateFrom ? new Date(dateFrom) : undefined}
+                    onDateChange={(date) => setDateFrom(date ? date.toISOString().split('T')[0] : '')}
+                    placeholder="Selecciona una fecha"
+                    captionLayout="dropdown"
+                    fromYear={new Date().getFullYear() - 10}
+                    toYear={new Date().getFullYear() + 5}
+                    className="text-sm w-full"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-gray-700">Hasta</label>
+                  <DatePicker
+                    date={dateTo ? new Date(dateTo) : undefined}
+                    onDateChange={(date) => setDateTo(date ? date.toISOString().split('T')[0] : '')}
+                    placeholder="Selecciona una fecha"
+                    captionLayout="dropdown"
+                    fromYear={new Date().getFullYear() - 10}
+                    toYear={new Date().getFullYear() + 5}
+                    className="text-sm w-full"
+                  />
+                </div>
               </div>
-              <button
-                onClick={() => void fetchReports()}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded shadow whitespace-nowrap"
-              >
-                Generar
-              </button>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+                <button
+                  onClick={() => void fetchReports()}
+                  className="w-full rounded-md bg-emerald-600 border-emerald-600 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-emerald-500 sm:w-auto shadow"
+                >
+                  Generar Reportes
+                </button>
+              </div>
             </div>
           </div>
 
           {/* Accesos rápidos */}
           <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap">
-            <span className="text-sm text-gray-600 mr-1">Accesos rápidos:</span>
-            <button className="px-3 py-1 rounded-full border text-sm hover:bg-gray-50" onClick={() => applyPreset("hoy")}>Hoy</button>
-            <button className="px-3 py-1 rounded-full border text-sm hover:bg-gray-50" onClick={() => applyPreset("manana")}>Mañana</button>
-            <button className="px-3 py-1 rounded-full border text-sm hover:bg-gray-50" onClick={() => applyPreset("ultima_semana")}>Últ. semana</button>
-            <button className="px-3 py-1 rounded-full border text-sm hover:bg-gray-50" onClick={() => applyPreset("ultimo_mes")}>Últ. mes</button>
-            <button className="px-3 py-1 rounded-full border text-sm hover:bg-gray-50" onClick={() => applyPreset("ultimo_trimestre")}>Últ. trimestre</button>
-            <button className="px-3 py-1 rounded-full border text-sm hover:bg-gray-50" onClick={() => applyPreset("ultimos_90")}>Últ. 90 días</button>
-            <button className="px-3 py-1 rounded-full border text-sm hover:bg-gray-50" onClick={() => applyPreset("este_anio")}>Este año</button>
-            <button className="px-3 py-1 rounded-full border text-sm hover:bg-gray-50" onClick={() => applyPreset("anio_anterior")}>Año anterior</button>
+            <span className="text-sm text-gray-600 mr-2 font-medium">Accesos rápidos:</span>
+            <button className="px-3 py-1.5 rounded-full border border-emerald-200 text-sm hover:bg-emerald-50 hover:border-emerald-300 transition-colors text-emerald-700" onClick={() => applyPreset("hoy")}>Hoy</button>
+            <button className="px-3 py-1.5 rounded-full border border-emerald-200 text-sm hover:bg-emerald-50 hover:border-emerald-300 transition-colors text-emerald-700" onClick={() => applyPreset("manana")}>Mañana</button>
+            <button className="px-3 py-1.5 rounded-full border border-emerald-200 text-sm hover:bg-emerald-50 hover:border-emerald-300 transition-colors text-emerald-700" onClick={() => applyPreset("ultima_semana")}>Últ. semana</button>
+            <button className="px-3 py-1.5 rounded-full border border-emerald-200 text-sm hover:bg-emerald-50 hover:border-emerald-300 transition-colors text-emerald-700" onClick={() => applyPreset("ultimo_mes")}>Últ. mes</button>
+            <button className="px-3 py-1.5 rounded-full border border-emerald-200 text-sm hover:bg-emerald-50 hover:border-emerald-300 transition-colors text-emerald-700" onClick={() => applyPreset("ultimo_trimestre")}>Últ. trimestre</button>
+            <button className="px-3 py-1.5 rounded-full border border-emerald-200 text-sm hover:bg-emerald-50 hover:border-emerald-300 transition-colors text-emerald-700" onClick={() => applyPreset("ultimos_90")}>Últ. 90 días</button>
+            <button className="px-3 py-1.5 rounded-full border border-emerald-200 text-sm hover:bg-emerald-50 hover:border-emerald-300 transition-colors text-emerald-700" onClick={() => applyPreset("este_anio")}>Este año</button>
+            <button className="px-3 py-1.5 rounded-full border border-emerald-200 text-sm hover:bg-emerald-50 hover:border-emerald-300 transition-colors text-emerald-700" onClick={() => applyPreset("anio_anterior")}>Año anterior</button>
           </div>
         </div>
 
-        {/* KPIs */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Key metrics cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard title="Total de consultas" value={totalConsultas} subtitle={`Periodo ${formatDateAR(dateFrom)} → ${formatDateAR(dateTo)}`} Icon={CalendarDays} accent="bg-emerald-50" />
           <KpiCard title="Especialidad líder" value={topEsp?.nombre ?? "—"} subtitle={`${fmtPct(topEspPct)} del total`} Icon={Award} accent="bg-blue-50" />
           <KpiCard title="Rango etario líder" value={topEdad?.rango ?? "—"} subtitle={`${fmtPct(topEdadPct)} de pacientes`} Icon={Users} accent="bg-indigo-50" />
           <KpiCard title="Concentración Top 3" value={fmtPct(concTop3Pct)} subtitle="Participación de las 3 especialidades principales" Icon={PieChartIcon} accent="bg-amber-50" />
-        </section>
+        </div>
 
         {errorMsg && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded text-sm">
@@ -518,7 +553,7 @@ export default function GerenteDashboard() {
             {/* CHARTS side-by-side, MISMO ALTO */}
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* PASTEL */}
-              <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm flex flex-col">
+              <div className="bg-white/70 backdrop-blur-sm p-6 rounded-2xl border border-emerald-200 shadow-sm hover:shadow-md transition-shadow flex flex-col">
                 <h2 className="text-xl font-semibold text-gray-900">Consultas por Especialidad</h2>
                 <p className="text-sm text-gray-500 mb-4">Periodo: {formatDateAR(dateFrom)} → {formatDateAR(dateTo)}</p>
 
@@ -555,7 +590,7 @@ export default function GerenteDashboard() {
               </div>
 
               {/* BARRAS */}
-              <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+              <div className="bg-white/70 backdrop-blur-sm p-6 rounded-2xl border border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-center mb-4">
                   <div>
                     <h2 className="text-xl font-semibold text-gray-900">Distribución Etaria</h2>
@@ -607,13 +642,13 @@ export default function GerenteDashboard() {
         <div role="dialog" aria-modal="true" className="fixed inset-0 z-50">
           {/* Overlay */}
           <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[1px]"
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => { if (isValidRanges(ranges)) setEditModalOpen(false); }}
           />
           {/* Dialog */}
           <div className="absolute inset-0 flex items-center justify-center p-4">
             {/* Contenedor modal */}
-            <div className="w-full max-w-5xl lg:max-w-6xl max-h-[90vh] bg-white rounded-2xl shadow-xl border border-gray-200 flex flex-col">
+            <div className="w-full max-w-5xl lg:max-w-6xl max-h-[90vh] bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl border border-emerald-200 flex flex-col">
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b">
                 <div>

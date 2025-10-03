@@ -283,12 +283,18 @@ export default function ProfesionalPage() {
   return (
     <main className="flex-1 p-5 md:p-8">
       <div className="w-full space-y-4">
-        {/* Header with date filters */}
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Indicadores</h1>
-            <p className="text-gray-600">Resumen de tu actividad profesional</p>
+        {/* Header section */}
+        <section className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-8 shadow-sm">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Panel de control</h1>
+              <p className="text-lg text-gray-600">Resumen de tu actividad profesional y métricas de desempeño</p>
+            </div>
           </div>
+        </section>
+
+        {/* Date filters section */}
+        <div className="flex justify-end">
           
           <div className="w-full rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
@@ -347,64 +353,64 @@ export default function ProfesionalPage() {
 
         {/* Key metrics cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+          <div className="rounded-2xl border border-emerald-200 bg-white/70 backdrop-blur-sm p-6 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total de Turnos</p>
-                <p className="text-xl font-bold text-gray-900">{stats?.totalAppointments || 0}</p>
+                <p className="text-2xl font-bold text-gray-900">{stats?.totalAppointments || 0}</p>
               </div>
-              <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Calendar className="h-5 w-5 text-blue-600" />
+              <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <Calendar className="h-6 w-6 text-white" />
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-sm text-gray-500 mt-2">
               Promedio diario: {stats?.averageDaily || 0}
             </p>
           </div>
 
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+          <div className="rounded-2xl border border-emerald-200 bg-white/70 backdrop-blur-sm p-6 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Tasa de Completado</p>
-                <p className="text-xl font-bold text-green-600">{stats?.completionRate || 0}%</p>
+                <p className="text-2xl font-bold text-emerald-600">{stats?.completionRate || 0}%</p>
               </div>
-              <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-green-600" />
+              <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <TrendingUp className="h-6 w-6 text-white" />
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-sm text-gray-500 mt-2">
               Turnos completados exitosamente
             </p>
           </div>
 
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+          <div className="rounded-2xl border border-emerald-200 bg-white/70 backdrop-blur-sm p-6 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Tasa de Cancelación</p>
-                <p className="text-xl font-bold text-red-600">{stats?.cancellationRate || 0}%</p>
+                <p className="text-2xl font-bold text-red-600">{stats?.cancellationRate || 0}%</p>
               </div>
-              <div className="h-10 w-10 bg-red-100 rounded-lg flex items-center justify-center">
-                <Clock className="h-5 w-5 text-red-600" />
+              <div className="h-12 w-12 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <Clock className="h-6 w-6 text-white" />
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-sm text-gray-500 mt-2">
               Cancelados y no asistieron
             </p>
           </div>
 
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+          <div className="rounded-2xl border border-emerald-200 bg-white/70 backdrop-blur-sm p-6 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Pacientes Únicos</p>
-                <p className="text-xl font-bold text-purple-600">
+                <p className="text-2xl font-bold text-purple-600">
                   {stats?.recentAppointments ? new Set(stats.recentAppointments.map(a => a.paciente)).size : 0}
                 </p>
               </div>
-              <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Users className="h-5 w-5 text-purple-600" />
+              <div className="h-12 w-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <Users className="h-6 w-6 text-white" />
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-sm text-gray-500 mt-2">
               En el período seleccionado
             </p>
           </div>
@@ -413,8 +419,8 @@ export default function ProfesionalPage() {
         {/* Charts row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Obra Social Pie Chart */}
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+          <div className="rounded-2xl border border-emerald-200 bg-white/70 backdrop-blur-sm p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Obras Sociales
             </h3>
             {obraSocialChartData && stats?.totalAppointments ? (
@@ -469,8 +475,8 @@ export default function ProfesionalPage() {
           </div>
 
           {/* Status Bar Chart */}
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex flex-col">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+          <div className="rounded-2xl border border-emerald-200 bg-white/70 backdrop-blur-sm p-6 shadow-sm flex flex-col">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Estados de turnos
             </h3>
             {statusChartData && stats?.totalAppointments ? (
@@ -486,8 +492,8 @@ export default function ProfesionalPage() {
         </div>
 
         {/* Recent appointments table */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-          <div className="p-4 border-b border-gray-200">
+        <div className="rounded-2xl border border-emerald-200 bg-white/70 backdrop-blur-sm shadow-sm">
+          <div className="p-6 border-b border-emerald-200/50">
             <h3 className="text-lg font-semibold text-gray-900">
               Turnos Recientes
             </h3>

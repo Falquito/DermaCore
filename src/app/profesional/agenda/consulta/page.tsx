@@ -11,7 +11,6 @@ import {
   Phone,
   Mail,
   ClipboardList,
-  FileText,
   Pill,
   History,
   CheckCircle2,
@@ -20,6 +19,7 @@ import {
   XCircle,
   AlertCircle,
   NotebookPen,
+  FileText,
 } from "lucide-react"
 import { AppointmentStatus } from "@prisma/client"
 
@@ -196,7 +196,7 @@ type ActionKey = AppointmentStatus | "CANCEL"
 
 const STATUS_HINTS: Partial<Record<AppointmentStatus, string>> = {
   [AppointmentStatus.COMPLETADO]: 'La consulta fue finalizada',
-  [AppointmentStatus.CANCELADO]: 'Este turno fue cancelado',
+  // No mostrar hint para cancelado, se maneja por separado con AppointmentCancellation
 }
 
 function formatDate(value: string, withTime = false) {
@@ -431,60 +431,75 @@ export default function ConsultaDesdeAgendaPage() {
   const canCancel = ACTIVE_APPOINTMENT_STATUSES.includes(appointment.estado)
 
   return (
-    <div className="w-full px-6 py-6 space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50"
-            onClick={() => router.push(`/profesional/consultas?appointmentId=${appointmentId}`)}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Consulta
-          </Button>
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Detalle de la consulta</h1>
-            <p className="text-sm text-gray-600">Gestioná el encuentro, registrá hallazgos y accedé al historial clínico del paciente.</p>
+    <div className="w-full px-6 py-6 space-y-8">
+      {/* Header mejorado con gradiente */}
+      <section className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-8 shadow-sm">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 rounded-2xl px-4 py-2"
+              onClick={() => router.push(`/profesional/consultas?appointmentId=${appointmentId}`)}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Volver a consultas
+            </Button>
           </div>
+          <div className="flex-1 lg:text-center">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Detalle de consulta</h1>
+            <p className="text-gray-600">Gestioná el encuentro, registrá hallazgos y accedé al historial clínico del paciente</p>
+          </div>
+          {statusMeta && (
+            <div className={`inline-flex flex-col gap-1 rounded-2xl px-6 py-3 text-sm font-semibold shadow-lg ${statusMeta.solidClass}`}>
+              <span className="uppercase tracking-wide">{getStatusLabel(detail.appointment.estado)}</span>
+              {statusHint && <span className="text-xs font-normal normal-case opacity-90">{statusHint}</span>}
+            </div>
+          )}
         </div>
-        {statusMeta && (
-          <div className={`inline-flex flex-col gap-1 rounded-full px-4 py-2 text-xs font-semibold ${statusMeta.solidClass}`}>
-            <span className="uppercase tracking-wide">{getStatusLabel(detail.appointment.estado)}</span>
-            {statusHint && <span className="text-[11px] font-normal normal-case opacity-80">{statusHint}</span>}
-          </div>
-        )}
-      </div>
+      </section>
 
       {feedback && (
-        <div className={`flex items-start gap-3 rounded-md border px-4 py-3 ${feedback.type === "error" ? "border-rose-200 bg-rose-50 text-rose-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
-          {feedback.type === "error" ? <AlertCircle className="h-4 w-4 mt-0.5" /> : <CheckCircle2 className="h-4 w-4 mt-0.5" />}
-          <span className="text-sm">{feedback.message}</span>
+        <div className={`flex items-start gap-3 rounded-2xl border-0 px-6 py-4 shadow-lg ${feedback.type === "error" ? "bg-gradient-to-r from-rose-50 to-rose-100 text-rose-700" : "bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700"}`}>
+          {feedback.type === "error" ? <AlertCircle className="h-5 w-5 mt-0.5" /> : <CheckCircle2 className="h-5 w-5 mt-0.5" />}
+          <span className="text-sm font-medium">{feedback.message}</span>
         </div>
       )}
 
       <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
-        <div className="space-y-6">
-          <section className="bg-white border rounded-lg shadow-sm">
-            <div className="px-6 py-5 border-b flex flex-wrap gap-4 justify-between">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-sm text-gray-500">
+        <div className="space-y-8">
+          <section className="rounded-3xl border border-emerald-100 bg-white shadow-sm">
+            <div className="px-8 py-6 border-b border-emerald-100 flex flex-wrap gap-6 justify-between">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-emerald-600 font-medium">
                   <Stethoscope className="h-4 w-4" />
                   Consulta #{appointment.id.slice(-6)}
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900">
-                  {appointment.paciente.apellido}, {appointment.paciente.nombre}
-                </h2>
-                <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
-                  <span className="inline-flex items-center gap-1"><Calendar className="h-4 w-4" /> {formatDate(appointment.fecha)}</span>
-                  <Separator orientation="vertical" className="h-4" />
-                  <span className="inline-flex items-center gap-1"><Clock className="h-4 w-4" /> {formatTime(appointment.fecha)} · {appointment.duracion} min</span>
+                <div className="flex items-center gap-4">
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {appointment.paciente.apellido}, {appointment.paciente.nombre}
+                  </h2>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-emerald-700 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300 rounded-xl"
+                    asChild
+                  >
+                    <Link href={`/profesional/historias-clinicas?patientId=${appointment.paciente.id}`}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Historia clínica
+                    </Link>
+                  </Button>
+                </div>
+                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                  <span className="inline-flex items-center gap-2 bg-emerald-50 px-3 py-1.5 rounded-full"><Calendar className="h-4 w-4 text-emerald-600" /> {formatDate(appointment.fecha)}</span>
+                  <span className="inline-flex items-center gap-2 bg-sky-50 px-3 py-1.5 rounded-full"><Clock className="h-4 w-4 text-sky-600" /> {formatTime(appointment.fecha)} · {appointment.duracion} min</span>
                 </div>
               </div>
               <div className="text-sm text-gray-600 space-y-2">
-                {appointment.motivo && (
+                {appointment.motivo && appointment.estado !== AppointmentStatus.CANCELADO && (
                   <div className="max-w-xs">
-                    <span className="font-semibold text-gray-800 block text-xs uppercase tracking-wide">Motivo</span>
+                    <span className="font-semibold text-gray-800 block text-xs uppercase tracking-wide">Motivo de consulta</span>
                     <p className="text-sm text-gray-600 mt-1 leading-relaxed">{appointment.motivo}</p>
                   </div>
                 )}
@@ -508,22 +523,26 @@ export default function ConsultaDesdeAgendaPage() {
             </div>
           </section>
 
-          <section className="bg-white border rounded-lg shadow-sm">
-            <div className="px-6 py-4 border-b flex items-center gap-2">
-              <NotebookPen className="h-5 w-5 text-emerald-600" />
-              <h3 className="text-lg font-semibold text-gray-900">Notas y observaciones</h3>
+          <section className="rounded-3xl border border-emerald-100 bg-white shadow-sm">
+            <div className="px-8 py-6 border-b border-emerald-100 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+                <NotebookPen className="h-5 w-5 text-emerald-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">Notas y observaciones</h3>
             </div>
-            <div className="px-6 py-6">
+            <div className="px-8 py-8">
               <ObservacionesEditor appointmentId={appointment.id} />
             </div>
           </section>
 
-          <section className="bg-white border rounded-lg shadow-sm">
-            <div className="px-6 py-4 border-b flex items-center gap-2">
-              <ClipboardList className="h-5 w-5 text-sky-600" />
-              <h3 className="text-lg font-semibold text-gray-900">Documentos generados en la consulta</h3>
+          <section className="rounded-3xl border border-emerald-100 bg-white shadow-sm">
+            <div className="px-8 py-6 border-b border-emerald-100 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-100">
+                <ClipboardList className="h-5 w-5 text-sky-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">Documentos generados en la consulta</h3>
             </div>
-            <div className="px-6 py-6 space-y-6">
+            <div className="px-8 py-8 space-y-8">
               <div>
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold text-emerald-700 uppercase tracking-wide">Diagnósticos</h4>
@@ -627,15 +646,23 @@ export default function ConsultaDesdeAgendaPage() {
             </div>
           </section>
 
-          <section className="bg-white border rounded-lg shadow-sm">
-            <div className="px-6 py-4 border-b flex items-center gap-2">
-              <History className="h-5 w-5 text-purple-600" />
-              <h3 className="text-lg font-semibold text-gray-900">Últimos encuentros con el paciente</h3>
+          <section className="rounded-3xl border border-emerald-100 bg-white shadow-sm">
+            <div className="px-8 py-6 border-b border-emerald-100 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100">
+                <History className="h-5 w-5 text-purple-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">Últimos encuentros con el paciente</h3>
             </div>
             {relatedAppointments.length === 0 ? (
-              <div className="px-6 py-6 text-sm text-gray-500">No hay registros previos recientes con este paciente.</div>
+              <div className="px-8 py-8 text-center">
+                <div className="text-gray-400 mb-3">
+                  <History className="h-12 w-12 mx-auto" />
+                </div>
+                <p className="text-gray-500 font-medium">No hay registros previos recientes</p>
+                <p className="text-sm text-gray-400 mt-1">Los encuentros anteriores aparecerán aquí</p>
+              </div>
             ) : (
-              <div className="px-6 py-4 space-y-3">
+              <div className="px-8 py-6 space-y-4">
                 {relatedAppointments.map((item) => {
                   const meta = APPOINTMENT_STATUS_META[item.estado]
                   return (
@@ -657,10 +684,13 @@ export default function ConsultaDesdeAgendaPage() {
           </section>
         </div>
 
-        <aside className="space-y-6">
-          <section className="bg-white border rounded-lg shadow-sm">
-            <div className="px-5 py-4 border-b">
-              <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">Datos del paciente</h3>
+        <aside className="space-y-8">
+          <section className="rounded-3xl border border-emerald-100 bg-white shadow-sm">
+            <div className="px-6 py-5 border-b border-emerald-100 flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100">
+                <Stethoscope className="h-4 w-4 text-emerald-600" />
+              </div>
+              <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Datos del paciente</h3>
             </div>
             <div className="px-5 py-5 space-y-4 text-sm text-gray-700">
               <div className="space-y-1">
@@ -677,10 +707,12 @@ export default function ConsultaDesdeAgendaPage() {
             </div>
           </section>
 
-          <section className="bg-white border rounded-lg shadow-sm">
-            <div className="px-5 py-4 border-b flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-              <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">Acciones sobre el turno</h3>
+          <section className="rounded-3xl border border-emerald-100 bg-white shadow-sm">
+            <div className="px-6 py-5 border-b border-emerald-100 flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              </div>
+              <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Acciones sobre el turno</h3>
             </div>
             <div className="px-5 py-5 space-y-3">
               {canFinalize && (
@@ -734,11 +766,14 @@ export default function ConsultaDesdeAgendaPage() {
               <p className="text-xs text-gray-500 leading-relaxed">
                 Estas acciones actualizan la agenda en tiempo real y notifican a otros módulos del sistema.
               </p>
-              {appointment.AppointmentCancellation && (
-                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-3 text-xs text-rose-700">
-                  <p className="font-semibold">Turno cancelado</p>
-                  <p className="mt-1">Motivo: {appointment.AppointmentCancellation.motivo}</p>
-                  <p className="mt-1 text-[11px] opacity-80">
+              {appointment.AppointmentCancellation && appointment.AppointmentCancellation.motivo && (
+                <div className="rounded-2xl border border-rose-200 bg-gradient-to-r from-rose-50 to-rose-100 px-4 py-4 text-sm text-rose-700 shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <XCircle className="h-4 w-4" />
+                    <p className="font-bold">Turno cancelado</p>
+                  </div>
+                  <p className="mb-2"><span className="font-semibold">Motivo:</span> {appointment.AppointmentCancellation.motivo}</p>
+                  <p className="text-xs opacity-80">
                     Registrado por {appointment.AppointmentCancellation.cancelledBy?.name || "-"} · {formatDate(appointment.AppointmentCancellation.cancelledAt, true)}
                   </p>
                 </div>
@@ -746,10 +781,12 @@ export default function ConsultaDesdeAgendaPage() {
             </div>
           </section>
 
-          <section className="bg-white border rounded-lg shadow-sm">
-            <div className="px-5 py-4 border-b flex items-center gap-2">
-              <Pill className="h-5 w-5 text-orange-500" />
-              <h3 className="text-sm font-semibold text-orange-700 uppercase tracking-wide">Medicaciones habituales</h3>
+          <section className="rounded-3xl border border-emerald-100 bg-white shadow-sm">
+            <div className="px-6 py-5 border-b border-emerald-100 flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100">
+                <Pill className="h-4 w-4 text-orange-600" />
+              </div>
+              <h3 className="text-sm font-bold text-orange-700 uppercase tracking-wide">Medicaciones habituales</h3>
             </div>
             {patientMedications.length === 0 ? (
               <div className="px-5 py-5 text-sm text-gray-500">Sin medicación registrada para este paciente.</div>
@@ -773,36 +810,6 @@ export default function ConsultaDesdeAgendaPage() {
                 )}
               </div>
             )}
-          </section>
-
-          <section className="bg-white border rounded-lg shadow-sm">
-            <div className="px-5 py-4 border-b flex items-center gap-2">
-              <FileText className="h-5 w-5 text-emerald-600" />
-              <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">Accesos rápidos</h3>
-            </div>
-            <div className="px-5 py-5 space-y-3 text-sm">
-              <Link
-                href={`/profesional/pacientes?patientId=${appointment.paciente.id}`}
-                className="flex items-center justify-between rounded-md border px-3 py-2 hover:border-emerald-500"
-              >
-                <span>Ficha del paciente</span>
-                <ArrowLeft className="h-4 w-4 rotate-180" />
-              </Link>
-              <Link
-                href={`/profesional/historias-clinicas?patientId=${appointment.paciente.id}`}
-                className="flex items-center justify-between rounded-md border px-3 py-2 hover:border-emerald-500"
-              >
-                <span>Historia clínica</span>
-                <ArrowLeft className="h-4 w-4 rotate-180" />
-              </Link>
-              <Link
-                href="/profesional/consultas"
-                className="flex items-center justify-between rounded-md border px-3 py-2 hover:border-emerald-500"
-              >
-                <span>Ver consultas</span>
-                <ArrowLeft className="h-4 w-4 rotate-180" />
-              </Link>
-            </div>
           </section>
         </aside>
       </div>

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
+import { DatePicker } from '@/components/ui/date-picker'
 import { APPOINTMENT_STATUS_META, getStatusLabel } from '@/lib/appointment-status'
 
 interface Patient {
@@ -1632,37 +1633,42 @@ export default function HistoriasClinicasContent() {
       {/* Modal para cargar resultados */}
       {selectedStudyForResult && (
         <div 
-          className="fixed inset-0 backdrop-blur-sm bg-white/20 flex items-center justify-center z-50"
-          onClick={(e) => e.target === e.currentTarget && setSelectedStudyForResult(null)}
+          className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center z-50"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setSelectedStudyForResult(null)
+            }
+          }}
         >
-          <div className="bg-white rounded-3xl shadow-2xl border border-emerald-100 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="px-8 py-6 border-b border-emerald-100 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-t-3xl flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1">
-                  Cargar resultado
-                </h3>
-                <p className="text-sm text-emerald-700 font-medium">{selectedStudyForResult.estudio}</p>
-              </div>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto border border-gray-100">
+            <div className="px-6 py-5 border-b bg-gradient-to-r from-emerald-50 to-teal-50 rounded-t-2xl flex items-center justify-between">
+              <h3 className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                Cargar resultado: {selectedStudyForResult.estudio}
+              </h3>
               <Button
-                variant="ghost"
                 onClick={() => setSelectedStudyForResult(null)}
-                className="text-gray-400 hover:text-gray-600 hover:bg-white/50 rounded-full h-8 w-8 p-0"
+                variant="ghost"
                 size="sm"
+                className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full"
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
 
-            <form onSubmit={handleStudyResultSubmit} className="p-8 space-y-6">
-              <div className="grid gap-6 md:grid-cols-2">
+            <form onSubmit={handleStudyResultSubmit} className="p-6 space-y-6">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-700">Fecha de realización *</label>
-                  <input
-                    type="date"
-                    value={studyResultForm.fechaRealizacion}
-                    onChange={(e) => setStudyResultForm(prev => ({ ...prev, fechaRealizacion: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
-                    required
+                  <DatePicker
+                    date={studyResultForm.fechaRealizacion ? new Date(studyResultForm.fechaRealizacion) : undefined}
+                    onDateChange={(date) => setStudyResultForm(prev => ({ 
+                      ...prev, 
+                      fechaRealizacion: date ? date.toISOString().split('T')[0] : '' 
+                    }))}
+                    placeholder="Seleccionar fecha"
+                    captionLayout="dropdown"
+                    fromYear={2000}
+                    toYear={new Date().getFullYear()}
                   />
                 </div>
                 
@@ -1673,7 +1679,7 @@ export default function HistoriasClinicasContent() {
                     value={studyResultForm.laboratorio}
                     onChange={(e) => setStudyResultForm(prev => ({ ...prev, laboratorio: e.target.value }))}
                     placeholder="Ej. Laboratorio Central"
-                    className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                    className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                   />
                 </div>
               </div>
@@ -1685,7 +1691,7 @@ export default function HistoriasClinicasContent() {
                   onChange={(e) => setStudyResultForm(prev => ({ ...prev, observaciones: e.target.value }))}
                   placeholder="Observaciones del médico o técnico..."
                   rows={3}
-                  className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all resize-none"
+                  className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors resize-none"
                 />
               </div>
 
@@ -1694,13 +1700,12 @@ export default function HistoriasClinicasContent() {
                   <label className="text-sm font-medium text-gray-700">Resultados *</label>
                   <Button
                     type="button"
-                    variant="outline"
                     onClick={() => setStudyResultForm(prev => ({
                       ...prev,
                       items: [...prev.items, { parametro: '', valor: '', unidad: '', valorReferencia: '', esNormal: null }]
                     }))}
                     size="sm"
-                    className="text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 rounded-xl font-medium shadow-sm hover:shadow-md transition-all"
+                    className="text-xs bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
                   >
                     <Plus className="h-3 w-3 mr-1" />
                     Agregar resultado
@@ -1709,9 +1714,9 @@ export default function HistoriasClinicasContent() {
 
                 <div className="space-y-3">
                   {studyResultForm.items.map((item, index) => (
-                    <div key={index} className="bg-gradient-to-br from-emerald-50 via-white to-teal-50 rounded-2xl p-6 space-y-4 border border-emerald-100 shadow-sm">
+                    <div key={index} className="bg-gray-50 rounded-md p-4 space-y-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm font-semibold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full">Resultado {index + 1}</span>
+                        <span className="text-sm font-medium text-gray-700">Resultado {index + 1}</span>
                         {studyResultForm.items.length > 1 && (
                           <Button
                             type="button"
@@ -1730,7 +1735,7 @@ export default function HistoriasClinicasContent() {
 
                       <div className="grid gap-3 md:grid-cols-2">
                         <div className="space-y-2">
-                          <label className="text-xs font-semibold text-gray-700">Parámetro *</label>
+                          <label className="text-xs font-medium text-gray-600">Parámetro *</label>
                           <input
                             type="text"
                             value={item.parametro}
@@ -1740,13 +1745,13 @@ export default function HistoriasClinicasContent() {
                               setStudyResultForm(prev => ({ ...prev, items: newItems }))
                             }}
                             placeholder="Ej. Hemoglobina, Glucosa"
-                            className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all bg-white"
+                            className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                             required
                           />
                         </div>
 
                         <div className="space-y-2">
-                          <label className="text-xs font-semibold text-gray-700">Valor *</label>
+                          <label className="text-xs font-medium text-gray-600">Valor *</label>
                           <input
                             type="text"
                             value={item.valor}
@@ -1756,13 +1761,13 @@ export default function HistoriasClinicasContent() {
                               setStudyResultForm(prev => ({ ...prev, items: newItems }))
                             }}
                             placeholder="Ej. 12.5, Negativo"
-                            className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all bg-white"
+                            className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                             required
                           />
                         </div>
 
                         <div className="space-y-2">
-                          <label className="text-xs font-semibold text-gray-700">Unidad</label>
+                          <label className="text-xs font-medium text-gray-600">Unidad</label>
                           <input
                             type="text"
                             value={item.unidad || ''}
@@ -1772,12 +1777,12 @@ export default function HistoriasClinicasContent() {
                               setStudyResultForm(prev => ({ ...prev, items: newItems }))
                             }}
                             placeholder="Ej. mg/dl, g/dl"
-                            className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all bg-white"
+                            className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                           />
                         </div>
 
                         <div className="space-y-2">
-                          <label className="text-xs font-semibold text-gray-700">Valor de referencia</label>
+                          <label className="text-xs font-medium text-gray-600">Valor de referencia</label>
                           <input
                             type="text"
                             value={item.valorReferencia || ''}
@@ -1787,56 +1792,40 @@ export default function HistoriasClinicasContent() {
                               setStudyResultForm(prev => ({ ...prev, items: newItems }))
                             }}
                             placeholder="Ej. 12-15 mg/dl"
-                            className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all bg-white"
+                            className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                           />
                         </div>
                       </div>
 
-                      <div className="space-y-3">
-                        <label className="text-xs font-semibold text-gray-700">Estado</label>
-                        <div className="flex gap-4">
-                          <label className="flex items-center cursor-pointer">
-                            <input
-                              type="radio"
-                              name={`esNormal-${index}`}
-                              checked={item.esNormal === true}
-                              onChange={() => {
-                                const newItems = [...studyResultForm.items]
-                                newItems[index] = { ...newItems[index], esNormal: true }
-                                setStudyResultForm(prev => ({ ...prev, items: newItems }))
-                              }}
-                              className="mr-2 text-emerald-600 focus:ring-emerald-500"
-                            />
-                            <span className="text-sm font-medium text-emerald-700 bg-emerald-100 px-2 py-1 rounded-lg">Normal</span>
-                          </label>
-                          <label className="flex items-center cursor-pointer">
-                            <input
-                              type="radio"
-                              name={`esNormal-${index}`}
-                              checked={item.esNormal === false}
-                              onChange={() => {
-                                const newItems = [...studyResultForm.items]
-                                newItems[index] = { ...newItems[index], esNormal: false }
-                                setStudyResultForm(prev => ({ ...prev, items: newItems }))
-                              }}
-                              className="mr-2 text-red-600 focus:ring-red-500"
-                            />
-                            <span className="text-sm font-medium text-red-700 bg-red-100 px-2 py-1 rounded-lg">Alterado</span>
-                          </label>
-                          <label className="flex items-center cursor-pointer">
-                            <input
-                              type="radio"
-                              name={`esNormal-${index}`}
-                              checked={item.esNormal === null}
-                              onChange={() => {
-                                const newItems = [...studyResultForm.items]
-                                newItems[index] = { ...newItems[index], esNormal: null }
-                                setStudyResultForm(prev => ({ ...prev, items: newItems }))
-                              }}
-                              className="mr-2 text-gray-600 focus:ring-gray-500"
-                            />
-                            <span className="text-sm font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded-lg">No especificado</span>
-                          </label>
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium text-gray-600">Estado</label>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { value: true, label: 'Normal', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+                            { value: false, label: 'Alterado', color: 'bg-red-100 text-red-700 border-red-200' },
+                            { value: null, label: 'No especificado', color: 'bg-gray-100 text-gray-700 border-gray-200' }
+                          ].map((option) => (
+                            <label key={String(option.value)} className="cursor-pointer">
+                              <input
+                                type="radio"
+                                name={`esNormal-${index}`}
+                                checked={item.esNormal === option.value}
+                                onChange={() => {
+                                  const newItems = [...studyResultForm.items]
+                                  newItems[index] = { ...newItems[index], esNormal: option.value }
+                                  setStudyResultForm(prev => ({ ...prev, items: newItems }))
+                                }}
+                                className="sr-only"
+                              />
+                              <span className={`inline-block px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                                item.esNormal === option.value 
+                                  ? option.color + ' ring-2 ring-emerald-200' 
+                                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                              }`}>
+                                {option.label}
+                              </span>
+                            </label>
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -1844,19 +1833,19 @@ export default function HistoriasClinicasContent() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-4 pt-6 border-t border-emerald-100">
+              <div className="flex justify-end gap-3 pt-6 border-t">
                 <Button
                   type="button"
-                  variant="outline"
                   onClick={() => setSelectedStudyForResult(null)}
-                  className="border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 px-6 py-2 rounded-xl font-medium shadow-sm hover:shadow-md transition-all"
+                  variant="outline"
+                  className="border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl"
                 >
                   Cancelar
                 </Button>
                 <Button
                   type="submit"
                   disabled={studyResultLoading}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-xl font-medium shadow-sm hover:shadow-md transition-all"
+                  className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
                 >
                   {studyResultLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />

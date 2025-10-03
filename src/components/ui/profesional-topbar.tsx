@@ -2,13 +2,11 @@
 
 import { usePathname } from 'next/navigation'
 import { 
-  Search, 
   Bell, 
   ChevronRight,
   LogOut,
   User,
   Calendar,
-  Home,
   Menu
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -40,9 +38,7 @@ export default function ProfesionalTopbar({ userName, userEmail, onMenuToggle }:
     window.location.href = '/profesional/perfil'
   }
 
-  const handleGoHome = () => {
-    window.location.href = '/'
-  }
+
 
   const handleLogout = async () => {
     try {
@@ -81,30 +77,7 @@ export default function ProfesionalTopbar({ userName, userEmail, onMenuToggle }:
 
         {/* Right section - Search, notifications, user */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Home Button */}
-          <Button 
-            type="button"
-            variant="ghost" 
-            size="sm" 
-            onClick={handleGoHome}
-            className="flex items-center gap-2 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
-            title="Volver al inicio"
-          >
-            <Home className="h-4 w-4" />
-            <span className="hidden lg:inline">Inicio</span>
-          </Button>
 
-          {/* Search */}
-          <div className="relative hidden lg:block">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar pacientes..."
-              className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm 
-                focus:ring-2 focus:ring-emerald-500 focus:border-transparent
-                bg-gray-50 hover:bg-white transition-colors"
-            />
-          </div>
 
           {/* Notifications */}
           <Button variant="ghost" size="icon" className="relative h-9 w-9">

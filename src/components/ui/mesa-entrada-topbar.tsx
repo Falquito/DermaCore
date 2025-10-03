@@ -2,12 +2,10 @@
 
 import { usePathname } from 'next/navigation'
 import { 
-  Search, 
   Bell, 
   ChevronRight,
   LogOut,
   User,
-  Home,
   Menu
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -36,9 +34,7 @@ export default function MesaEntradaTopbar({ userName, userEmail, onMenuToggle }:
     window.location.href = '/mesa-entrada/perfil'
   }
 
-  const handleGoHome = () => {
-    window.location.href = '/'
-  }
+
 
   const handleLogout = async () => {
     try {
@@ -87,28 +83,7 @@ export default function MesaEntradaTopbar({ userName, userEmail, onMenuToggle }:
 
         {/* Search and User Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Home Button */}
-          <Button 
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleGoHome}
-            className="flex items-center gap-2 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
-            title="Volver al inicio"
-          >
-            <Home className="h-4 w-4" />
-            <span className="hidden lg:inline">Inicio</span>
-          </Button>
 
-          {/* Search Bar */}
-          <div className="relative hidden lg:block">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar..."
-              className="w-64 rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-          </div>
 
           {/* Notifications */}
           <Button variant="ghost" size="icon" className="relative h-9 w-9 text-gray-600 hover:text-gray-700">

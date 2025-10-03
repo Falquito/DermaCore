@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { signIn, getCurrentUser, getDefaultPath } from '@/lib/auth'
+import LoginForm from '@/components/LoginForm'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,74 +32,77 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const hasError = !!sp?.error
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4 text-gray-900 relative overflow-hidden"
-    >
-      {/* Blurred background image */}
+    <div className="min-h-screen flex items-center justify-center px-4 py-8 text-gray-900 relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-teal-50">
+      {/* Subtle pattern overlay */}
       <div
-        className="absolute inset-0 w-full h-full"
+        className="absolute inset-0 opacity-30"
         style={{
-          backgroundImage: 'url(/doctor-icon-virtual-screen-health-care-and-medical-on-background-copy-space-free-photo.jpg)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          filter: 'blur(8px)',
-          zIndex: 0,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2310b981' fill-opacity='0.1'%3E%3Cpath d='m36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
         }}
       />
-      {/* Gradient overlay for diffuminated effect */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.7) 100%)',
-          zIndex: 1,
-        }}
-      />
-      <div className="w-full max-w-md flex flex-col bg-white rounded-xl shadow border border-gray-200 px-0 pt-0 pb-0 bg-opacity-90 backdrop-blur-sm relative" style={{zIndex:2}}>
-        {/* Topbar style header */}
-        <div className="bg-emerald-600 rounded-t-xl px-6 py-5 flex flex-col items-center">
-          <h1 className="text-2xl font-bold text-white mb-1">Iniciar sesión</h1>
-          <p className="text-sm text-emerald-100 mb-0">Accede a tu cuenta de CareLink</p>
-        </div>
-        <div className="px-6 pt-6 pb-8">
-          {hasError && (
-            <div className="mb-2 rounded-md bg-red-50 p-3 text-sm text-red-800 border border-red-200 text-center">
-              Credenciales inválidas. Intenta nuevamente.
+      
+      {/* Main content container - más amplio y responsive */}
+      <div className="w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-3xl">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+          {/* Welcome content - visible on larger screens */}
+          <div className="hidden lg:block text-center lg:text-left space-y-6">
+            <div className="space-y-4">
+              <div className="mx-auto lg:mx-0 mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-xl">
+                <svg className="h-10 w-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <h1 className="text-4xl xl:text-5xl font-bold text-gray-900 leading-tight">
+                ¡Bienvenido de vuelta!
+              </h1>
+              <p className="text-lg xl:text-xl text-gray-600 leading-relaxed">
+                Accede a tu cuenta de CareLink y gestiona tu atención médica de manera eficiente
+              </p>
             </div>
-          )}
-          <form action={loginAction} className="flex flex-col items-center">
-            <div className="w-full max-w-sm flex flex-col">
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                className="block w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-gray-900 shadow-sm"
-                placeholder="tu@correo.com"
-              />
+            
+            {/* Features list */}
+            <div className="space-y-4 pt-6">
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0 w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
+                  <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <span className="text-gray-700">Gestión integral de pacientes</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0 w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
+                  <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <span className="text-gray-700">Agenda médica optimizada</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0 w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
+                  <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <span className="text-gray-700">Reportes y estadísticas</span>
+              </div>
             </div>
-            <div className="w-full max-w-sm flex flex-col mt-3">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                className="block w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-gray-900 shadow-sm"
-                placeholder="••••••••"
-              />
+          </div>
+          
+          {/* Login form section */}
+          <div className="w-full">
+            {/* Mobile header */}
+            <div className="text-center mb-8 lg:hidden">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg">
+                <svg className="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">¡Bienvenido de vuelta!</h1>
+              <p className="text-gray-600">Accede a tu cuenta de CareLink</p>
             </div>
-            <button
-              type="submit"
-              className="mt-5 max-w-sm w-full sm:w-auto bg-emerald-600 text-white py-2.5 px-8 rounded-lg hover:bg-emerald-700 transition shadow font-semibold text-base"
-            >
-              Iniciar sesión
-            </button>
-          </form>
-          <div className="mt-4 text-center text-sm text-gray-600">
-            ¿No tienes cuenta?{' '}
-            <a href="/register" className="text-emerald-700 font-medium hover:underline">Crear nueva cuenta</a>
+
+            <LoginForm hasError={hasError} loginAction={loginAction} />
           </div>
         </div>
       </div>

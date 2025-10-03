@@ -6,11 +6,9 @@ import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import {
   Calendar,
-  Settings,
   ChevronLeft,
   ChevronRight,
   UserCheck,
-  ClipboardList,
   Home,
   Stethoscope,
   History as HistoryIcon,
@@ -48,18 +46,6 @@ const menuItems = [
     icon: HistoryIcon,
     href: '/profesional/historias-clinicas',
     description: 'Trayectoria clínica completa',
-  },
-  {
-    title: 'Reportes',
-    icon: ClipboardList,
-    href: '/profesional/reportes',
-    description: 'Indicadores y exportaciones',
-  },
-  {
-    title: 'Configuración',
-    icon: Settings,
-    href: '/profesional/configuracion',
-    description: 'Preferencias personales',
   },
 ]
 

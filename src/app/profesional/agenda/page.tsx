@@ -327,12 +327,10 @@ export default function AgendaPage() {
         <section className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 px-6 py-6 md:px-7 md:py-6 shadow-sm">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-start gap-4">
-              <div className="rounded-2xl bg-emerald-600/90 p-3 text-white shadow-lg">
-                <Calendar className="h-6 w-6" />
-              </div>
               <div>
-                <h1 className="text-2xl font-semibold text-emerald-950">Mi agenda</h1>
-                <p className="mt-0.5 text-sm text-emerald-800/80">{periodLabel}</p>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">Mi agenda</h1>
+                <p className="text-lg text-gray-600">Gestiona tus turnos y consultas programadas desde una vista centralizada</p>
+                <p className="mt-2 text-sm text-emerald-800/80">{periodLabel}</p>
                 <div className="mt-3 flex flex-wrap gap-2.5 text-sm text-emerald-900/90">
                   <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 font-medium shadow-sm backdrop-blur-sm">
                     <Clock className="h-4 w-4 text-emerald-600" />

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { AppointmentStatus } from '@prisma/client'
 import { addDays, startOfDay } from 'date-fns'
-import { Calendar, Clock, ChevronRight, Search, Loader2, AlertCircle, CheckCircle2, Pill, FlaskRound, ClipboardList, Stethoscope, Plus, RefreshCw, X } from 'lucide-react'
+import { Calendar, Clock, ChevronRight, Search, Loader2, AlertCircle, CheckCircle2, Pill, FlaskRound, ClipboardList, Stethoscope, Plus, RefreshCw, X, FileText } from 'lucide-react'
 import { MEDICATIONS_CATALOG, STUDIES_CATALOG } from '@/data/medical-catalog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -890,7 +890,7 @@ export default function ConsultasContent() {
     if (activeTab === 'diagnosticos') {
       return (
         <div className="space-y-6">
-          <form onSubmit={handleDiagnosisSubmit} className="bg-white border rounded-lg p-5 space-y-4 shadow-sm">
+          <form onSubmit={handleDiagnosisSubmit} className="rounded-2xl border border-emerald-200 bg-white/70 backdrop-blur-sm p-6 space-y-4 shadow-sm">
             <div className="flex items-center gap-2">
               <Stethoscope className="h-5 w-5 text-emerald-600" />
               <h3 className="text-lg font-semibold text-gray-900">Registrar diagnóstico</h3>
@@ -944,8 +944,8 @@ export default function ConsultasContent() {
             </div>
           </form>
 
-          <div className="bg-white border rounded-lg shadow-sm">
-            <div className="px-5 py-4 border-b flex items-center justify-between">
+          <div className="rounded-2xl border border-emerald-200 bg-white/70 backdrop-blur-sm shadow-sm">
+            <div className="px-6 py-4 border-b border-emerald-200/50 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Diagnósticos registrados</h3>
               <div className="flex items-center gap-3">
                 <span className="text-sm text-gray-500">{selectedAppointment.diagnoses.length} registro(s)</span>
@@ -995,7 +995,7 @@ export default function ConsultasContent() {
 
       return (
         <div className="space-y-6">
-          <form onSubmit={handlePrescriptionSubmit} className="bg-white border rounded-lg p-5 space-y-5 shadow-sm">
+          <form onSubmit={handlePrescriptionSubmit} className="rounded-2xl border border-sky-200 bg-white p-6 space-y-5 shadow-sm">
             <div className="flex items-center gap-2">
               <Pill className="h-5 w-5 text-sky-600" />
               <h3 className="text-lg font-semibold text-gray-900">Nueva receta</h3>
@@ -1032,7 +1032,7 @@ export default function ConsultasContent() {
                 {prescriptionItems.map((item, index) => {
                   const medicationSuggestions = filterCatalog(MEDICATIONS_CATALOG, item.medicamento)
                   return (
-                    <div key={index} className="border rounded-lg p-4 bg-sky-50/30">
+                    <div key={index} className="border border-sky-200 rounded-xl p-4 bg-sky-50/40">
                       <div className="flex justify-between items-center mb-3">
                         <span className="text-sm font-semibold text-sky-700">Medicamento #{index + 1}</span>
                         {prescriptionItems.length > 1 && (
@@ -1153,8 +1153,8 @@ export default function ConsultasContent() {
             </div>
           </form>
 
-          <div className="bg-white border rounded-lg shadow-sm">
-            <div className="px-5 py-4 border-b flex items-center justify-between">
+          <div className="rounded-2xl border border-emerald-200 bg-white/70 backdrop-blur-sm shadow-sm">
+            <div className="px-6 py-4 border-b border-emerald-200/50 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Recetas generadas</h3>
               <div className="flex items-center gap-3">
                 <span className="text-sm text-gray-500">{selectedAppointment.prescriptions.length} registro(s)</span>
@@ -1211,7 +1211,7 @@ export default function ConsultasContent() {
     if (activeTab === 'estudios') {
       return (
         <div className="space-y-6">
-          <form onSubmit={handleStudySubmit} className="bg-white border rounded-lg p-5 space-y-5 shadow-sm">
+          <form onSubmit={handleStudySubmit} className="rounded-2xl border border-orange-200 bg-white p-6 space-y-5 shadow-sm">
             <div className="flex items-center gap-2">
               <FlaskRound className="h-5 w-5 text-orange-600" />
               <h3 className="text-lg font-semibold text-gray-900">Orden de estudios</h3>
@@ -1221,7 +1221,7 @@ export default function ConsultasContent() {
               {studyItems.map((item, index) => {
                 const studySuggestions = filterCatalog(STUDIES_CATALOG, item.estudio)
                 return (
-                  <div key={index} className="border rounded-lg p-4 bg-orange-50/40">
+                  <div key={index} className="border border-orange-200 rounded-xl p-4 bg-orange-50/40">
                     <div className="flex justify-between items-center mb-3">
                       <span className="text-sm font-semibold text-orange-700">Estudio #{index + 1}</span>
                       {studyItems.length > 1 && (
@@ -1300,8 +1300,8 @@ export default function ConsultasContent() {
             </div>
           </form>
 
-          <div className="bg-white border rounded-lg shadow-sm">
-            <div className="px-5 py-4 border-b flex items-center justify-between">
+          <div className="rounded-2xl border border-emerald-200 bg-white/70 backdrop-blur-sm shadow-sm">
+            <div className="px-6 py-4 border-b border-emerald-200/50 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Órdenes registradas</h3>
               <div className="flex items-center gap-3">
                 <span className="text-sm text-gray-500">{selectedAppointment.studyOrders.length} registro(s)</span>
@@ -1427,12 +1427,16 @@ export default function ConsultasContent() {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <label className="text-sm font-semibold text-gray-700">Fecha de realización *</label>
-                      <input
-                        type="date"
-                        value={studyResultForm.fechaRealizacion}
-                        onChange={(e) => setStudyResultForm(prev => ({ ...prev, fechaRealizacion: e.target.value }))}
-                        className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                        required
+                      <DatePicker
+                        date={studyResultForm.fechaRealizacion ? new Date(studyResultForm.fechaRealizacion) : undefined}
+                        onDateChange={(date) => setStudyResultForm(prev => ({ 
+                          ...prev, 
+                          fechaRealizacion: date ? date.toISOString().split('T')[0] : '' 
+                        }))}
+                        placeholder="Seleccionar fecha"
+                        captionLayout="dropdown"
+                        fromYear={2000}
+                        toYear={new Date().getFullYear()}
                       />
                     </div>
                     
@@ -1443,7 +1447,7 @@ export default function ConsultasContent() {
                         value={studyResultForm.laboratorio}
                         onChange={(e) => setStudyResultForm(prev => ({ ...prev, laboratorio: e.target.value }))}
                         placeholder="Ej. Laboratorio Central"
-                        className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                        className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-emerald-500 transition-colors"
                       />
                     </div>
                   </div>
@@ -1455,7 +1459,7 @@ export default function ConsultasContent() {
                       onChange={(e) => setStudyResultForm(prev => ({ ...prev, observaciones: e.target.value }))}
                       placeholder="Observaciones del médico o técnico..."
                       rows={3}
-                      className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors resize-none"
+                      className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-emerald-500 transition-colors resize-none"
                     />
                   </div>
 
@@ -1508,7 +1512,7 @@ export default function ConsultasContent() {
                                   setStudyResultForm(prev => ({ ...prev, items: newItems }))
                                 }}
                                 placeholder="Ej. Hemoglobina, Glucosa"
-                                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-emerald-500 transition-colors"
                                 required
                               />
                             </div>
@@ -1524,7 +1528,7 @@ export default function ConsultasContent() {
                                   setStudyResultForm(prev => ({ ...prev, items: newItems }))
                                 }}
                                 placeholder="Ej. 12.5, Negativo"
-                                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-emerald-500 transition-colors"
                                 required
                               />
                             </div>
@@ -1540,7 +1544,7 @@ export default function ConsultasContent() {
                                   setStudyResultForm(prev => ({ ...prev, items: newItems }))
                                 }}
                                 placeholder="Ej. mg/dl, g/dl"
-                                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-emerald-500 transition-colors"
                               />
                             </div>
 
@@ -1555,7 +1559,7 @@ export default function ConsultasContent() {
                                   setStudyResultForm(prev => ({ ...prev, items: newItems }))
                                 }}
                                 placeholder="Ej. 12-15 mg/dl"
-                                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-emerald-500 transition-colors"
                               />
                             </div>
                           </div>
@@ -1629,7 +1633,7 @@ export default function ConsultasContent() {
     if (activeTab === 'medicaciones') {
       return (
         <div className="space-y-6">
-          <form onSubmit={handleMedicationSubmit} className="bg-white border rounded-lg p-5 space-y-4 shadow-sm">
+          <form onSubmit={handleMedicationSubmit} className="rounded-2xl border border-emerald-200 bg-white/70 backdrop-blur-sm p-6 space-y-4 shadow-sm">
             <div className="flex items-center gap-2">
               <ClipboardList className="h-5 w-5 text-amber-600" />
               <h3 className="text-lg font-semibold text-gray-900">Medicaciones habituales</h3>
@@ -1708,8 +1712,8 @@ export default function ConsultasContent() {
             </div>
           </form>
 
-          <div className="bg-white border rounded-lg shadow-sm">
-            <div className="px-5 py-4 border-b flex items-center justify-between">
+          <div className="rounded-2xl border border-emerald-200 bg-white/70 backdrop-blur-sm shadow-sm">
+            <div className="px-6 py-4 border-b border-emerald-200/50 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Medicaciones del paciente</h3>
               <div className="flex items-center gap-3">
                 <span className="text-sm text-gray-500">{patientMedications.length} registro(s)</span>
@@ -1762,14 +1766,17 @@ export default function ConsultasContent() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white border rounded-lg shadow-sm p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold text-gray-900">Consultas del profesional</h1>
-            <p className="text-gray-600 text-sm">Gestiona diagnósticos, recetas, estudios y medicación de tus pacientes desde una única vista</p>
+    <div className="space-y-8">
+      <section className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-8 shadow-sm">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Consultas del profesional</h1>
+            <p className="text-lg text-gray-600">Gestiona diagnósticos, recetas, estudios y medicación de tus pacientes desde una única vista</p>
           </div>
-        <div className="flex flex-wrap gap-3">
+        </div>
+        
+        <div className="mt-6 space-y-4">
+          <div className="flex flex-wrap gap-3">
           <div className="flex items-center gap-2">
             <DatePicker
               date={filters.dateFrom}
@@ -1928,14 +1935,15 @@ export default function ConsultasContent() {
                 setFilters((prev) => ({ ...prev, dateFrom: undefined, dateTo: undefined }))
                 setPatientSuggestions([])
               }}
-              className="text-sky-600 hover:underline"
+              className="flex items-center gap-1 px-3 py-1.5 text-sm text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-full border border-emerald-200 hover:border-emerald-300 transition-all duration-200"
             >
+              <X className="h-3 w-3" />
               Limpiar fechas
             </button>
 
           </div>
         </div>
-      </div>
+      </section>
 
       {feedback && (
         <Alert variant={feedback.type === 'error' ? 'destructive' : 'default'}>
@@ -1946,10 +1954,10 @@ export default function ConsultasContent() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-1 space-y-4">
-          <div className="bg-white border rounded-lg shadow-sm">
-            <div className="px-4 py-3 border-b flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">Consultas</h2>
-              <Badge variant="outline" className="text-xs">{totalAppointments} turno(s)</Badge>
+          <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 shadow-sm">
+            <div className="px-6 py-4 border-b border-emerald-200/50 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-emerald-800 uppercase tracking-wide">Consultas</h2>
+              <Badge variant="outline" className="text-xs border-emerald-200 text-emerald-700 bg-emerald-50">{totalAppointments} turno(s)</Badge>
             </div>
             {loadingAppointments ? (
               <div className="py-10 text-center text-sm text-gray-500">
@@ -2028,12 +2036,12 @@ export default function ConsultasContent() {
 
         <div className="lg:col-span-2 space-y-5">
           {!selectedAppointment ? (
-            <div className="bg-white border rounded-lg shadow-sm p-10 text-center text-gray-500">
+            <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 shadow-sm p-10 text-center text-emerald-600">
               Selecciona un turno para comenzar a trabajar
             </div>
           ) : (
             <div className="space-y-5">
-              <div className="bg-white border rounded-lg shadow-sm p-5">
+              <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 shadow-sm p-6">
                 <div className="flex flex-wrap gap-4 sm:items-center sm:justify-between">
                   <div>
                     <div className="text-lg font-semibold text-gray-900">
@@ -2055,9 +2063,10 @@ export default function ConsultasContent() {
                       <Button
                         asChild
                         size="sm"
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                        className="bg-white border-2 border-emerald-500 text-emerald-700 hover:bg-emerald-500 hover:text-white shadow-sm hover:shadow-md transition-all duration-200 rounded-full px-4 font-medium"
                       >
-                        <Link href={`/profesional/agenda/consulta?id=${selectedAppointment.id}`} className="text-white">
+                        <Link href={`/profesional/agenda/consulta?id=${selectedAppointment.id}`} className="flex items-center gap-1">
+                          <Stethoscope className="h-3 w-3" />
                           Detalle de Consulta
                         </Link>
                       </Button>
@@ -2065,9 +2074,10 @@ export default function ConsultasContent() {
                         asChild
                         variant="outline"
                         size="sm"
-                        className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                        className="bg-white border-2 border-slate-300 text-slate-700 hover:bg-slate-500 hover:text-white hover:border-slate-500 transition-all duration-200 rounded-full px-4 font-medium"
                       >
-                        <Link href={`/profesional/historias-clinicas?patientId=${selectedAppointment.paciente.id}`}>
+                        <Link href={`/profesional/historias-clinicas?patientId=${selectedAppointment.paciente.id}`} className="flex items-center gap-1">
+                          <FileText className="h-3 w-3" />
                           Historia clínica
                         </Link>
                       </Button>
@@ -2085,8 +2095,8 @@ export default function ConsultasContent() {
                 </div>
               </div>
 
-              <div className="bg-white border rounded-lg shadow-sm">
-                <div className="flex border-b overflow-x-auto">
+              <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 shadow-sm">
+                <div className="flex border-b border-emerald-200/50 overflow-x-auto">
                   {Tabs.map((tab) => {
                     const tabLabels: Record<(typeof Tabs)[number], string> = {
                       diagnosticos: 'Diagnósticos',
@@ -2098,7 +2108,7 @@ export default function ConsultasContent() {
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`px-5 py-3 text-sm font-medium transition whitespace-nowrap ${activeTab === tab ? 'text-sky-600 border-b-2 border-sky-500 bg-sky-50/40' : 'text-gray-600 hover:text-sky-600'}`}
+                        className={`px-5 py-3 text-sm font-medium transition whitespace-nowrap ${activeTab === tab ? 'text-emerald-700 border-b-2 border-emerald-500 bg-emerald-100/60' : 'text-gray-600 hover:text-emerald-600'}`}
                       >
                         {tabLabels[tab]}
                       </button>
