@@ -66,7 +66,7 @@ async function main() {
     obrasSocialesCreadas.push(obraSocial)
   }
 
-  // Crear usuarios profesionales más extensos
+  // Crear usuarios profesionales más extensos (reducido a la mitad)
   console.log('👨‍⚕️ Creando profesionales...')
   const profesionales = [
     { email: 'ana.cardiologa@carelink.com', name: 'Ana María', apellido: 'González', dni: '12345678', telefono: '11-4123-4567', especialidad: 'Cardiología' },
@@ -74,13 +74,7 @@ async function main() {
     { email: 'maria.pediatra@carelink.com', name: 'María José', apellido: 'Rodríguez', dni: '34567890', telefono: '11-4345-6789', especialidad: 'Pediatría' },
     { email: 'carlos.traumatologo@carelink.com', name: 'Carlos Alberto', apellido: 'López', dni: '45678901', telefono: '11-4456-7890', especialidad: 'Traumatología' },
     { email: 'sofia.ginecologa@carelink.com', name: 'Sofía Elena', apellido: 'Fernández', dni: '56789012', telefono: '11-4567-8901', especialidad: 'Ginecología' },
-    { email: 'diego.neurologo@carelink.com', name: 'Diego Andrés', apellido: 'García', dni: '67890123', telefono: '11-4678-9012', especialidad: 'Neurología' },
-    { email: 'laura.oftalmologa@carelink.com', name: 'Laura Beatriz', apellido: 'Sánchez', dni: '78901234', telefono: '11-4789-0123', especialidad: 'Oftalmología' },
-    { email: 'roberto.otorrino@carelink.com', name: 'Roberto Carlos', apellido: 'Díaz', dni: '89012345', telefono: '11-4890-1234', especialidad: 'Otorrinolaringología' },
-    { email: 'elena.psiquiatra@carelink.com', name: 'Elena Victoria', apellido: 'Torres', dni: '90123456', telefono: '11-4901-2345', especialidad: 'Psiquiatría' },
-    { email: 'juan.medico.general@carelink.com', name: 'Juan Pablo', apellido: 'Morales', dni: '01234567', telefono: '11-4012-3456', especialidad: 'Medicina General' },
-    { email: 'patricia.gastro@carelink.com', name: 'Patricia Inés', apellido: 'Vega', dni: '11234568', telefono: '11-4123-4568', especialidad: 'Gastroenterología' },
-    { email: 'fernando.endocrino@carelink.com', name: 'Fernando José', apellido: 'Silva', dni: '21345679', telefono: '11-4234-5679', especialidad: 'Endocrinología' }
+    { email: 'juan.medico.general@carelink.com', name: 'Juan Pablo', apellido: 'Morales', dni: '01234567', telefono: '11-4012-3456', especialidad: 'Medicina General' }
   ]
 
   // Crear usuarios base (mantener los existentes)
@@ -294,9 +288,8 @@ async function main() {
     DayOfWeek.SABADO
   ]
 
-  const duracionesPosibles = [30, 45, 60]
-  const duracionMinima = Math.min(...duracionesPosibles)
-  const intervaloMinutos = 15
+  const duracionMinima = 30
+  const intervaloMinutos = 30 // Turnos solo pueden empezar en punto o media hora
 
   function getDayOfWeekEnum(date: Date): DayOfWeek {
     return dayOfWeekMap[date.getDay()]
@@ -325,32 +318,35 @@ async function main() {
     finDia: number,
     intervalosOcupados: Array<{ start: number; end: number }>
   ): { duracion: number; fin: number } | null {
-    const duracionesDisponibles = duracionesPosibles.filter(duracion => inicio + duracion <= finDia)
-    if (!duracionesDisponibles.length) {
-      return null
-    }
-
-    for (const duracion of shuffle(duracionesDisponibles)) {
-      const fin = inicio + duracion
-      if (!haySolapamiento(intervalosOcupados, inicio, fin)) {
+    // Solo turnos de 30 minutos que empiecen en punto o media hora
+    const duracion = 30
+    
+    // Buscar slots disponibles cada 30 minutos (en punto y media hora)
+    for (let horario = inicio; horario + duracion <= finDia; horario += 30) {
+      // Verificar que el horario esté en punto o media hora
+      const minutos = horario % 60
+      if (minutos !== 0 && minutos !== 30) continue
+      
+      const fin = horario + duracion
+      if (!haySolapamiento(intervalosOcupados, horario, fin)) {
         return { duracion, fin }
       }
     }
-
     return null
   }
 
   const particularObraSocial = obrasSocialesCreadas.find(os => os.nombre === 'Particular')
 
   const pastDays = 30
-  const futureGapDays = 7
   const futureDays = 60
 
   const dayOffsets: number[] = []
+  // Turnos pasados
   for (let offset = 1; offset <= pastDays; offset++) {
     dayOffsets.push(-offset)
   }
-  for (let offset = futureGapDays + 1; offset <= futureGapDays + futureDays; offset++) {
+  // Turnos futuros (incluyendo esta semana)
+  for (let offset = 1; offset <= futureDays; offset++) {
     dayOffsets.push(offset)
   }
 
@@ -418,8 +414,14 @@ async function main() {
         continue
       }
 
-      const inicioJornada = timeStringToMinutes(horarioDelDia.startTime)
+      let inicioJornada = timeStringToMinutes(horarioDelDia.startTime)
       const finJornada = timeStringToMinutes(horarioDelDia.endTime)
+
+      // Para esta semana (offset >= 0 y <= 7), los turnos deben ser después de las 16:00
+      if (offset >= 0 && offset <= 7) {
+        const minimoHorario = 16 * 60 // 16:00 en minutos
+        inicioJornada = Math.max(inicioJornada, minimoHorario)
+      }
 
       if (finJornada - inicioJornada < duracionMinima) {
         continue
@@ -460,17 +462,20 @@ async function main() {
 
         const pacienteAleatorio = pacientesCreados[Math.floor(Math.random() * pacientesCreados.length)]
 
-        // Determinar estado atendiendo a la lógica requerida
+        // Determinar estado respetando reglas de consistencia
         let estado: AppointmentStatus
         const randomEstado = Math.random()
 
         if (fechaTurno < inicioDeHoy) {
+          // Turnos pasados solo pueden estar COMPLETADO, CANCELADO o NO_ASISTIO
           if (randomEstado < 0.7) estado = AppointmentStatus.COMPLETADO
           else if (randomEstado < 0.9) estado = AppointmentStatus.CANCELADO
           else estado = AppointmentStatus.NO_ASISTIO
         } else {
-          if (randomEstado < 0.65) estado = AppointmentStatus.PROGRAMADO
-          else if (randomEstado < 0.9) estado = AppointmentStatus.CONFIRMADO
+          // Turnos futuros NO pueden estar COMPLETADO
+          if (randomEstado < 0.4) estado = AppointmentStatus.PROGRAMADO
+          else if (randomEstado < 0.7) estado = AppointmentStatus.CONFIRMADO
+          else if (randomEstado < 0.85) estado = AppointmentStatus.EN_SALA_DE_ESPERA
           else estado = AppointmentStatus.CANCELADO
         }
 
