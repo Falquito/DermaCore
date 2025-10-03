@@ -6,7 +6,6 @@ import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import {
   Calendar,
-  Users,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -43,12 +42,6 @@ const menuItems = [
     icon: Stethoscope,
     href: '/profesional/consultas',
     description: 'Documentar diagnósticos y evoluciones',
-  },
-  {
-    title: 'Pacientes',
-    icon: Users,
-    href: '/profesional/pacientes',
-    description: 'Fichas, medicaciones y contactos',
   },
   {
     title: 'Historias clínicas',

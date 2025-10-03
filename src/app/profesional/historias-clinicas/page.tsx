@@ -8,8 +8,8 @@ export default async function HistoriasClinicasPage() {
   if (!user.roles.includes('PROFESIONAL')) redirect('/error')
 
   return (
-    <div className="p-6">
+    <main className="w-full px-6 py-6 lg:px-10">
       <HistoriasClinicasContent />
-    </div>
+    </main>
   )
 }
