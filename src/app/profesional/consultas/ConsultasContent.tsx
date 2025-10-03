@@ -54,11 +54,40 @@ interface Prescription {
   diagnoses: PrescriptionDiagnosisLink[]
 }
 
+interface StudyResultItem {
+  id: string
+  studyResultId: string
+  parametro: string
+  valor: string
+  unidad: string | null
+  valorReferencia: string | null
+  esNormal: boolean | null
+}
+
+interface StudyResult {
+  id: string
+  studyOrderItemId: string
+  fechaRealizacion: string
+  laboratorio: string | null
+  observaciones: string | null
+  createdAt: string
+  updatedAt: string
+  uploadedBy: {
+    name: string | null
+    apellido: string | null
+  }
+  items: StudyResultItem[]
+}
+
+type StudyStatus = 'ORDENADO' | 'COMPLETADO'
+
 interface StudyOrderItem {
   id: string
   orderId: string
   estudio: string
   indicaciones: string | null
+  estado: StudyStatus
+  result: StudyResult | null
 }
 
 interface StudyOrder {
@@ -192,6 +221,49 @@ const filterCatalog = (items: string[], term: string) => {
     .slice(0, 8)
 }
 
+// Componente de paginación pequeño para las secciones
+interface MiniPaginationProps {
+  currentPage: number
+  totalItems: number  
+  itemsPerPage: number
+  onPageChange: (page: number) => void
+  className?: string
+}
+
+const MiniPagination = ({ currentPage, totalItems, itemsPerPage, onPageChange, className = '' }: MiniPaginationProps) => {
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
+  
+  if (totalPages <= 1) return null
+  
+  return (
+    <div className={`flex items-center gap-2 text-xs bg-gray-50 rounded-md px-2 py-1 ${className}`}>
+      <span className="text-gray-600 font-medium">
+        {totalItems > 0 ? currentPage : 0} de {totalPages}
+      </span>
+      <div className="flex gap-1">
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage <= 1}
+          className="w-6 h-6 flex items-center justify-center rounded text-gray-600 hover:text-gray-800 hover:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
+          type="button"
+          aria-label="Página anterior"
+        >
+          ←
+        </button>
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage >= totalPages}
+          className="w-6 h-6 flex items-center justify-center rounded text-gray-600 hover:text-gray-800 hover:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
+          type="button"
+          aria-label="Página siguiente"
+        >
+          →
+        </button>
+      </div>
+    </div>
+  )
+}
+
 const Tabs = ['diagnosticos', 'prescripciones', 'estudios', 'medicaciones'] as const
 const DEFAULT_PAGE_SIZE = 20
 
@@ -236,13 +308,29 @@ export default function ConsultasContent() {
   const [studyNotes, setStudyNotes] = useState('')
   const [studyLoading, setStudyLoading] = useState(false)
 
+  // Estados para resultados de estudios
+  const [selectedStudyForResult, setSelectedStudyForResult] = useState<StudyOrderItem | null>(null)
+  const [studyResultForm, setStudyResultForm] = useState({
+    fechaRealizacion: '',
+    laboratorio: '',
+    observaciones: '',
+    items: [{ parametro: '', valor: '', unidad: '', valorReferencia: '', esNormal: null as boolean | null }]
+  })
+  const [studyResultLoading, setStudyResultLoading] = useState(false)
+
   const [patientMedications, setPatientMedications] = useState<PatientMedication[]>([])
   const [patientMedicationsLoading, setPatientMedicationsLoading] = useState(false)
   const [patientMedicationForm, setPatientMedicationForm] = useState(emptyPatientMedicationForm)
   const [patientMedicationLoading, setPatientMedicationLoading] = useState(false)
 
+  // Estados de paginación independientes
+  const [diagnosesPage, setDiagnosesPage] = useState(1)
+  const [prescriptionsPage, setPrescriptionsPage] = useState(1)
+  const [studyOrdersPage, setStudyOrdersPage] = useState(1)
+  const [medicationsPage, setMedicationsPage] = useState(1)
+  const itemsPerPage = 1 // 1 elemento por página según requerimiento
+
   const [refreshTicker, setRefreshTicker] = useState(0)
-  const [onlyMine, setOnlyMine] = useState(true)
 
   const selectedAppointment = useMemo(
     () => appointments.find((appointment) => appointment.id === selectedAppointmentId) ?? null,
@@ -271,7 +359,7 @@ export default function ConsultasContent() {
         const norm = filters.patient.normalize('NFD').replace(/\p{Diacritic}/gu, '')
         params.set('patientNorm', norm)
       }
-      params.set('onlyMine', String(onlyMine))
+      params.set('onlyMine', 'true')
       params.set('limit', String(pageSize))
       params.set('page', String(page))
 
@@ -334,7 +422,7 @@ export default function ConsultasContent() {
   useEffect(() => {
     loadAppointments()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.dateFrom, filters.dateTo, filters.status, filters.patient, patientFilterId, refreshTicker, page, pageSize, onlyMine])
+  }, [filters.dateFrom, filters.dateTo, filters.status, filters.patient, patientFilterId, refreshTicker, page, pageSize])
 
   // Si cambia el patientId en la URL y no coincide con el estado local, sincronizar.
   useEffect(() => {
@@ -448,6 +536,11 @@ export default function ConsultasContent() {
     setStudyItems([emptyStudyForm])
     setStudyNotes('')
     setFeedback(null)
+    // Resetear todas las paginaciones al cambiar de turno
+    setDiagnosesPage(1)
+    setPrescriptionsPage(1)
+    setStudyOrdersPage(1)
+    setMedicationsPage(1)
   }
 
   const resetToFirstPage = () => {
@@ -521,6 +614,8 @@ export default function ConsultasContent() {
       setDiagnosisForm(emptyDiagnosisForm)
       setSelectedDiagnosisIds((prev) => [data.diagnosis.id, ...prev])
       setFeedback({ type: 'success', message: data.message })
+      // Navegar a la primera página donde está el nuevo diagnóstico
+      setDiagnosesPage(1)
     } catch (error) {
       console.error(error)
       setFeedback({ type: 'error', message: error instanceof Error ? error.message : 'Error al registrar el diagnóstico' })
@@ -580,6 +675,8 @@ export default function ConsultasContent() {
       setPrescriptionItems([emptyMedicationForm])
       setPrescriptionNotes('')
       setFeedback({ type: 'success', message: data.message })
+      // Navegar a la primera página donde está la nueva receta
+      setPrescriptionsPage(1)
     } catch (error) {
       console.error(error)
       setFeedback({ type: 'error', message: error instanceof Error ? error.message : 'Error al registrar la receta' })
@@ -630,11 +727,90 @@ export default function ConsultasContent() {
       setStudyItems([emptyStudyForm])
       setStudyNotes('')
       setFeedback({ type: 'success', message: data.message })
+      // Navegar a la primera página donde está la nueva orden
+      setStudyOrdersPage(1)
     } catch (error) {
       console.error(error)
       setFeedback({ type: 'error', message: error instanceof Error ? error.message : 'Error al registrar la orden de estudios' })
     } finally {
       setStudyLoading(false)
+    }
+  }
+
+  const handleStudyResultSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!selectedStudyForResult) return
+
+    const { fechaRealizacion, laboratorio, observaciones, items } = studyResultForm
+    
+    if (!fechaRealizacion) {
+      setFeedback({ type: 'error', message: 'La fecha de realización es obligatoria' })
+      return
+    }
+
+    const validItems = items.filter(item => item.parametro.trim() && item.valor.trim())
+    if (validItems.length === 0) {
+      setFeedback({ type: 'error', message: 'Debe agregar al menos un resultado' })
+      return
+    }
+
+    try {
+      setStudyResultLoading(true)
+      const response = await fetch('/api/professional/study-results', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studyOrderItemId: selectedStudyForResult.id,
+          fechaRealizacion: new Date(fechaRealizacion).toISOString(),
+          laboratorio: laboratorio.trim() || undefined,
+          observaciones: observaciones.trim() || undefined,
+          items: validItems.map(item => ({
+            parametro: item.parametro.trim(),
+            valor: item.valor.trim(),
+            unidad: item.unidad?.trim() || undefined,
+            valorReferencia: item.valorReferencia?.trim() || undefined,
+            esNormal: item.esNormal === null ? undefined : item.esNormal,
+          })),
+        }),
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudo registrar el resultado del estudio')
+      }
+
+      // Actualizar el appointment con el nuevo resultado
+      setAppointments(prev => prev.map(appointment => {
+        if (appointment.id === selectedAppointment?.id) {
+          return {
+            ...appointment,
+            studyOrders: appointment.studyOrders.map(order => ({
+              ...order,
+              items: order.items.map(item => 
+                item.id === selectedStudyForResult.id
+                  ? { ...item, estado: 'COMPLETADO' as StudyStatus, result: data.studyResult }
+                  : item
+              )
+            }))
+          }
+        }
+        return appointment
+      }))
+
+      // Limpiar formulario
+      setSelectedStudyForResult(null)
+      setStudyResultForm({
+        fechaRealizacion: '',
+        laboratorio: '',
+        observaciones: '',
+        items: [{ parametro: '', valor: '', unidad: '', valorReferencia: '', esNormal: null }]
+      })
+      setFeedback({ type: 'success', message: data.message })
+    } catch (error) {
+      console.error(error)
+      setFeedback({ type: 'error', message: error instanceof Error ? error.message : 'Error al registrar el resultado del estudio' })
+    } finally {
+      setStudyResultLoading(false)
     }
   }
 
@@ -672,6 +848,8 @@ export default function ConsultasContent() {
       setPatientMedications((prev) => [data.medication, ...prev])
       setPatientMedicationForm(emptyPatientMedicationForm)
       setFeedback({ type: 'success', message: data.message })
+      // Navegar a la primera página donde está la nueva medicación
+      setMedicationsPage(1)
     } catch (error) {
       console.error(error)
       setFeedback({ type: 'error', message: error instanceof Error ? error.message : 'Error al registrar la medicación habitual' })
@@ -769,7 +947,15 @@ export default function ConsultasContent() {
           <div className="bg-white border rounded-lg shadow-sm">
             <div className="px-5 py-4 border-b flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Diagnósticos registrados</h3>
-              <span className="text-sm text-gray-500">{selectedAppointment.diagnoses.length} registro(s)</span>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-500">{selectedAppointment.diagnoses.length} registro(s)</span>
+                <MiniPagination
+                  currentPage={diagnosesPage}
+                  totalItems={selectedAppointment.diagnoses.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setDiagnosesPage}
+                />
+              </div>
             </div>
             {selectedAppointment.diagnoses.length === 0 ? (
               <div className="px-5 py-8 text-center text-gray-500 text-sm">
@@ -777,24 +963,26 @@ export default function ConsultasContent() {
               </div>
             ) : (
               <div className="divide-y">
-                {selectedAppointment.diagnoses.map((diagnosis) => (
-                  <div key={diagnosis.id} className="px-5 py-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="font-semibold text-gray-900">{diagnosis.principal}</div>
-                        {diagnosis.secundarios?.length > 0 && (
-                          <div className="mt-2 text-sm text-gray-600">
-                            <span className="font-medium text-gray-700">Secundarios:</span> {diagnosis.secundarios.join('; ')}
-                          </div>
-                        )}
-                        {diagnosis.notas && (
-                          <div className="mt-2 text-sm text-gray-600">{diagnosis.notas}</div>
-                        )}
+                {selectedAppointment.diagnoses
+                  .slice((diagnosesPage - 1) * itemsPerPage, diagnosesPage * itemsPerPage)
+                  .map((diagnosis) => (
+                    <div key={diagnosis.id} className="px-5 py-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-semibold text-gray-900">{diagnosis.principal}</div>
+                          {diagnosis.secundarios?.length > 0 && (
+                            <div className="mt-2 text-sm text-gray-600">
+                              <span className="font-medium text-gray-700">Secundarios:</span> {diagnosis.secundarios.join('; ')}
+                            </div>
+                          )}
+                          {diagnosis.notas && (
+                            <div className="mt-2 text-sm text-gray-600">{diagnosis.notas}</div>
+                          )}
+                        </div>
+                        <Badge className="bg-gray-100 text-gray-700">{formatDate(diagnosis.createdAt)}</Badge>
                       </div>
-                      <Badge className="bg-gray-100 text-gray-700">{formatDate(diagnosis.createdAt)}</Badge>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             )}
           </div>
@@ -968,7 +1156,15 @@ export default function ConsultasContent() {
           <div className="bg-white border rounded-lg shadow-sm">
             <div className="px-5 py-4 border-b flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Recetas generadas</h3>
-              <span className="text-sm text-gray-500">{selectedAppointment.prescriptions.length} registro(s)</span>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-500">{selectedAppointment.prescriptions.length} registro(s)</span>
+                <MiniPagination
+                  currentPage={prescriptionsPage}
+                  totalItems={selectedAppointment.prescriptions.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setPrescriptionsPage}
+                />
+              </div>
             </div>
             {selectedAppointment.prescriptions.length === 0 ? (
               <div className="px-5 py-8 text-center text-gray-500 text-sm">
@@ -976,33 +1172,35 @@ export default function ConsultasContent() {
               </div>
             ) : (
               <div className="divide-y">
-                {selectedAppointment.prescriptions.map((prescription) => (
-                  <div key={prescription.id} className="px-5 py-4 space-y-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="text-sm text-gray-600">Emitida el {formatDate(prescription.createdAt)}</div>
-                        {prescription.diagnoses.length > 0 && (
-                          <div className="mt-1 text-sm text-gray-700">
-                            <span className="font-medium text-gray-800">Diagnósticos:</span> {prescription.diagnoses.map((link) => link.diagnosis.principal).join('; ')}
-                          </div>
-                        )}
-                      </div>
-                      <Badge className="bg-sky-100 text-sky-700">{prescription.items.length} medicamento(s)</Badge>
-                    </div>
-                    <div className="bg-sky-50 rounded-lg p-4 space-y-2">
-                      {prescription.items.map((item) => (
-                        <div key={item.id} className="text-sm text-gray-700">
-                          <div className="font-semibold text-gray-900">{item.medicamento}</div>
-                          <div>Dosis: {item.dosis} • Frecuencia: {item.frecuencia} • Duración: {item.duracion}</div>
-                          {item.indicaciones && <div className="text-gray-600 mt-1">{item.indicaciones}</div>}
+                {selectedAppointment.prescriptions
+                  .slice((prescriptionsPage - 1) * itemsPerPage, prescriptionsPage * itemsPerPage)
+                  .map((prescription) => (
+                    <div key={prescription.id} className="px-5 py-4 space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="text-sm text-gray-600">Emitida el {formatDate(prescription.createdAt)}</div>
+                          {prescription.diagnoses.length > 0 && (
+                            <div className="mt-1 text-sm text-gray-700">
+                              <span className="font-medium text-gray-800">Diagnósticos:</span> {prescription.diagnoses.map((link) => link.diagnosis.principal).join('; ')}
+                            </div>
+                          )}
                         </div>
-                      ))}
+                        <Badge className="bg-sky-100 text-sky-700">{prescription.items.length} medicamento(s)</Badge>
+                      </div>
+                      <div className="bg-sky-50 rounded-lg p-4 space-y-2">
+                        {prescription.items.map((item) => (
+                          <div key={item.id} className="text-sm text-gray-700">
+                            <div className="font-semibold text-gray-900">{item.medicamento}</div>
+                            <div>Dosis: {item.dosis} • Frecuencia: {item.frecuencia} • Duración: {item.duracion}</div>
+                            {item.indicaciones && <div className="text-gray-600 mt-1">{item.indicaciones}</div>}
+                          </div>
+                        ))}
+                      </div>
+                      {prescription.notas && (
+                        <div className="text-sm text-gray-600 bg-sky-50 rounded-md p-3">{prescription.notas}</div>
+                      )}
                     </div>
-                    {prescription.notas && (
-                      <div className="text-sm text-gray-600 bg-sky-50 rounded-md p-3">{prescription.notas}</div>
-                    )}
-                  </div>
-                ))}
+                  ))}
               </div>
             )}
           </div>
@@ -1105,7 +1303,15 @@ export default function ConsultasContent() {
           <div className="bg-white border rounded-lg shadow-sm">
             <div className="px-5 py-4 border-b flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Órdenes registradas</h3>
-              <span className="text-sm text-gray-500">{selectedAppointment.studyOrders.length} registro(s)</span>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-500">{selectedAppointment.studyOrders.length} registro(s)</span>
+                <MiniPagination
+                  currentPage={studyOrdersPage}
+                  totalItems={selectedAppointment.studyOrders.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setStudyOrdersPage}
+                />
+              </div>
             </div>
             {selectedAppointment.studyOrders.length === 0 ? (
               <div className="px-5 py-8 text-center text-gray-500 text-sm">
@@ -1113,7 +1319,9 @@ export default function ConsultasContent() {
               </div>
             ) : (
               <div className="divide-y">
-                {selectedAppointment.studyOrders.map((order) => (
+                {selectedAppointment.studyOrders
+                  .slice((studyOrdersPage - 1) * itemsPerPage, studyOrdersPage * itemsPerPage)
+                  .map((order) => (
                   <div key={order.id} className="px-5 py-4 space-y-3">
                     <div className="flex justify-between items-start">
                       <div className="text-sm text-gray-600">Emitida el {formatDate(order.createdAt)}</div>
@@ -1121,9 +1329,63 @@ export default function ConsultasContent() {
                     </div>
                     <ul className="space-y-2">
                       {order.items.map((item) => (
-                        <li key={item.id} className="bg-orange-50 rounded-md p-3 text-sm text-gray-700">
-                          <div className="font-semibold text-gray-900">{item.estudio}</div>
+                        <li key={item.id} className="bg-orange-50 rounded-md p-3 text-sm">
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="font-semibold text-gray-900">{item.estudio}</div>
+                            <div className="flex items-center gap-2">
+                              <Badge 
+                                className={
+                                  item.estado === 'COMPLETADO'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-yellow-100 text-yellow-800'
+                                }
+                              >
+                                {item.estado === 'COMPLETADO' ? 'Completado' : 'Pendiente'}
+                              </Badge>
+                              {item.estado === 'ORDENADO' && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => setSelectedStudyForResult(item)}
+                                  className="text-xs bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
+                                >
+                                  <Plus className="h-3 w-3 mr-1" />
+                                  Cargar resultado
+                                </Button>
+                              )}
+                            </div>
+                          </div>
                           {item.indicaciones && <div className="text-gray-600 mt-1">{item.indicaciones}</div>}
+                          
+                          {/* Mostrar resultado si existe */}
+                          {item.result && (
+                            <div className="mt-3 bg-white rounded-md p-3 border border-green-200">
+                              <div className="text-xs text-green-700 font-medium mb-2">
+                                Resultado - {formatDate(item.result.fechaRealizacion)}
+                                {item.result.laboratorio && ` - ${item.result.laboratorio}`}
+                              </div>
+                              <div className="space-y-1">
+                                {item.result.items.map((resultItem) => (
+                                  <div key={resultItem.id} className="text-xs text-gray-700 flex justify-between">
+                                    <span>{resultItem.parametro}: <strong>{resultItem.valor}</strong> {resultItem.unidad}</span>
+                                    {resultItem.esNormal !== null && (
+                                      <Badge 
+                                        className={
+                                          resultItem.esNormal 
+                                            ? 'bg-green-100 text-green-700 text-xs' 
+                                            : 'bg-red-100 text-red-700 text-xs'
+                                        }
+                                      >
+                                        {resultItem.esNormal ? 'Normal' : 'Alterado'}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                              {item.result.observaciones && (
+                                <div className="text-xs text-gray-600 mt-2 italic">{item.result.observaciones}</div>
+                              )}
+                            </div>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -1135,6 +1397,231 @@ export default function ConsultasContent() {
               </div>
             )}
           </div>
+
+          {/* Modal para cargar resultados */}
+          {selectedStudyForResult && (
+            <div 
+              className="fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center z-50"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) {
+                  setSelectedStudyForResult(null)
+                }
+              }}
+            >
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto border border-gray-100">
+                <div className="px-6 py-5 border-b bg-gradient-to-r from-emerald-50 to-teal-50 rounded-t-2xl flex items-center justify-between">
+                  <h3 className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                    Cargar resultado: {selectedStudyForResult.estudio}
+                  </h3>
+                  <Button
+                    onClick={() => setSelectedStudyForResult(null)}
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <form onSubmit={handleStudyResultSubmit} className="p-6 space-y-6">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-gray-700">Fecha de realización *</label>
+                      <input
+                        type="date"
+                        value={studyResultForm.fechaRealizacion}
+                        onChange={(e) => setStudyResultForm(prev => ({ ...prev, fechaRealizacion: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-gray-700">Laboratorio/Centro</label>
+                      <input
+                        type="text"
+                        value={studyResultForm.laboratorio}
+                        onChange={(e) => setStudyResultForm(prev => ({ ...prev, laboratorio: e.target.value }))}
+                        placeholder="Ej. Laboratorio Central"
+                        className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-gray-700">Observaciones generales</label>
+                    <textarea
+                      value={studyResultForm.observaciones}
+                      onChange={(e) => setStudyResultForm(prev => ({ ...prev, observaciones: e.target.value }))}
+                      placeholder="Observaciones del médico o técnico..."
+                      rows={3}
+                      className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors resize-none"
+                    />
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-gray-700">Resultados *</label>
+                      <Button
+                        type="button"
+                        onClick={() => setStudyResultForm(prev => ({
+                          ...prev,
+                          items: [...prev.items, { parametro: '', valor: '', unidad: '', valorReferencia: '', esNormal: null }]
+                        }))}
+                        size="sm"
+                        className="text-xs bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Agregar resultado
+                      </Button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {studyResultForm.items.map((item, index) => (
+                        <div key={index} className="bg-gray-50 rounded-md p-4 space-y-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium text-gray-700">Resultado {index + 1}</span>
+                            {studyResultForm.items.length > 1 && (
+                              <Button
+                                type="button"
+                                onClick={() => setStudyResultForm(prev => ({
+                                  ...prev,
+                                  items: prev.items.filter((_, i) => i !== index)
+                                }))}
+                                size="sm"
+                                className="text-red-600 hover:text-red-800 bg-transparent hover:bg-red-50"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <div className="space-y-2">
+                              <label className="text-xs font-medium text-gray-600">Parámetro *</label>
+                              <input
+                                type="text"
+                                value={item.parametro}
+                                onChange={(e) => {
+                                  const newItems = [...studyResultForm.items]
+                                  newItems[index] = { ...newItems[index], parametro: e.target.value }
+                                  setStudyResultForm(prev => ({ ...prev, items: newItems }))
+                                }}
+                                placeholder="Ej. Hemoglobina, Glucosa"
+                                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                                required
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="text-xs font-medium text-gray-600">Valor *</label>
+                              <input
+                                type="text"
+                                value={item.valor}
+                                onChange={(e) => {
+                                  const newItems = [...studyResultForm.items]
+                                  newItems[index] = { ...newItems[index], valor: e.target.value }
+                                  setStudyResultForm(prev => ({ ...prev, items: newItems }))
+                                }}
+                                placeholder="Ej. 12.5, Negativo"
+                                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                                required
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="text-xs font-medium text-gray-600">Unidad</label>
+                              <input
+                                type="text"
+                                value={item.unidad || ''}
+                                onChange={(e) => {
+                                  const newItems = [...studyResultForm.items]
+                                  newItems[index] = { ...newItems[index], unidad: e.target.value }
+                                  setStudyResultForm(prev => ({ ...prev, items: newItems }))
+                                }}
+                                placeholder="Ej. mg/dl, g/dl"
+                                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="text-xs font-medium text-gray-600">Valor de referencia</label>
+                              <input
+                                type="text"
+                                value={item.valorReferencia || ''}
+                                onChange={(e) => {
+                                  const newItems = [...studyResultForm.items]
+                                  newItems[index] = { ...newItems[index], valorReferencia: e.target.value }
+                                  setStudyResultForm(prev => ({ ...prev, items: newItems }))
+                                }}
+                                placeholder="Ej. 12-15 mg/dl"
+                                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium text-gray-600">Estado</label>
+                            <div className="flex flex-wrap gap-2">
+                              {[
+                                { value: true, label: 'Normal', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+                                { value: false, label: 'Alterado', color: 'bg-red-100 text-red-700 border-red-200' },
+                                { value: null, label: 'No especificado', color: 'bg-gray-100 text-gray-700 border-gray-200' }
+                              ].map((option) => (
+                                <label key={String(option.value)} className="cursor-pointer">
+                                  <input
+                                    type="radio"
+                                    name={`esNormal-${index}`}
+                                    checked={item.esNormal === option.value}
+                                    onChange={() => {
+                                      const newItems = [...studyResultForm.items]
+                                      newItems[index] = { ...newItems[index], esNormal: option.value }
+                                      setStudyResultForm(prev => ({ ...prev, items: newItems }))
+                                    }}
+                                    className="sr-only"
+                                  />
+                                  <span className={`inline-block px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                                    item.esNormal === option.value 
+                                      ? option.color + ' ring-2 ring-emerald-200' 
+                                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                  }`}>
+                                    {option.label}
+                                  </span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-6 border-t">
+                    <Button
+                      type="button"
+                      onClick={() => setSelectedStudyForResult(null)}
+                      variant="outline"
+                      className="border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={studyResultLoading}
+                      className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl"
+                    >
+                      {studyResultLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                      )}
+                      Guardar resultado
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )
     }
@@ -1224,7 +1711,15 @@ export default function ConsultasContent() {
           <div className="bg-white border rounded-lg shadow-sm">
             <div className="px-5 py-4 border-b flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Medicaciones del paciente</h3>
-              <span className="text-sm text-gray-500">{patientMedications.length} registro(s)</span>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-500">{patientMedications.length} registro(s)</span>
+                <MiniPagination
+                  currentPage={medicationsPage}
+                  totalItems={patientMedications.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setMedicationsPage}
+                />
+              </div>
             </div>
             {patientMedicationsLoading ? (
               <div className="px-5 py-8 text-center text-gray-500 text-sm">
@@ -1236,24 +1731,26 @@ export default function ConsultasContent() {
               </div>
             ) : (
               <div className="divide-y">
-                {patientMedications.map((medication) => (
-                  <div key={medication.id} className="px-5 py-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="text-lg font-semibold text-gray-900">{medication.nombre}</div>
-                      <Badge className={medication.activo ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}>
-                        {medication.activo ? 'Activo' : 'Suspendido'}
-                      </Badge>
+                {patientMedications
+                  .slice((medicationsPage - 1) * itemsPerPage, medicationsPage * itemsPerPage)
+                  .map((medication) => (
+                    <div key={medication.id} className="px-5 py-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="text-lg font-semibold text-gray-900">{medication.nombre}</div>
+                        <Badge className={medication.activo ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}>
+                          {medication.activo ? 'Activo' : 'Suspendido'}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-gray-700 space-y-1">
+                        {medication.dosis && <div><span className="font-medium">Dosis:</span> {medication.dosis}</div>}
+                        {medication.frecuencia && <div><span className="font-medium">Frecuencia:</span> {medication.frecuencia}</div>}
+                        {medication.viaAdministracion && <div><span className="font-medium">Vía:</span> {medication.viaAdministracion}</div>}
+                        {medication.fechaInicio && <div><span className="font-medium">Inicio:</span> {new Date(medication.fechaInicio).toLocaleDateString('es-AR')}</div>}
+                        {medication.fechaFin && <div><span className="font-medium">Fin:</span> {new Date(medication.fechaFin).toLocaleDateString('es-AR')}</div>}
+                        {medication.indicaciones && <div className="text-gray-600">{medication.indicaciones}</div>}
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-700 space-y-1">
-                      {medication.dosis && <div><span className="font-medium">Dosis:</span> {medication.dosis}</div>}
-                      {medication.frecuencia && <div><span className="font-medium">Frecuencia:</span> {medication.frecuencia}</div>}
-                      {medication.viaAdministracion && <div><span className="font-medium">Vía:</span> {medication.viaAdministracion}</div>}
-                      {medication.fechaInicio && <div><span className="font-medium">Inicio:</span> {new Date(medication.fechaInicio).toLocaleDateString('es-AR')}</div>}
-                      {medication.fechaFin && <div><span className="font-medium">Fin:</span> {new Date(medication.fechaFin).toLocaleDateString('es-AR')}</div>}
-                      {medication.indicaciones && <div className="text-gray-600">{medication.indicaciones}</div>}
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             )}
           </div>
@@ -1435,18 +1932,7 @@ export default function ConsultasContent() {
             >
               Limpiar fechas
             </button>
-            <Button
-              type="button"
-              variant={onlyMine ? 'default' : 'outline'}
-              size="sm"
-              className={onlyMine ? 'bg-sky-600 hover:bg-sky-700 text-white border-sky-600' : ''}
-              onClick={() => {
-                resetToFirstPage()
-                setOnlyMine((prev) => !prev)
-              }}
-            >
-              {onlyMine ? 'Solo mis consultas' : 'Todas las consultas'}
-            </Button>
+
           </div>
         </div>
       </div>
@@ -1569,7 +2055,7 @@ export default function ConsultasContent() {
                       <Button
                         asChild
                         size="sm"
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm !text-white"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
                       >
                         <Link href={`/profesional/agenda/consulta?id=${selectedAppointment.id}`} className="text-white">
                           Detalle de Consulta
@@ -1694,19 +2180,7 @@ export default function ConsultasContent() {
                 </button>
               </Badge>
             )}
-            <Badge variant={onlyMine ? 'default' : 'outline'} className="flex items-center gap-1">
-              {onlyMine ? 'Solo mis consultas' : 'Todas las consultas'}
-              <button
-                type="button"
-                onClick={() => {
-                  resetToFirstPage()
-                  setOnlyMine((prev) => !prev)
-                }}
-                className="ml-1 text-gray-100 hover:text-gray-200"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
+
           </div>
         )}
       </div>

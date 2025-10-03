@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AppointmentStatus } from '@prisma/client'
-import { Search, History as HistoryIcon, Calendar, AlertCircle, CheckCircle2, Loader2, Pill, FlaskRound, ClipboardCheck, User, Phone, Mail, MapPin, RefreshCw, ArrowLeft, ChevronDown, ChevronRight } from 'lucide-react'
+import { Search, History as HistoryIcon, Calendar, AlertCircle, CheckCircle2, Loader2, Pill, FlaskRound, ClipboardCheck, User, Phone, Mail, MapPin, RefreshCw, ArrowLeft, ChevronDown, ChevronRight, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -40,6 +40,37 @@ interface DiagnosisItem {
   notas?: string
 }
 
+interface DiagnosisWithAppointment {
+  id: string
+  principal: string
+  secundarios: string[]
+  notas: string | null
+  createdAt: string
+  appointment: {
+    id: string
+    fecha: string
+    profesional: {
+      name: string | null
+      apellido: string | null
+    } | null
+  }
+}
+
+interface StudyOrderWithAppointment {
+  id: string
+  notas: string | null
+  createdAt: string
+  appointment: {
+    id: string
+    fecha: string
+    profesional: {
+      name: string | null
+      apellido: string | null
+    } | null
+  }
+  items: StudyOrderItem[]
+}
+
 interface PrescriptionItem {
   id: string
   medicamento: string
@@ -55,10 +86,39 @@ interface Prescription {
   items: PrescriptionItem[]
 }
 
+interface StudyResultItem {
+  id: string
+  studyResultId: string
+  parametro: string
+  valor: string
+  unidad: string | null
+  valorReferencia: string | null
+  esNormal: boolean | null
+}
+
+interface StudyResult {
+  id: string
+  studyOrderItemId: string
+  fechaRealizacion: string
+  laboratorio: string | null
+  observaciones: string | null
+  createdAt: string
+  updatedAt: string
+  uploadedBy: {
+    name: string | null
+    apellido: string | null
+  }
+  items: StudyResultItem[]
+}
+
+type StudyStatus = 'ORDENADO' | 'COMPLETADO'
+
 interface StudyOrderItem {
   id: string
   estudio: string
   indicaciones?: string
+  estado: StudyStatus
+  result: StudyResult | null
 }
 
 interface StudyOrder {
@@ -138,6 +198,8 @@ export default function HistoriasClinicasContent() {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [medications, setMedications] = useState<Medication[]>([])
+  const [allDiagnoses, setAllDiagnoses] = useState<DiagnosisWithAppointment[]>([])
+  const [allStudyOrders, setAllStudyOrders] = useState<StudyOrderWithAppointment[]>([])
   const [totalAppointments, setTotalAppointments] = useState<number>(0)
   const [page, setPage] = useState<number>(1)
   const [pageSize] = useState<number>(DEFAULT_PAGE_SIZE)
@@ -147,11 +209,22 @@ export default function HistoriasClinicasContent() {
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'diagnoses' | 'prescriptions' | 'studies' | 'medications'>('all')
   const [categoryPage, setCategoryPage] = useState(1)
+  
+  // Estados para resultados de estudios
+  const [selectedStudyForResult, setSelectedStudyForResult] = useState<StudyOrderItem | null>(null)
+  const [studyResultForm, setStudyResultForm] = useState({
+    fechaRealizacion: '',
+    laboratorio: '',
+    observaciones: '',
+    items: [{ parametro: '', valor: '', unidad: '', valorReferencia: '', esNormal: null as boolean | null }]
+  })
+  const [studyResultLoading, setStudyResultLoading] = useState(false)
+  
   const getCategoryPageSize = (category: string) => {
     switch (category) {
       case 'medications': return 2
       case 'diagnoses': return 4
-      case 'studies': return 4
+      case 'studies': return 2
       case 'prescriptions': return 4
       default: return 4
     }
@@ -165,83 +238,50 @@ export default function HistoriasClinicasContent() {
   const totalPages = Math.max(1, Math.ceil(totalAppointments / pageSize))
 
   const summary = useMemo(() => {
-    if (!appointments.length) {
-      return {
-        totalAppointments: 0,
-        uniqueProfessionals: 0,
-        totalDiagnoses: 0,
-        totalPrescriptions: 0,
-        totalStudies: 0,
-        medicationActive: medications.filter((med) => med.activo).length,
-        medicationTotal: medications.length,
-        professionalsNames: [],
-        allDiagnoses: [],
-        allPrescriptions: [],
-        allStudies: [],
-        allMedications: medications.sort((a, b) => {
-          // Primero los activos, luego los inactivos
-          if (a.activo && !b.activo) return -1
-          if (!a.activo && b.activo) return 1
-          // Manejar casos donde nombre puede ser undefined o null
-          const nameA = a.nombre || ''
-          const nameB = b.nombre || ''
-          return nameA.localeCompare(nameB)
-        }),
-      }
-    }
-
     const professionals = new Set()
     const professionalsNames = new Set<string>()
-    const allDiagnoses: (DiagnosisItem & { appointmentDate: string; appointmentId: string })[] = []
     const allPrescriptions: (Prescription & { appointmentDate: string; appointmentId: string })[] = []
-    const allStudies: (StudyOrder & { appointmentDate: string; appointmentId: string })[] = []
 
+    // Collect professionals from appointments and prescriptions from appointments
     appointments.forEach((appointment) => {
       if (appointment.profesional?.id) {
         professionals.add(appointment.profesional.id)
         professionalsNames.add(`${appointment.profesional.name} ${appointment.profesional.apellido}`)
       }
       
-      // Collect all diagnoses with appointment context
-      appointment.diagnoses.forEach((diagnosis) => {
-        allDiagnoses.push({
-          ...diagnosis,
-          appointmentDate: appointment.fecha,
-          appointmentId: appointment.id
-        })
-      })
-      
       // Collect all prescriptions with appointment context
-      appointment.prescriptions.forEach((prescription) => {
+      appointment.prescriptions?.forEach((prescription) => {
         allPrescriptions.push({
           ...prescription,
           appointmentDate: appointment.fecha,
           appointmentId: appointment.id
         })
       })
-      
-      // Collect all studies with appointment context
-      appointment.studyOrders.forEach((study) => {
-        allStudies.push({
-          ...study,
-          appointmentDate: appointment.fecha,
-          appointmentId: appointment.id
-        })
-      })
     })
 
-    return {
+    // Collect all studies count
+    const totalStudyItems = allStudyOrders.reduce((count, order) => count + (order.items?.length || 0), 0)
+
+    const result = {
       totalAppointments,
       uniqueProfessionals: professionals.size,
       totalDiagnoses: allDiagnoses.length,
       totalPrescriptions: allPrescriptions.length,
-      totalStudies: allStudies.length,
+      totalStudies: totalStudyItems,
       medicationActive: medications.filter((med) => med.activo).length,
       medicationTotal: medications.length,
       professionalsNames: Array.from(professionalsNames),
-      allDiagnoses: allDiagnoses.sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime()),
+      allDiagnoses: allDiagnoses.map(diagnosis => ({
+        ...diagnosis,
+        appointmentDate: diagnosis.appointment.fecha,
+        appointmentId: diagnosis.appointment.id
+      })).sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime()),
       allPrescriptions: allPrescriptions.sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime()),
-      allStudies: allStudies.sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime()),
+      allStudies: allStudyOrders.map(order => ({
+        ...order,
+        appointmentDate: order.appointment.fecha,
+        appointmentId: order.appointment.id
+      })).sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime()),
       allMedications: medications.sort((a, b) => {
         // Primero los activos, luego los inactivos
         if (a.activo && !b.activo) return -1
@@ -252,7 +292,9 @@ export default function HistoriasClinicasContent() {
         return nameA.localeCompare(nameB)
       }),
     }
-  }, [appointments, medications, totalAppointments])
+
+    return result
+  }, [appointments, medications, totalAppointments, allDiagnoses, allStudyOrders])
 
   const setPatientQueryParam = useCallback((patientId: string | null) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -264,6 +306,32 @@ export default function HistoriasClinicasContent() {
     const newUrl = `${window.location.pathname}?${params.toString()}`
     router.replace(newUrl)
   }, [searchParams, router])
+
+  const fetchPatientDiagnoses = useCallback(async (patientId: string) => {
+    try {
+      const response = await fetch(`/api/patients/${patientId}/diagnoses`)
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`)
+      }
+      const data = await response.json()
+      setAllDiagnoses(data.diagnoses || [])
+    } catch (error) {
+      console.error('Error fetching patient diagnoses:', error)
+    }
+  }, [])
+
+  const fetchPatientStudyOrders = useCallback(async (patientId: string) => {
+    try {
+      const response = await fetch(`/api/patients/${patientId}/study-orders`)
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`)
+      }
+      const data = await response.json()
+      setAllStudyOrders(data.studyOrders || [])
+    } catch (error) {
+      console.error('Error fetching patient study orders:', error)
+    }
+  }, [])
 
   const fetchHistory = useCallback(
     async ({
@@ -316,6 +384,12 @@ export default function HistoriasClinicasContent() {
         setPage(requestedPage)
         setFilters(requestedFilters)
 
+        // Cargar diagnósticos y estudios independientemente
+        if (context === 'search' || context === 'refresh' || context === 'initial') {
+          fetchPatientDiagnoses(targetPatientId)
+          fetchPatientStudyOrders(targetPatientId)
+        }
+
         if (context === 'search') {
           setFeedback({
             type: 'success',
@@ -332,7 +406,7 @@ export default function HistoriasClinicasContent() {
         setLoadingHistory(false)
       }
     },
-    [selectedPatient, pageSize, setPatientQueryParam]
+    [selectedPatient, pageSize, setPatientQueryParam, fetchPatientDiagnoses, fetchPatientStudyOrders]
   )
 
   const fetchPatientById = useCallback(async (patientId: string): Promise<Patient | null> => {
@@ -387,6 +461,88 @@ export default function HistoriasClinicasContent() {
       setSearching(false)
     }
   }, [searchTerm])
+
+  const handleStudyResultSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!selectedStudyForResult) return
+
+    const { fechaRealizacion, laboratorio, observaciones, items } = studyResultForm
+    
+    if (!fechaRealizacion) {
+      setFeedback({ type: 'error', message: 'La fecha de realización es obligatoria' })
+      return
+    }
+
+    const validItems = items.filter(item => item.parametro.trim() && item.valor.trim())
+    if (validItems.length === 0) {
+      setFeedback({ type: 'error', message: 'Debe agregar al menos un resultado' })
+      return
+    }
+
+    try {
+      setStudyResultLoading(true)
+      const response = await fetch('/api/professional/study-results', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studyOrderItemId: selectedStudyForResult.id,
+          fechaRealizacion: new Date(fechaRealizacion).toISOString(),
+          laboratorio: laboratorio.trim() || undefined,
+          observaciones: observaciones.trim() || undefined,
+          items: validItems.map(item => ({
+            parametro: item.parametro.trim(),
+            valor: item.valor.trim(),
+            unidad: item.unidad?.trim() || undefined,
+            valorReferencia: item.valorReferencia?.trim() || undefined,
+            esNormal: item.esNormal === null ? undefined : item.esNormal,
+          })),
+        }),
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudo registrar el resultado del estudio')
+      }
+
+      // Actualizar los appointments con el nuevo resultado
+      setAppointments(prev => prev.map(appointment => ({
+        ...appointment,
+        studyOrders: appointment.studyOrders.map(order => ({
+          ...order,
+          items: order.items.map(item => 
+            item.id === selectedStudyForResult.id
+              ? { ...item, estado: 'COMPLETADO' as StudyStatus, result: data.studyResult }
+              : item
+          )
+        }))
+      })))
+
+      // También actualizar allStudyOrders
+      setAllStudyOrders(prev => prev.map(order => ({
+        ...order,
+        items: order.items.map(item => 
+          item.id === selectedStudyForResult.id
+            ? { ...item, estado: 'COMPLETADO' as StudyStatus, result: data.studyResult }
+            : item
+        )
+      })))
+
+      // Limpiar formulario
+      setSelectedStudyForResult(null)
+      setStudyResultForm({
+        fechaRealizacion: '',
+        laboratorio: '',
+        observaciones: '',
+        items: [{ parametro: '', valor: '', unidad: '', valorReferencia: '', esNormal: null }]
+      })
+      setFeedback({ type: 'success', message: data.message })
+    } catch (error) {
+      console.error(error)
+      setFeedback({ type: 'error', message: error instanceof Error ? error.message : 'Error al registrar el resultado del estudio' })
+    } finally {
+      setStudyResultLoading(false)
+    }
+  }
 
   useEffect(() => {
     const fetchRecentPatients = async () => {
@@ -1018,11 +1174,68 @@ export default function HistoriasClinicasContent() {
                                               </div>
                                               <div className="space-y-1">
                                                 {studyOrder.items?.map((item) => (
-                                                  <div key={item.id} className="text-sm">
-                                                    <div className="font-medium text-blue-800">{item.estudio}</div>
-                                                    {item.indicaciones && (
-                                                      <div className="text-blue-700 text-xs">
-                                                        Indicaciones: {item.indicaciones}
+                                                  <div key={item.id} className="text-sm space-y-2">
+                                                    <div className="flex justify-between items-start">
+                                                      <div className="flex-1">
+                                                        <div className="font-medium text-blue-800">{item.estudio}</div>
+                                                        {item.indicaciones && (
+                                                          <div className="text-blue-700 text-xs mt-1">
+                                                            Indicaciones: {item.indicaciones}
+                                                          </div>
+                                                        )}
+                                                      </div>
+                                                      <div className="flex items-center gap-2 ml-2">
+                                                        <Badge 
+                                                          className={
+                                                            item.estado === 'COMPLETADO'
+                                                              ? 'bg-green-100 text-green-800 text-xs'
+                                                              : 'bg-yellow-100 text-yellow-800 text-xs'
+                                                          }
+                                                        >
+                                                          {item.estado === 'COMPLETADO' ? 'Completado' : 'Pendiente'}
+                                                        </Badge>
+                                                        {item.estado === 'ORDENADO' && (
+                                                          <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => setSelectedStudyForResult(item)}
+                                                            className="text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 px-3 py-1.5 rounded-xl font-medium shadow-sm hover:shadow-md transition-all"
+                                                          >
+                                                            <Plus className="h-3 w-3 mr-1" />
+                                                            Cargar resultado
+                                                          </Button>
+                                                        )}
+                                                      </div>
+                                                    </div>
+                                                    
+                                                    {/* Mostrar resultado si existe */}
+                                                    {item.result && (
+                                                      <div className="bg-white rounded-md p-3 border border-green-200 mt-2">
+                                                        <div className="text-xs text-green-700 font-medium mb-2">
+                                                          Resultado - {formatDate(item.result.fechaRealizacion)}
+                                                          {item.result.laboratorio && ` - ${item.result.laboratorio}`}
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                          {item.result.items.map((resultItem) => (
+                                                            <div key={resultItem.id} className="text-xs text-gray-700 flex justify-between items-center">
+                                                              <span>{resultItem.parametro}: <strong>{resultItem.valor}</strong> {resultItem.unidad}</span>
+                                                              {resultItem.esNormal !== null && (
+                                                                <Badge 
+                                                                  className={
+                                                                    resultItem.esNormal 
+                                                                      ? 'bg-green-100 text-green-700 text-xs' 
+                                                                      : 'bg-red-100 text-red-700 text-xs'
+                                                                  }
+                                                                >
+                                                                  {resultItem.esNormal ? 'Normal' : 'Alterado'}
+                                                                </Badge>
+                                                              )}
+                                                            </div>
+                                                          ))}
+                                                        </div>
+                                                        {item.result.observaciones && (
+                                                          <div className="text-xs text-gray-600 mt-2 italic">{item.result.observaciones}</div>
+                                                        )}
                                                       </div>
                                                     )}
                                                   </div>
@@ -1087,13 +1300,70 @@ export default function HistoriasClinicasContent() {
                               <div className="text-xs text-purple-600 mb-2">
                                 Ordenado el {formatDate(study.createdAt)}
                               </div>
-                              <div className="space-y-1">
+                              <div className="space-y-3">
                                 {study.items?.map((item) => (
-                                  <div key={item.id} className="text-sm">
-                                    <div className="font-medium text-purple-800">{item.estudio}</div>
-                                    {item.indicaciones && (
-                                      <div className="text-purple-700 text-xs">
-                                        Indicaciones: {item.indicaciones}
+                                  <div key={item.id} className="text-sm space-y-2">
+                                    <div className="flex justify-between items-start">
+                                      <div className="flex-1">
+                                        <div className="font-medium text-purple-800">{item.estudio}</div>
+                                        {item.indicaciones && (
+                                          <div className="text-purple-700 text-xs mt-1">
+                                            Indicaciones: {item.indicaciones}
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-2 ml-2">
+                                        <Badge 
+                                          className={
+                                            item.estado === 'COMPLETADO'
+                                              ? 'bg-green-100 text-green-800 text-xs'
+                                              : 'bg-yellow-100 text-yellow-800 text-xs'
+                                          }
+                                        >
+                                          {item.estado === 'COMPLETADO' ? 'Completado' : 'Pendiente'}
+                                        </Badge>
+                                        {item.estado === 'ORDENADO' && (
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => setSelectedStudyForResult(item)}
+                                            className="text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 px-3 py-1.5 rounded-xl font-medium shadow-sm hover:shadow-md transition-all"
+                                          >
+                                            <Plus className="h-3 w-3 mr-1" />
+                                            Cargar resultado
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Mostrar resultado si existe */}
+                                    {item.result && (
+                                      <div className="bg-white rounded-md p-3 border border-green-200">
+                                        <div className="text-xs text-green-700 font-medium mb-2">
+                                          Resultado - {formatDate(item.result.fechaRealizacion)}
+                                          {item.result.laboratorio && ` - ${item.result.laboratorio}`}
+                                        </div>
+                                        <div className="space-y-1">
+                                          {item.result.items.map((resultItem) => (
+                                            <div key={resultItem.id} className="text-xs text-gray-700 flex justify-between items-center">
+                                              <span>{resultItem.parametro}: <strong>{resultItem.valor}</strong> {resultItem.unidad}</span>
+                                              {resultItem.esNormal !== null && (
+                                                <Badge 
+                                                  className={
+                                                    resultItem.esNormal 
+                                                      ? 'bg-green-100 text-green-700 text-xs' 
+                                                      : 'bg-red-100 text-red-700 text-xs'
+                                                  }
+                                                >
+                                                  {resultItem.esNormal ? 'Normal' : 'Alterado'}
+                                                </Badge>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                        {item.result.observaciones && (
+                                          <div className="text-xs text-gray-600 mt-2 italic">{item.result.observaciones}</div>
+                                        )}
                                       </div>
                                     )}
                                   </div>
@@ -1355,5 +1625,251 @@ export default function HistoriasClinicasContent() {
   }
 
   // Vista de historia clínica
-  return <HistoryView />
+  return (
+    <>
+      <HistoryView />
+      
+      {/* Modal para cargar resultados */}
+      {selectedStudyForResult && (
+        <div 
+          className="fixed inset-0 backdrop-blur-sm bg-white/20 flex items-center justify-center z-50"
+          onClick={(e) => e.target === e.currentTarget && setSelectedStudyForResult(null)}
+        >
+          <div className="bg-white rounded-3xl shadow-2xl border border-emerald-100 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="px-8 py-6 border-b border-emerald-100 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-t-3xl flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 mb-1">
+                  Cargar resultado
+                </h3>
+                <p className="text-sm text-emerald-700 font-medium">{selectedStudyForResult.estudio}</p>
+              </div>
+              <Button
+                variant="ghost"
+                onClick={() => setSelectedStudyForResult(null)}
+                className="text-gray-400 hover:text-gray-600 hover:bg-white/50 rounded-full h-8 w-8 p-0"
+                size="sm"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <form onSubmit={handleStudyResultSubmit} className="p-8 space-y-6">
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">Fecha de realización *</label>
+                  <input
+                    type="date"
+                    value={studyResultForm.fechaRealizacion}
+                    onChange={(e) => setStudyResultForm(prev => ({ ...prev, fechaRealizacion: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">Laboratorio/Centro</label>
+                  <input
+                    type="text"
+                    value={studyResultForm.laboratorio}
+                    onChange={(e) => setStudyResultForm(prev => ({ ...prev, laboratorio: e.target.value }))}
+                    placeholder="Ej. Laboratorio Central"
+                    className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700">Observaciones generales</label>
+                <textarea
+                  value={studyResultForm.observaciones}
+                  onChange={(e) => setStudyResultForm(prev => ({ ...prev, observaciones: e.target.value }))}
+                  placeholder="Observaciones del médico o técnico..."
+                  rows={3}
+                  className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all resize-none"
+                />
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-gray-700">Resultados *</label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setStudyResultForm(prev => ({
+                      ...prev,
+                      items: [...prev.items, { parametro: '', valor: '', unidad: '', valorReferencia: '', esNormal: null }]
+                    }))}
+                    size="sm"
+                    className="text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 rounded-xl font-medium shadow-sm hover:shadow-md transition-all"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Agregar resultado
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  {studyResultForm.items.map((item, index) => (
+                    <div key={index} className="bg-gradient-to-br from-emerald-50 via-white to-teal-50 rounded-2xl p-6 space-y-4 border border-emerald-100 shadow-sm">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-semibold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full">Resultado {index + 1}</span>
+                        {studyResultForm.items.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => setStudyResultForm(prev => ({
+                              ...prev,
+                              items: prev.items.filter((_, i) => i !== index)
+                            }))}
+                            size="sm"
+                            className="text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full h-8 w-8 p-0"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold text-gray-700">Parámetro *</label>
+                          <input
+                            type="text"
+                            value={item.parametro}
+                            onChange={(e) => {
+                              const newItems = [...studyResultForm.items]
+                              newItems[index] = { ...newItems[index], parametro: e.target.value }
+                              setStudyResultForm(prev => ({ ...prev, items: newItems }))
+                            }}
+                            placeholder="Ej. Hemoglobina, Glucosa"
+                            className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all bg-white"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold text-gray-700">Valor *</label>
+                          <input
+                            type="text"
+                            value={item.valor}
+                            onChange={(e) => {
+                              const newItems = [...studyResultForm.items]
+                              newItems[index] = { ...newItems[index], valor: e.target.value }
+                              setStudyResultForm(prev => ({ ...prev, items: newItems }))
+                            }}
+                            placeholder="Ej. 12.5, Negativo"
+                            className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all bg-white"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold text-gray-700">Unidad</label>
+                          <input
+                            type="text"
+                            value={item.unidad || ''}
+                            onChange={(e) => {
+                              const newItems = [...studyResultForm.items]
+                              newItems[index] = { ...newItems[index], unidad: e.target.value }
+                              setStudyResultForm(prev => ({ ...prev, items: newItems }))
+                            }}
+                            placeholder="Ej. mg/dl, g/dl"
+                            className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all bg-white"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold text-gray-700">Valor de referencia</label>
+                          <input
+                            type="text"
+                            value={item.valorReferencia || ''}
+                            onChange={(e) => {
+                              const newItems = [...studyResultForm.items]
+                              newItems[index] = { ...newItems[index], valorReferencia: e.target.value }
+                              setStudyResultForm(prev => ({ ...prev, items: newItems }))
+                            }}
+                            placeholder="Ej. 12-15 mg/dl"
+                            className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all bg-white"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <label className="text-xs font-semibold text-gray-700">Estado</label>
+                        <div className="flex gap-4">
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`esNormal-${index}`}
+                              checked={item.esNormal === true}
+                              onChange={() => {
+                                const newItems = [...studyResultForm.items]
+                                newItems[index] = { ...newItems[index], esNormal: true }
+                                setStudyResultForm(prev => ({ ...prev, items: newItems }))
+                              }}
+                              className="mr-2 text-emerald-600 focus:ring-emerald-500"
+                            />
+                            <span className="text-sm font-medium text-emerald-700 bg-emerald-100 px-2 py-1 rounded-lg">Normal</span>
+                          </label>
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`esNormal-${index}`}
+                              checked={item.esNormal === false}
+                              onChange={() => {
+                                const newItems = [...studyResultForm.items]
+                                newItems[index] = { ...newItems[index], esNormal: false }
+                                setStudyResultForm(prev => ({ ...prev, items: newItems }))
+                              }}
+                              className="mr-2 text-red-600 focus:ring-red-500"
+                            />
+                            <span className="text-sm font-medium text-red-700 bg-red-100 px-2 py-1 rounded-lg">Alterado</span>
+                          </label>
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`esNormal-${index}`}
+                              checked={item.esNormal === null}
+                              onChange={() => {
+                                const newItems = [...studyResultForm.items]
+                                newItems[index] = { ...newItems[index], esNormal: null }
+                                setStudyResultForm(prev => ({ ...prev, items: newItems }))
+                              }}
+                              className="mr-2 text-gray-600 focus:ring-gray-500"
+                            />
+                            <span className="text-sm font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded-lg">No especificado</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-4 pt-6 border-t border-emerald-100">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setSelectedStudyForResult(null)}
+                  className="border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 px-6 py-2 rounded-xl font-medium shadow-sm hover:shadow-md transition-all"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={studyResultLoading}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-xl font-medium shadow-sm hover:shadow-md transition-all"
+                >
+                  {studyResultLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                  )}
+                  Guardar resultado
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
+  )
 }

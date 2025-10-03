@@ -54,7 +54,21 @@ export async function GET(request: NextRequest) {
       },
       orderBy: { createdAt: 'desc' },
       include: {
-        items: true,
+        items: {
+          include: {
+            result: {
+              include: {
+                items: true,
+                uploadedBy: {
+                  select: {
+                    name: true,
+                    apellido: true,
+                  },
+                },
+              },
+            },
+          },
+        },
       },
       skip: computedOffset,
       take: limit,

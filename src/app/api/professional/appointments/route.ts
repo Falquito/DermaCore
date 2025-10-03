@@ -147,7 +147,23 @@ export async function GET(request: NextRequest) {
           },
           studyOrders: {
             orderBy: { createdAt: 'desc' },
-            include: { items: true },
+            include: {
+              items: {
+                include: {
+                  result: {
+                    include: {
+                      items: true,
+                      uploadedBy: {
+                        select: {
+                          name: true,
+                          apellido: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
         orderBy,
@@ -224,7 +240,21 @@ export async function GET(request: NextRequest) {
           studyOrders: {
             orderBy: { createdAt: 'desc' },
             include: {
-              items: true,
+              items: {
+                include: {
+                  result: {
+                    include: {
+                      items: true,
+                      uploadedBy: {
+                        select: {
+                          name: true,
+                          apellido: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
             },
           },
         },

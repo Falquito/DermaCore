@@ -75,7 +75,21 @@ async function buildAppointmentPayload(appointmentId: string, professionalId: st
       studyOrders: {
         orderBy: { createdAt: 'desc' },
         include: {
-          items: true,
+          items: {
+            include: {
+              result: {
+                include: {
+                  items: true,
+                  uploadedBy: {
+                    select: {
+                      name: true,
+                      apellido: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       },
     },

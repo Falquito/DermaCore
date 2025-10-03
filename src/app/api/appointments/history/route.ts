@@ -86,13 +86,21 @@ export async function GET(request: NextRequest) {
         studyOrders: {
           include: {
             items: {
-              select: {
-                id: true,
-                estudio: true,
-                indicaciones: true,
-              }
-            }
-          }
+              include: {
+                result: {
+                  include: {
+                    items: true,
+                    uploadedBy: {
+                      select: {
+                        name: true,
+                        apellido: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
         }
       },
       orderBy: {

@@ -43,6 +43,7 @@ model User {
   prescriptions       Prescription[]     @relation("PrescriptionProfessional")
   studyOrders         StudyOrder[]       @relation("StudyOrderProfessional")
   recordedMedications PatientMedication[] @relation("MedicationProfessional")
+  uploadedStudyResults StudyResult[]     @relation("StudyResultUploader")
 
   // --- Auditoría de Especialidad (agregado) ---
   especialidadesCreadas      Especialidad[]            @relation("EspecialidadCreatedBy")
@@ -339,14 +340,63 @@ model StudyOrder {
   @@map("study_orders")
 }
 
+// Estados posibles de un estudio
+enum StudyStatus {
+  ORDENADO      // Cuando se crea la orden
+  COMPLETADO    // Cuando se cargan los resultados
+}
+
 model StudyOrderItem {
   id         String     @id @default(cuid())
   orderId    String
   order      StudyOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
   estudio    String
   indicaciones String?
+  estado     StudyStatus @default(ORDENADO)
+  
+  // Relación con resultados
+  result     StudyResult?
 
   @@map("study_order_items")
+}
+
+// Resultado de un estudio específico
+model StudyResult {
+  id              String   @id @default(cuid())
+  studyOrderItemId String   @unique
+  studyOrderItem  StudyOrderItem @relation(fields: [studyOrderItemId], references: [id], onDelete: Cascade)
+  
+  // Información del resultado
+  fechaRealizacion DateTime
+  laboratorio     String?   // Nombre del laboratorio/centro médico
+  observaciones   String?   // Observaciones generales del estudio
+  
+  // Metadatos
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  uploadedById    String   // Usuario que cargó el resultado
+  uploadedBy      User     @relation("StudyResultUploader", fields: [uploadedById], references: [id])
+  
+  // Items específicos del resultado
+  items           StudyResultItem[]
+
+  @@map("study_results")
+}
+
+// Items específicos de un resultado (valores, parámetros, etc.)
+model StudyResultItem {
+  id              String      @id @default(cuid())
+  studyResultId   String
+  studyResult     StudyResult @relation(fields: [studyResultId], references: [id], onDelete: Cascade)
+  
+  // Información del parámetro/valor
+  parametro       String      // Ej: "Hemoglobina", "Glucosa", "Descripción", etc.
+  valor           String      // Valor del parámetro
+  unidad          String?     // Unidad de medida (mg/dl, g/dl, etc.)
+  valorReferencia String?     // Valor de referencia normal
+  esNormal        Boolean?    // Si está dentro de los parámetros normales
+  
+  @@map("study_result_items")
 }
 
 model PatientMedication {
