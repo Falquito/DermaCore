@@ -107,6 +107,16 @@ function normalizeText(text: string) {
     .trim();
 }
 
+// Genera una clave de fecha basada en la zona horaria local (evita el uso de toISOString()
+// que convierte a UTC y puede provocar que se muestre el día anterior en zonas UTC-*)
+function getLocalDateKey(value: string | Date) {
+  const d = new Date(value);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function AppointmentDetailsDialog({
   appointment,
   open,
@@ -610,11 +620,10 @@ export default function ListaTurnosPage() {
   }, [appointments, appointmentSearchTerm]);
 
   const groupedAppointments = useMemo(() => {
+    // Agrupamos usando la fecha local del turno para evitar desfases de día por conversión a UTC
     return filteredAppointments.reduce((groups, appointment) => {
-      const dateKey = new Date(appointment.start).toISOString().split("T")[0];
-      if (!groups[dateKey]) {
-        groups[dateKey] = [];
-      }
+      const dateKey = getLocalDateKey(appointment.start);
+      if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(appointment);
       return groups;
     }, {} as Record<string, Appointment[]>);
@@ -858,7 +867,7 @@ export default function ListaTurnosPage() {
                       .map(([dateKey, dayAppointments]) => (
                         <div key={dateKey} className="space-y-4">
                           <h3 className="text-sm font-semibold capitalize text-slate-700">
-                            {formatLongDate(dateKey)}
+                            {formatLongDate(dayAppointments[0].start)}
                           </h3>
                           <div className="space-y-3">
                             {dayAppointments

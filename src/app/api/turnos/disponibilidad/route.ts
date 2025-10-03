@@ -21,10 +21,17 @@ export async function GET(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Obtener la fecha sin hora
-    const fechaSeleccionada = new Date(fecha)
-    const fechaInicio = new Date(fechaSeleccionada.getFullYear(), fechaSeleccionada.getMonth(), fechaSeleccionada.getDate(), 0, 0, 0)
-    const fechaFin = new Date(fechaSeleccionada.getFullYear(), fechaSeleccionada.getMonth(), fechaSeleccionada.getDate(), 23, 59, 59)
+    // Parseo manual local para evitar desfase (no usar directamente new Date(YYYY-MM-DD))
+    let fechaBase: Date
+    const match = fecha.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+    if (match) {
+      const [, yStr, mStr, dStr] = match
+      fechaBase = new Date(parseInt(yStr, 10), parseInt(mStr, 10) - 1, parseInt(dStr, 10), 0, 0, 0, 0)
+    } else {
+      fechaBase = new Date(fecha) // fallback si el formato no coincide
+    }
+    const fechaInicio = new Date(fechaBase.getFullYear(), fechaBase.getMonth(), fechaBase.getDate(), 0, 0, 0)
+    const fechaFin = new Date(fechaBase.getFullYear(), fechaBase.getMonth(), fechaBase.getDate(), 23, 59, 59)
 
     // Obtener turnos existentes para ese profesional y fecha
     const turnosExistentes = await prisma.appointment.findMany({
@@ -52,7 +59,7 @@ export async function GET(request: NextRequest) {
 
     for (let hora = horaInicio; hora < horaFin; hora++) {
       for (let minuto = 0; minuto < 60; minuto += intervalo) {
-        const fechaHora = new Date(fechaSeleccionada)
+  const fechaHora = new Date(fechaBase)
         fechaHora.setHours(hora, minuto, 0, 0)
         
         // Verificar si este horario está ocupado

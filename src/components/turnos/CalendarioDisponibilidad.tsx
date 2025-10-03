@@ -48,6 +48,14 @@ export function CalendarioDisponibilidad({
     cargarProfesionales()
   }, [])
 
+  // Helper local para formatear YYYY-MM-DD evitando desfase UTC
+  function formatLocalYMD(date: Date) {
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
+
   // Cargar horarios cuando cambia el profesional o la fecha
   useEffect(() => {
     const cargarHorarios = async () => {
@@ -58,7 +66,7 @@ export function CalendarioDisponibilidad({
 
       setCargandoHorarios(true)
       try {
-        const fechaStr = fechaSeleccionada.toISOString().split('T')[0]
+        const fechaStr = formatLocalYMD(fechaSeleccionada)
         const response = await fetch(
           `/api/turnos/disponibilidad?profesionalId=${profesionalSeleccionado}&fecha=${fechaStr}`
         )

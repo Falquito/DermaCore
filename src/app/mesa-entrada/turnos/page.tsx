@@ -85,6 +85,17 @@ function formatHora(date: Date) {
   })
 }
 
+// Coerce potencial string/Date a Date sin usar any
+function toDate(value: unknown): Date {
+  if (value instanceof Date) return value
+  if (typeof value === 'string' || typeof value === 'number') {
+    const d = new Date(value)
+    return d
+  }
+  // Último recurso: fecha actual para evitar crash (debería no suceder)
+  return new Date()
+}
+
 export default function TurnosPage() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [turnoRecienCreado, setTurnoRecienCreado] = useState<TurnoCompleto | null>(null)
@@ -137,12 +148,20 @@ export default function TurnosPage() {
     }
   }, [paginaActual, totalPaginas])
 
+  // Helper para fecha local YYYY-MM-DD sin conversión UTC
+  function formatLocalYMD(date: Date) {
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
+
   const cargarTurnosHoy = useCallback(async () => {
     try {
       setCargandoTurnos(true)
       setErrorTurnos(null)
-      const hoy = new Date()
-      const fechaStr = hoy.toISOString().split('T')[0]
+  const hoy = new Date()
+  const fechaStr = formatLocalYMD(hoy)
       const params = new URLSearchParams()
       params.set('fecha', fechaStr)
       params.set('page', String(paginaActual))
@@ -261,7 +280,14 @@ export default function TurnosPage() {
   }, [])
 
   const handleTurnoCreado = (turno: TurnoCompleto) => {
-    setTurnoRecienCreado(turno)
+    // Aseguramos que las propiedades fecha/createdAt/updatedAt sean Date reales
+    const normalizado: TurnoCompleto = {
+      ...turno,
+      fecha: toDate(turno.fecha),
+      createdAt: toDate(turno.createdAt),
+      updatedAt: toDate(turno.updatedAt)
+    }
+    setTurnoRecienCreado(normalizado)
     setMostrarFormulario(false)
     setPaginaActual(1)
     cargarTurnosHoy()

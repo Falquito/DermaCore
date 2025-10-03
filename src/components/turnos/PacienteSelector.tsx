@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { PacienteBusqueda } from '@/types/appointment'
+import { normalizeDiacritics } from '@/lib/text-normalize'
 import { PatientSubmitData } from '@/types/patient'
 import FormularioAltaPaciente from '@/components/FormularioAltaPaciente'
 
@@ -29,17 +30,30 @@ export function PacienteSelector({
 
   useEffect(() => {
     const buscarPacientes = async () => {
-      if (busqueda.trim().length < 2) {
+      const term = busqueda.trim()
+      if (term.length < 2) {
         setPacientes([])
         return
       }
 
+      const norm = normalizeDiacritics(term)
       setBuscando(true)
       try {
-        const response = await fetch(`/api/turnos/pacientes/buscar?q=${encodeURIComponent(busqueda)}`)
+        const params = new URLSearchParams({ q: term, qNorm: norm })
+        const response = await fetch(`/api/turnos/pacientes/buscar?${params.toString()}`)
         if (response.ok) {
           const data = await response.json()
-          setPacientes(data.pacientes || [])
+          let results: PacienteBusqueda[] = data.pacientes || []
+          // Fallback client-side filtering if backend still accent/case sensitive
+          if (results.length) {
+            results = results.filter((p: PacienteBusqueda) => {
+              const full = `${p.apellido} ${p.nombre} ${p.dni}`
+              return normalizeDiacritics(full).includes(norm)
+            })
+          }
+          setPacientes(results)
+        } else {
+          setPacientes([])
         }
       } catch (error) {
         console.error('Error al buscar pacientes:', error)
