@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import type { ComponentType, SVGProps } from "react";
 import {
   Chart as ChartJS,
@@ -11,12 +11,9 @@ import {
   LinearScale,
   BarElement,
   Title as ChartTitle,
-  type TooltipItem,
 } from "chart.js";
-import { Pie, Bar } from "react-chartjs-2";
 import {
   Filter,
-  Loader2,
   CalendarDays,
   Award,
   Users,
@@ -27,6 +24,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
+import ExperienciaPacienteTab from "@/components/indicadores-gerencia/ExperienciaPacienteTab";
+import TendenciasCrecimientoTab from "@/components/indicadores-gerencia/TendenciasCrecimientoTab";
 
 ChartJS.register(
   ArcElement,
@@ -254,7 +253,9 @@ const KpiCard = ({ title, value, subtitle, Icon, accent = "bg-blue-50" }: KpiCar
   );
 };
 
-/** Mensaje “Sin datos” reutilizable */
+/** Mensaje "Sin datos" reutilizable */
+// Movido al componente ExperienciaPacienteTab
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const NoData = ({
   text,
   onQuick,
@@ -283,6 +284,7 @@ export default function GerenteDashboard() {
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [activeTab, setActiveTab] = useState<'experiencia' | 'tendencias'>('experiencia');
 
   // Datos Especialidades
   const [especialidades, setEspecialidades] = useState<EspecialidadData[]>([]);
@@ -513,12 +515,6 @@ export default function GerenteDashboard() {
                 </div>
               </div>
               <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-                <button
-                  onClick={() => void fetchReports()}
-                  className="w-full rounded-md bg-emerald-600 border-emerald-600 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-emerald-500 sm:w-auto shadow"
-                >
-                  Generar Reportes
-                </button>
               </div>
             </div>
           </div>
@@ -551,97 +547,52 @@ export default function GerenteDashboard() {
           </div>
         )}
 
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
-            <span className="ml-2 text-gray-600">Cargando reportes...</span>
+        {/* Tabs navigation */}
+        <div className="rounded-2xl border border-emerald-100 bg-white p-2 shadow-sm">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveTab('experiencia')}
+              className={`flex-1 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                activeTab === 'experiencia'
+                  ? 'bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-md'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Experiencia del Paciente y Operaciones
+            </button>
+            <button
+              onClick={() => setActiveTab('tendencias')}
+              className={`flex-1 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                activeTab === 'tendencias'
+                  ? 'bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-md'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Tendencias y Crecimiento de Demanda
+            </button>
           </div>
-        ) : (
-          <Fragment>
-            {/* CHARTS side-by-side, MISMO ALTO */}
-            <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* PASTEL */}
-              <div className="bg-white/70 backdrop-blur-sm p-6 rounded-2xl border border-emerald-200 shadow-sm hover:shadow-md transition-shadow flex flex-col">
-                <h2 className="text-xl font-semibold text-gray-900">Consultas por Especialidad</h2>
-                <p className="text-sm text-gray-500 mb-4">Periodo: {formatDateAR(dateFrom)} → {formatDateAR(dateTo)}</p>
+        </div>
 
-                {especialidades.length > 0 ? (
-                  <div className="h-96">
-                    <Pie
-                      data={especialidadChart}
-                      options={{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                          legend: { position: "bottom", labels: { usePointStyle: true, pointStyle: "circle" } },
-                          tooltip: {
-                            callbacks: {
-                              label: (ctx: TooltipItem<"pie">) => {
-                                const ds = ctx.dataset.data as number[];
-                                const total = ds.reduce((a, b) => a + (b as number), 0);
-                                const value = Number(ctx.raw);
-                                const pct = total ? (value * 100) / total : 0;
-                                return `${ctx.label}: ${value} (${pct.toFixed(1)}%)`;
-                              },
-                            },
-                          },
-                        },
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <NoData
-                    text="No hay consultas por especialidad para el período seleccionado. Probá ajustar los filtros o usar un acceso rápido."
-                    onQuick={() => applyPreset("ultimo_mes")}
-                  />
-                )}
-              </div>
+        {/* Tab content - Experiencia del Paciente */}
+        {activeTab === 'experiencia' && (
+          <ExperienciaPacienteTab
+            loading={loading}
+            especialidades={especialidades}
+            edadData={edadData}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            especialidadChart={especialidadChart}
+            edadBarChart={edadBarChart}
+            addDisabled={addDisabled}
+            onEditRangos={() => { setEditModalOpen(true); setShowAdder(false); }}
+            onAgregarRango={() => { setEditModalOpen(true); setShowAdder(true); }}
+            onApplyPreset={applyPreset}
+          />
+        )}
 
-              {/* BARRAS */}
-              <div className="bg-white/70 backdrop-blur-sm p-6 rounded-2xl border border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-center mb-4">
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900">Distribución Etaria</h2>
-                    <p className="text-sm text-gray-500">Rango mínimo 1 año, máximo 100 años</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => { setEditModalOpen(true); setShowAdder(false); }}>
-                      Editar rangos
-                    </Button>
-                    {/* Botón Agregar rango fuera del modal: muestra el tile "+" dentro */}
-                    <Button
-                      size="sm"
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                      onClick={() => { setEditModalOpen(true); setShowAdder(true); }}
-                      disabled={addDisabled}
-                      title={addDisabled ? "No se puede agregar más" : "Agregar un nuevo rango"}
-                    >
-                      <Plus className="h-4 w-4 mr-1" /> Agregar rango
-                    </Button>
-                  </div>
-                </div>
-
-                {edadData.length > 0 ? (
-                  <div className="h-96">
-                    <Bar
-                      data={edadBarChart}
-                      options={{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <NoData
-                    text="No hay pacientes por rango etario en este período. Cambiá el rango de fechas o los rangos etarios."
-                    onQuick={() => applyPreset("ultimo_mes")}
-                  />
-                )}
-              </div>
-            </section>
-          </Fragment>
+        {/* Tab content - Tendencias y Crecimiento */}
+        {activeTab === 'tendencias' && (
+          <TendenciasCrecimientoTab />
         )}
       </div>
 
