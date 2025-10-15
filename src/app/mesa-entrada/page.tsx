@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import Link from 'next/link'
+import { prisma } from '@/lib/prisma'
 
 export default async function MesaEntradaPage() {
   const user = await getCurrentUser()
@@ -8,157 +9,129 @@ export default async function MesaEntradaPage() {
   if (user.roles.length === 0) redirect('/error')
   if (!user.roles.includes('MESA_ENTRADA')) redirect('/error')
 
+  // Obtener datos en tiempo real para el dashboard
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  const manana = new Date(hoy)
+  manana.setDate(manana.getDate() + 1)
+
+  const [turnosHoy, turnosProgramados, turnosConfirmados] = await Promise.all([
+    prisma.appointment.count({
+      where: { fecha: { gte: hoy, lt: manana } }
+    }),
+    prisma.appointment.count({
+      where: { fecha: { gte: hoy, lt: manana }, estado: 'PROGRAMADO' }
+    }),
+    prisma.appointment.count({
+      where: { fecha: { gte: hoy, lt: manana }, estado: 'CONFIRMADO' }
+    })
+  ])
+
   return (
     <main className="flex-1 p-5 md:p-8">
       <div className="w-full space-y-4">
-        {/* Header section */}
+        {/* Header con saludo personalizado y resumen */}
         <section className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-8 shadow-sm">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Mesa de Entrada</h1>
-              <p className="text-lg text-gray-600">Panel principal de gestión administrativa y atención al paciente</p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                ¡Hola, {user.name?.split(' ')[0] || 'Usuario'}! 👋
+              </h1>
+              <p className="text-lg text-gray-600">
+                {new Date().getHours() < 12 ? 'Buenos días' : new Date().getHours() < 18 ? 'Buenas tardes' : 'Buenas noches'} • {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="text-sm text-gray-600 mb-1">Turnos de hoy</div>
+              <div className="text-4xl font-bold text-emerald-600">{turnosHoy}</div>
             </div>
           </div>
         </section>
 
-        {/* Main action cards - Grid principal */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Gestión de Pacientes */}
-          <Link href="/mesa-entrada/pacientes" className="group">
-            <div className="rounded-2xl border border-emerald-100 bg-white/70 backdrop-blur-sm p-6 shadow-sm hover:shadow-md transition-all duration-200 hover:border-emerald-200 h-full">
-              <div className="flex items-start justify-between mb-4">
-                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-sm">
-                  <span className="text-2xl">👥</span>
-                </div>
-                <div className="text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Gestión de Pacientes</h3>
-              <p className="text-sm text-gray-600">Administrar el registro completo de pacientes, historiales y datos personales</p>
+        {/* KPIs del día en tiempo real */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-4">
+            <div className="text-xs font-medium text-blue-600 uppercase mb-1">Programados</div>
+            <div className="text-2xl font-bold text-gray-900">{turnosProgramados}</div>
+            <div className="text-xs text-gray-500 mt-1">Pendientes confirmar</div>
+          </div>
+          
+          <div className="rounded-xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-4">
+            <div className="text-xs font-medium text-emerald-600 uppercase mb-1">Confirmados</div>
+            <div className="text-2xl font-bold text-gray-900">{turnosConfirmados}</div>
+            <div className="text-xs text-gray-500 mt-1">Asistirán hoy</div>
+          </div>
+          
+          <div className="rounded-xl border border-purple-100 bg-gradient-to-br from-purple-50 to-white p-4">
+            <div className="text-xs font-medium text-purple-600 uppercase mb-1">Ocupación</div>
+            <div className="text-2xl font-bold text-gray-900">
+              {turnosHoy > 0 ? Math.round((turnosConfirmados / turnosHoy) * 100) : 0}%
             </div>
-          </Link>
+            <div className="text-xs text-gray-500 mt-1">De la agenda</div>
+          </div>
+        </div>
 
-          {/* Turnos */}
+        {/* Acciones Principales - Tareas frecuentes */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Link href="/mesa-entrada/turnos" className="group">
-            <div className="rounded-2xl border border-blue-100 bg-white/70 backdrop-blur-sm p-6 shadow-sm hover:shadow-md transition-all duration-200 hover:border-blue-200 h-full">
-              <div className="flex items-start justify-between mb-4">
-                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-sm">
-                  <span className="text-2xl">�</span>
+            <div className="p-5 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white hover:shadow-lg transition-all duration-200">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-sm">
+                  <span className="text-2xl">📅</span>
                 </div>
-                <div className="text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Agendar Turno</h3>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Gestión de Turnos</h3>
-              <p className="text-sm text-gray-600">Agendar, reprogramar y administrar citas médicas y horarios de atención</p>
+              <p className="text-sm text-gray-600">Crear nueva cita médica</p>
             </div>
           </Link>
 
-          {/* Pagos */}
-          <Link href="/mesa-entrada/pagos" className="group">
-            <div className="rounded-2xl border border-amber-100 bg-white/70 backdrop-blur-sm p-6 shadow-sm hover:shadow-md transition-all duration-200 hover:border-amber-200 h-full">
-              <div className="flex items-start justify-between mb-4">
-                <div className="h-12 w-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl flex items-center justify-center shadow-sm">
-                  <span className="text-2xl">�</span>
-                </div>
-                <div className="text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Administración de Pagos</h3>
-              <p className="text-sm text-gray-600">Registrar pagos, facturación y gestión financiera del consultorio</p>
-            </div>
-          </Link>
-
-          {/* Reportes */}
-          <Link href="/mesa-entrada/reportes" className="group">
-            <div className="rounded-2xl border border-purple-100 bg-white/70 backdrop-blur-sm p-6 shadow-sm hover:shadow-md transition-all duration-200 hover:border-purple-200 h-full">
-              <div className="flex items-start justify-between mb-4">
-                <div className="h-12 w-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-sm">
-                  <span className="text-2xl">�</span>
-                </div>
-                <div className="text-purple-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Reportes y Estadísticas</h3>
-              <p className="text-sm text-gray-600">Visualizar métricas, generar reportes y análisis de gestión</p>
-            </div>
-          </Link>
-
-          {/* Lista de Turnos */}
           <Link href="/mesa-entrada/lista-turnos" className="group">
-            <div className="rounded-2xl border border-teal-100 bg-white/70 backdrop-blur-sm p-6 shadow-sm hover:shadow-md transition-all duration-200 hover:border-teal-200 h-full">
-              <div className="flex items-start justify-between mb-4">
-                <div className="h-12 w-12 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center shadow-sm">
+            <div className="p-5 rounded-xl border border-teal-100 bg-gradient-to-br from-teal-50 to-white hover:shadow-lg transition-all duration-200">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-12 w-12 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center shadow-sm">
                   <span className="text-2xl">📋</span>
                 </div>
-                <div className="text-teal-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Ver Turnos de Hoy</h3>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Lista de Turnos</h3>
-              <p className="text-sm text-gray-600">Consultar y gestionar la lista completa de turnos programados</p>
+              <p className="text-sm text-gray-600">Lista de citas programadas</p>
             </div>
           </Link>
 
-          {/* Configuración */}
-          <Link href="/mesa-entrada/configuracion" className="group">
-            <div className="rounded-2xl border border-gray-200 bg-white/70 backdrop-blur-sm p-6 shadow-sm hover:shadow-md transition-all duration-200 hover:border-gray-300 h-full">
-              <div className="flex items-start justify-between mb-4">
-                <div className="h-12 w-12 bg-gradient-to-br from-gray-500 to-gray-600 rounded-xl flex items-center justify-center shadow-sm">
-                  <span className="text-2xl">⚙️</span>
+          <Link href="/mesa-entrada/pacientes" className="group">
+            <div className="p-5 rounded-xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white hover:shadow-lg transition-all duration-200">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center shadow-sm">
+                  <span className="text-2xl">👤</span>
                 </div>
-                <div className="text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Buscar Paciente</h3>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Configuración</h3>
-              <p className="text-sm text-gray-600">Ajustar parámetros del sistema y preferencias de usuario</p>
+              <p className="text-sm text-gray-600">Consultar o registrar datos</p>
             </div>
           </Link>
         </div>
 
-        {/* Quick actions section */}
-        <div className="rounded-2xl border border-emerald-100 bg-white/70 backdrop-blur-sm p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Accesos Rápidos</h3>
+        {/* Otras Gestiones */}
+        <div className="rounded-2xl border border-gray-200 bg-white/70 backdrop-blur-sm p-6 shadow-sm">
+          <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Otras Secciones</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Link href="/mesa-entrada/pacientes" className="group">
-              <div className="p-4 rounded-xl border border-gray-100 bg-white hover:bg-emerald-50 hover:border-emerald-200 transition-all duration-200 text-center">
-                <div className="text-3xl mb-2">🆕</div>
-                <div className="text-sm font-medium text-gray-700 group-hover:text-emerald-700">Nuevo Paciente</div>
-              </div>
+            <Link href="/mesa-entrada/pagos" className="group p-4 rounded-lg border border-gray-100 bg-white hover:bg-amber-50 hover:border-amber-200 transition-all text-center">
+              <div className="text-3xl mb-2">💰</div>
+              <div className="text-sm font-medium text-gray-700 group-hover:text-amber-700">Pagos</div>
             </Link>
-            <Link href="/mesa-entrada/turnos" className="group">
-              <div className="p-4 rounded-xl border border-gray-100 bg-white hover:bg-blue-50 hover:border-blue-200 transition-all duration-200 text-center">
-                <div className="text-3xl mb-2">�</div>
-                <div className="text-sm font-medium text-gray-700 group-hover:text-blue-700">Agendar Turno</div>
-              </div>
+            
+            <Link href="/mesa-entrada/reportes" className="group p-4 rounded-lg border border-gray-100 bg-white hover:bg-purple-50 hover:border-purple-200 transition-all text-center">
+              <div className="text-3xl mb-2">📊</div>
+              <div className="text-sm font-medium text-gray-700 group-hover:text-purple-700">Reportes</div>
             </Link>
-            <Link href="/mesa-entrada/pagos" className="group">
-              <div className="p-4 rounded-xl border border-gray-100 bg-white hover:bg-amber-50 hover:border-amber-200 transition-all duration-200 text-center">
-                <div className="text-3xl mb-2">💳</div>
-                <div className="text-sm font-medium text-gray-700 group-hover:text-amber-700">Registrar Pago</div>
-              </div>
+
+            <Link href="/mesa-entrada/configuracion" className="group p-4 rounded-lg border border-gray-100 bg-white hover:bg-gray-50 hover:border-gray-200 transition-all text-center">
+              <div className="text-3xl mb-2">⚙️</div>
+              <div className="text-sm font-medium text-gray-700">Configuración</div>
             </Link>
-            <Link href="/mesa-entrada/lista-turnos" className="group">
-              <div className="p-4 rounded-xl border border-gray-100 bg-white hover:bg-purple-50 hover:border-purple-200 transition-all duration-200 text-center">
-                <div className="text-3xl mb-2">�</div>
-                <div className="text-sm font-medium text-gray-700 group-hover:text-purple-700">Ver Lista</div>
-              </div>
+
+            <Link href="/mesa-entrada/perfil" className="group p-4 rounded-lg border border-gray-100 bg-white hover:bg-indigo-50 hover:border-indigo-200 transition-all text-center">
+              <div className="text-3xl mb-2">👤</div>
+              <div className="text-sm font-medium text-gray-700 group-hover:text-indigo-700">Mi Perfil</div>
             </Link>
           </div>
         </div>
