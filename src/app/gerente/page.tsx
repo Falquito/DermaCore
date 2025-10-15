@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import type { ComponentType, SVGProps } from "react";
 import {
   Chart as ChartJS,
@@ -11,12 +11,9 @@ import {
   LinearScale,
   BarElement,
   Title as ChartTitle,
-  type TooltipItem,
 } from "chart.js";
-import { Pie, Bar } from "react-chartjs-2";
 import {
   Filter,
-  Loader2,
   CalendarDays,
   Award,
   Users,
@@ -27,6 +24,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
+import ExperienciaPacienteTab from "@/components/indicadores-gerencia/ExperienciaPacienteTab";
+import TendenciasCrecimientoTab from "@/components/indicadores-gerencia/TendenciasCrecimientoTab";
 
 ChartJS.register(
   ArcElement,
@@ -237,24 +236,26 @@ const KpiCard = ({ title, value, subtitle, Icon, accent = "bg-blue-50" }: KpiCar
   const gradient = gradientMap[accent] || "from-gray-500 to-gray-600";
 
   return (
-    <div className="rounded-2xl border border-emerald-200 bg-white/70 backdrop-blur-sm p-6 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
+    <div className="rounded-xl border border-emerald-100 bg-white/70 backdrop-blur-sm p-3.5 shadow-sm hover:shadow-md transition-all duration-200 hover:border-emerald-200">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium text-gray-600 mb-1 uppercase tracking-wide">{title}</p>
+          <p className="text-lg font-bold text-gray-900 truncate">{value}</p>
+          {subtitle && (
+            <p className="text-xs text-gray-500 mt-1 line-clamp-2">{subtitle}</p>
+          )}
         </div>
-        <div className={`h-12 w-12 bg-gradient-to-br ${gradient} rounded-2xl flex items-center justify-center shadow-lg`}>
-          <Icon className="h-6 w-6 text-white" />
+        <div className={`h-9 w-9 bg-gradient-to-br ${gradient} rounded-lg flex items-center justify-center shadow-sm shrink-0`}>
+          <Icon className="h-4 w-4 text-white" />
         </div>
       </div>
-      {subtitle && (
-        <p className="text-sm text-gray-500 mt-2">{subtitle}</p>
-      )}
     </div>
   );
 };
 
-/** Mensaje “Sin datos” reutilizable */
+/** Mensaje "Sin datos" reutilizable */
+// Movido al componente ExperienciaPacienteTab
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const NoData = ({
   text,
   onQuick,
@@ -283,6 +284,7 @@ export default function GerenteDashboard() {
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [activeTab, setActiveTab] = useState<'experiencia' | 'tendencias'>('experiencia');
 
   // Datos Especialidades
   const [especialidades, setEspecialidades] = useState<EspecialidadData[]>([]);
@@ -477,63 +479,89 @@ export default function GerenteDashboard() {
           </div>
         </section>
 
-        {/* Filtros */}
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        {/* Filtros de fecha - Diseño compacto y coherente */}
+        <div className="rounded-2xl border border-emerald-100 bg-white/70 backdrop-blur-sm p-4 shadow-sm">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+            {/* Selectores de fecha */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex items-center gap-2 shrink-0">
+                <Filter className="h-4 w-4 text-emerald-600" />
+                <span className="text-sm font-medium text-gray-700">Período:</span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <DatePicker
+                  date={dateFrom ? createLocalDate(dateFrom) : undefined}
+                  onDateChange={(date) => setDateFrom(date ? toISODateLocal(date) : '')}
+                  placeholder="Desde"
+                  captionLayout="dropdown"
+                  fromYear={new Date().getFullYear() - 10}
+                  toYear={new Date().getFullYear() + 5}
+                  className="text-sm w-full sm:w-auto"
+                />
+                <span className="text-gray-400 hidden sm:inline">→</span>
+                <DatePicker
+                  date={dateTo ? createLocalDate(dateTo) : undefined}
+                  onDateChange={(date) => setDateTo(date ? toISODateLocal(date) : '')}
+                  placeholder="Hasta"
+                  captionLayout="dropdown"
+                  fromYear={new Date().getFullYear() - 10}
+                  toYear={new Date().getFullYear() + 5}
+                  className="text-sm w-full sm:w-auto"
+                />
+              </div>
+            </div>
 
-            <div className="w-full rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-              <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                <Filter className="h-4 w-4 text-gray-500" />
-                <span>Filtrar por fecha</span>
-              </div>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-gray-700">Desde</label>
-                  <DatePicker
-                    date={dateFrom ? createLocalDate(dateFrom) : undefined}
-                    onDateChange={(date) => setDateFrom(date ? toISODateLocal(date) : '')}
-                    placeholder="Selecciona una fecha"
-                    captionLayout="dropdown"
-                    fromYear={new Date().getFullYear() - 10}
-                    toYear={new Date().getFullYear() + 5}
-                    className="text-sm w-full"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-gray-700">Hasta</label>
-                  <DatePicker
-                    date={dateTo ? createLocalDate(dateTo) : undefined}
-                    onDateChange={(date) => setDateTo(date ? toISODateLocal(date) : '')}
-                    placeholder="Selecciona una fecha"
-                    captionLayout="dropdown"
-                    fromYear={new Date().getFullYear() - 10}
-                    toYear={new Date().getFullYear() + 5}
-                    className="text-sm w-full"
-                  />
-                </div>
-              </div>
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-                <button
-                  onClick={() => void fetchReports()}
-                  className="w-full rounded-md bg-emerald-600 border-emerald-600 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-emerald-500 sm:w-auto shadow"
+            {/* Divisor: vertical en lg, horizontal en móvil */}
+            <div className="h-px lg:h-8 lg:w-px bg-gray-200 shrink-0"></div>
+
+            {/* Accesos rápidos */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <span className="text-sm text-gray-600 font-medium shrink-0">Accesos rápidos:</span>
+              <div className="flex gap-1.5 flex-wrap">
+                <button 
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors border border-emerald-200" 
+                  onClick={() => applyPreset("hoy")}
                 >
-                  Generar Reportes
+                  Hoy
+                </button>
+                <button 
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors border border-emerald-200" 
+                  onClick={() => applyPreset("manana")}
+                >
+                  Mañana
+                </button>
+                <button 
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors border border-emerald-200" 
+                  onClick={() => applyPreset("ultima_semana")}
+                >
+                  Últ. 7d
+                </button>
+                <button 
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors border border-emerald-200" 
+                  onClick={() => applyPreset("ultimo_mes")}
+                >
+                  Últ. mes
+                </button>
+                <button 
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors border border-emerald-200" 
+                  onClick={() => applyPreset("ultimo_trimestre")}
+                >
+                  Últ. 3m
+                </button>
+                <button 
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors border border-emerald-200" 
+                  onClick={() => applyPreset("este_anio")}
+                >
+                  Este año
+                </button>
+                <button 
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors border border-emerald-200" 
+                  onClick={() => applyPreset("anio_anterior")}
+                >
+                  Año ant.
                 </button>
               </div>
             </div>
-          </div>
-
-          {/* Accesos rápidos */}
-          <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap">
-            <span className="text-sm text-gray-600 mr-2 font-medium">Accesos rápidos:</span>
-            <button className="px-3 py-1.5 rounded-full border border-emerald-200 text-sm hover:bg-emerald-50 hover:border-emerald-300 transition-colors text-emerald-700" onClick={() => applyPreset("hoy")}>Hoy</button>
-            <button className="px-3 py-1.5 rounded-full border border-emerald-200 text-sm hover:bg-emerald-50 hover:border-emerald-300 transition-colors text-emerald-700" onClick={() => applyPreset("manana")}>Mañana</button>
-            <button className="px-3 py-1.5 rounded-full border border-emerald-200 text-sm hover:bg-emerald-50 hover:border-emerald-300 transition-colors text-emerald-700" onClick={() => applyPreset("ultima_semana")}>Últ. semana</button>
-            <button className="px-3 py-1.5 rounded-full border border-emerald-200 text-sm hover:bg-emerald-50 hover:border-emerald-300 transition-colors text-emerald-700" onClick={() => applyPreset("ultimo_mes")}>Últ. mes</button>
-            <button className="px-3 py-1.5 rounded-full border border-emerald-200 text-sm hover:bg-emerald-50 hover:border-emerald-300 transition-colors text-emerald-700" onClick={() => applyPreset("ultimo_trimestre")}>Últ. trimestre</button>
-            <button className="px-3 py-1.5 rounded-full border border-emerald-200 text-sm hover:bg-emerald-50 hover:border-emerald-300 transition-colors text-emerald-700" onClick={() => applyPreset("ultimos_90")}>Últ. 90 días</button>
-            <button className="px-3 py-1.5 rounded-full border border-emerald-200 text-sm hover:bg-emerald-50 hover:border-emerald-300 transition-colors text-emerald-700" onClick={() => applyPreset("este_anio")}>Este año</button>
-            <button className="px-3 py-1.5 rounded-full border border-emerald-200 text-sm hover:bg-emerald-50 hover:border-emerald-300 transition-colors text-emerald-700" onClick={() => applyPreset("anio_anterior")}>Año anterior</button>
           </div>
         </div>
 
@@ -551,97 +579,52 @@ export default function GerenteDashboard() {
           </div>
         )}
 
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
-            <span className="ml-2 text-gray-600">Cargando reportes...</span>
+        {/* Tabs navigation */}
+        <div className="rounded-2xl border border-emerald-100 bg-white p-2 shadow-sm">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveTab('experiencia')}
+              className={`flex-1 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                activeTab === 'experiencia'
+                  ? 'bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-md'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Experiencia del Paciente y Operaciones
+            </button>
+            <button
+              onClick={() => setActiveTab('tendencias')}
+              className={`flex-1 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                activeTab === 'tendencias'
+                  ? 'bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-md'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Tendencias y Crecimiento de Demanda
+            </button>
           </div>
-        ) : (
-          <Fragment>
-            {/* CHARTS side-by-side, MISMO ALTO */}
-            <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* PASTEL */}
-              <div className="bg-white/70 backdrop-blur-sm p-6 rounded-2xl border border-emerald-200 shadow-sm hover:shadow-md transition-shadow flex flex-col">
-                <h2 className="text-xl font-semibold text-gray-900">Consultas por Especialidad</h2>
-                <p className="text-sm text-gray-500 mb-4">Periodo: {formatDateAR(dateFrom)} → {formatDateAR(dateTo)}</p>
+        </div>
 
-                {especialidades.length > 0 ? (
-                  <div className="h-96">
-                    <Pie
-                      data={especialidadChart}
-                      options={{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                          legend: { position: "bottom", labels: { usePointStyle: true, pointStyle: "circle" } },
-                          tooltip: {
-                            callbacks: {
-                              label: (ctx: TooltipItem<"pie">) => {
-                                const ds = ctx.dataset.data as number[];
-                                const total = ds.reduce((a, b) => a + (b as number), 0);
-                                const value = Number(ctx.raw);
-                                const pct = total ? (value * 100) / total : 0;
-                                return `${ctx.label}: ${value} (${pct.toFixed(1)}%)`;
-                              },
-                            },
-                          },
-                        },
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <NoData
-                    text="No hay consultas por especialidad para el período seleccionado. Probá ajustar los filtros o usar un acceso rápido."
-                    onQuick={() => applyPreset("ultimo_mes")}
-                  />
-                )}
-              </div>
+        {/* Tab content - Experiencia del Paciente */}
+        {activeTab === 'experiencia' && (
+          <ExperienciaPacienteTab
+            loading={loading}
+            especialidades={especialidades}
+            edadData={edadData}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            especialidadChart={especialidadChart}
+            edadBarChart={edadBarChart}
+            addDisabled={addDisabled}
+            onEditRangos={() => { setEditModalOpen(true); setShowAdder(false); }}
+            onAgregarRango={() => { setEditModalOpen(true); setShowAdder(true); }}
+            onApplyPreset={applyPreset}
+          />
+        )}
 
-              {/* BARRAS */}
-              <div className="bg-white/70 backdrop-blur-sm p-6 rounded-2xl border border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-center mb-4">
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900">Distribución Etaria</h2>
-                    <p className="text-sm text-gray-500">Rango mínimo 1 año, máximo 100 años</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => { setEditModalOpen(true); setShowAdder(false); }}>
-                      Editar rangos
-                    </Button>
-                    {/* Botón Agregar rango fuera del modal: muestra el tile "+" dentro */}
-                    <Button
-                      size="sm"
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                      onClick={() => { setEditModalOpen(true); setShowAdder(true); }}
-                      disabled={addDisabled}
-                      title={addDisabled ? "No se puede agregar más" : "Agregar un nuevo rango"}
-                    >
-                      <Plus className="h-4 w-4 mr-1" /> Agregar rango
-                    </Button>
-                  </div>
-                </div>
-
-                {edadData.length > 0 ? (
-                  <div className="h-96">
-                    <Bar
-                      data={edadBarChart}
-                      options={{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <NoData
-                    text="No hay pacientes por rango etario en este período. Cambiá el rango de fechas o los rangos etarios."
-                    onQuick={() => applyPreset("ultimo_mes")}
-                  />
-                )}
-              </div>
-            </section>
-          </Fragment>
+        {/* Tab content - Tendencias y Crecimiento */}
+        {activeTab === 'tendencias' && (
+          <TendenciasCrecimientoTab />
         )}
       </div>
 
