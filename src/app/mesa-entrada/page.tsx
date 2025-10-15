@@ -25,7 +25,7 @@ export default async function MesaEntradaPage() {
     prisma.appointment.count({
       where: { fecha: { gte: hoy, lt: manana }, estado: 'CONFIRMADO' }
     }),
-    // Próximos 5 turnos de hoy (no cancelados)
+    // Próximos 3 turnos de hoy (no cancelados)
     prisma.appointment.findMany({
       where: {
         fecha: { gte: new Date(), lt: manana },
@@ -36,7 +36,7 @@ export default async function MesaEntradaPage() {
         profesional: { select: { name: true, apellido: true } }
       },
       orderBy: { fecha: 'asc' },
-      take: 5
+      take: 3
     })
   ])
 
@@ -84,21 +84,22 @@ export default async function MesaEntradaPage() {
           </div>
         </div>
 
-        {/* Próximos Turnos - Vista de lo que viene */}
+        {/* Próximos Turnos - Compacto */}
         {proximosTurnos.length > 0 && (
-          <div className="rounded-2xl border border-blue-100 bg-white/70 backdrop-blur-sm p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">🕐 Próximos Turnos</h2>
+          <div className="rounded-2xl border border-blue-100 bg-white/70 backdrop-blur-sm p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-semibold text-gray-900">🕐 Próximos Turnos</h2>
               <Link 
                 href="/mesa-entrada/lista-turnos" 
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
+                className="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors"
               >
                 Ver todos →
               </Link>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {proximosTurnos.map((turno) => {
                 const hora = turno.fecha.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+                const inicial = turno.paciente.nombre.charAt(0).toUpperCase()
                 const estadoConfig = {
                   CONFIRMADO: { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Confirmado' },
                   PROGRAMADO: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Programado' },
@@ -110,27 +111,28 @@ export default async function MesaEntradaPage() {
                 return (
                   <div 
                     key={turno.id} 
-                    className="flex items-center gap-4 p-4 rounded-xl border border-gray-100 bg-white hover:border-blue-200 hover:shadow-sm transition-all"
+                    className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-white hover:border-blue-200 transition-colors"
                   >
                     <div className="flex-shrink-0">
-                      <div className="h-14 w-14 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex flex-col items-center justify-center text-white shadow-sm">
-                        <div className="text-xs font-medium">{hora.split(':')[0]}</div>
-                        <div className="text-lg font-bold leading-none">{hora.split(':')[1]}</div>
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                        {inicial}
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-semibold text-gray-900 truncate">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-gray-900 text-sm truncate">
                           {turno.paciente.nombre} {turno.paciente.apellido}
                         </p>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
                           {config.label}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 truncate">
+                      <p className="text-xs text-gray-600 truncate">
                         Dr/a. {turno.profesional.name} {turno.profesional.apellido}
                       </p>
-                      <p className="text-xs text-gray-500 mt-0.5">DNI: {turno.paciente.dni}</p>
+                    </div>
+                    <div className="flex-shrink-0 text-right">
+                      <div className="text-sm font-semibold text-gray-900">{hora}</div>
                     </div>
                   </div>
                 )
@@ -176,32 +178,6 @@ export default async function MesaEntradaPage() {
               <p className="text-sm text-gray-600">Consultar datos, historial y obra social</p>
             </div>
           </Link>
-        </div>
-
-        {/* Otras Secciones - Acceso rápido */}
-        <div className="rounded-2xl border border-gray-200 bg-white/70 backdrop-blur-sm p-6 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Otras Secciones</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Link href="/mesa-entrada/pagos" className="group p-4 rounded-xl border border-gray-100 bg-white hover:bg-amber-50 hover:border-amber-200 transition-all text-center">
-              <div className="text-3xl mb-2">💰</div>
-              <div className="text-sm font-medium text-gray-700 group-hover:text-amber-700">Pagos</div>
-            </Link>
-            
-            <Link href="/mesa-entrada/reportes" className="group p-4 rounded-xl border border-gray-100 bg-white hover:bg-purple-50 hover:border-purple-200 transition-all text-center">
-              <div className="text-3xl mb-2">📊</div>
-              <div className="text-sm font-medium text-gray-700 group-hover:text-purple-700">Reportes</div>
-            </Link>
-
-            <Link href="/mesa-entrada/configuracion" className="group p-4 rounded-xl border border-gray-100 bg-white hover:bg-gray-50 hover:border-gray-300 transition-all text-center">
-              <div className="text-3xl mb-2">⚙️</div>
-              <div className="text-sm font-medium text-gray-700">Configuración</div>
-            </Link>
-
-            <Link href="/mesa-entrada/perfil" className="group p-4 rounded-xl border border-gray-100 bg-white hover:bg-indigo-50 hover:border-indigo-200 transition-all text-center">
-              <div className="text-3xl mb-2">👤</div>
-              <div className="text-sm font-medium text-gray-700 group-hover:text-indigo-700">Mi Perfil</div>
-            </Link>
-          </div>
         </div>
       </div>
     </main>

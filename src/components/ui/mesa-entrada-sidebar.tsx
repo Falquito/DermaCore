@@ -6,10 +6,7 @@ import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import { 
   Users, 
-  Calendar, 
-  CreditCard, 
-  BarChart3, 
-  Settings,
+  Calendar,
   ChevronLeft,
   ChevronRight,
   User,
@@ -54,27 +51,6 @@ const sidebarItems = [
     icon: ClipboardList, 
     href: '/mesa-entrada/lista-turnos',
     description: 'Turnos por profesional' 
-  },
-  { 
-    id: 'pagos', 
-    name: 'Pagos', 
-    icon: CreditCard, 
-    href: '/mesa-entrada/pagos',
-    description: 'Facturación y pagos' 
-  },
-  { 
-    id: 'reportes', 
-    name: 'Reportes', 
-    icon: BarChart3, 
-    href: '/mesa-entrada/reportes',
-    description: 'Estadísticas y reportes' 
-  },
-  { 
-    id: 'configuracion', 
-    name: 'Configuración', 
-    icon: Settings, 
-    href: '/mesa-entrada/configuracion',
-    description: 'Configuración del sistema' 
   },
 ]
 
