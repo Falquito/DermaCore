@@ -33,7 +33,7 @@ interface FrecuenciaVisitasData {
 }
 
 interface GeneroEdadData {
-  genero: 'M' | 'F' | 'Otro'
+  genero: 'Masculino' | 'Femenino' | 'Otro'
   rango: string
   total: number
 }
@@ -48,7 +48,7 @@ interface PacienteData {
   nombre: string
   apellido: string
   fechaNacimiento: Date
-  genero: 'M' | 'F' | 'Otro'
+  genero: 'Masculino' | 'Femenino' | 'Otro'
   ciudad?: string
   totalVisitas: number
 }
@@ -181,8 +181,11 @@ export default function MisPacientesTab({ professionalId, dateFrom, dateTo }: Mi
     { min: 11, max: 100 }
   ])
 
-  // Estados para filtros
-  const [generoFilter, setGeneroFilter] = useState<string>('todos')
+  // Estados para filtros (cada gráfico tiene su propio filtro)
+  const [generoFilterEdad, setGeneroFilterEdad] = useState<string>('todos')
+  const [generoFilterVisitas, setGeneroFilterVisitas] = useState<string>('todos') 
+  const [generoFilterGeneroEdad, setGeneroFilterGeneroEdad] = useState<string>('todos')
+  const [generoFilterGeografia, setGeneroFilterGeografia] = useState<string>('todos')
   const [maxCiudades, setMaxCiudades] = useState(10)
   
   // Estados para editores
@@ -212,7 +215,9 @@ export default function MisPacientesTab({ professionalId, dateFrom, dateTo }: Mi
             dateFrom,
             dateTo,
             totalPacientes: data.pacientes?.length || 0,
-            pacientes: data.pacientes
+            pacientes: data.pacientes,
+            generosEncontrados: [...new Set(data.pacientes?.map((p: any) => `"${p.genero}"`) || [])],
+            distribucionGenero: data.estadisticas?.distribucionGenero
           })
           setPacientes(data.pacientes || [])
         }
@@ -231,8 +236,10 @@ export default function MisPacientesTab({ professionalId, dateFrom, dateTo }: Mi
   // Procesamiento de datos para distribución etaria
   const edadDistribucionData: EdadDistribucionData[] = edadRanges.map(range => {
     const count = pacientes.filter(p => {
+      // Aplicar filtro de género específico para edad
+      const pasaFiltroGenero = generoFilterEdad === 'todos' || p.genero === generoFilterEdad
       const edad = calculateAge(new Date(p.fechaNacimiento))
-      return edad >= range.min && edad <= range.max
+      return pasaFiltroGenero && edad >= range.min && edad <= range.max
     }).length
     
     return {
@@ -247,15 +254,26 @@ export default function MisPacientesTab({ professionalId, dateFrom, dateTo }: Mi
   console.log('📊 MisPacientesTab - Distribución por edad calculada:', {
     dateFrom,
     dateTo,
+    generoFilterEdad,
     totalPacientes: pacientes.length,
-    edadDistribucionData
+    pacientesFiltrados: pacientes.filter(p => generoFilterEdad === 'todos' || p.genero === generoFilterEdad).length,
+    edadDistribucionData,
+    ejemploComparacion: pacientes.slice(0, 3).map(p => ({
+      paciente: `${p.nombre} ${p.apellido}`,
+      genero: `"${p.genero}"`,
+      filtro: `"${generoFilterEdad}"`,
+      coincide: p.genero === generoFilterEdad,
+      eseTodos: generoFilterEdad === 'todos'
+    }))
   })
 
   // Procesamiento de datos para frecuencia de visitas
   const frecuenciaVisitasData: FrecuenciaVisitasData[] = visitasRanges.map(range => {
-    const count = pacientes.filter(p => 
-      p.totalVisitas >= range.min && p.totalVisitas <= range.max
-    ).length
+    const count = pacientes.filter(p => {
+      // Aplicar filtro de género específico para visitas
+      const pasaFiltroGenero = generoFilterVisitas === 'todos' || p.genero === generoFilterVisitas
+      return pasaFiltroGenero && p.totalVisitas >= range.min && p.totalVisitas <= range.max
+    }).length
     
     return {
       rango: `${range.min}-${range.max}`,
@@ -265,19 +283,25 @@ export default function MisPacientesTab({ professionalId, dateFrom, dateTo }: Mi
     }
   })
 
+  // Debug log para frecuencia de visitas
+  console.log('📊 MisPacientesTab - Frecuencia de visitas calculada:', {
+    generoFilterVisitas,
+    totalPacientes: pacientes.length,
+    pacientesFiltrados: pacientes.filter(p => generoFilterVisitas === 'todos' || p.genero === generoFilterVisitas).length,
+    frecuenciaVisitasData
+  })
+
   // Procesamiento de datos para distribución por género y edad
   const generoEdadData: GeneroEdadData[] = []
-  const generos: Array<'M' | 'F' | 'Otro'> = ['M', 'F', 'Otro']
+  const generos: Array<'Masculino' | 'Femenino' | 'Otro'> = ['Masculino', 'Femenino', 'Otro']
   
   generos.forEach(genero => {
-    const pacientesFiltrados = pacientes.filter(p => 
-      generoFilter === 'todos' || p.genero === generoFilter
-    )
-    
     edadRanges.forEach(range => {
-      const count = pacientesFiltrados.filter(p => {
+      const count = pacientes.filter(p => {
+        // Aplicar filtro de género específico para género-edad
+        const pasaFiltroGenero = generoFilterGeneroEdad === 'todos' || p.genero === generoFilterGeneroEdad
         const edad = calculateAge(new Date(p.fechaNacimiento))
-        return p.genero === genero && edad >= range.min && edad <= range.max
+        return pasaFiltroGenero && p.genero === genero && edad >= range.min && edad <= range.max
       }).length
       
       if (count > 0) {
@@ -290,9 +314,20 @@ export default function MisPacientesTab({ professionalId, dateFrom, dateTo }: Mi
     })
   })
 
+  // Debug log para género y edad
+  console.log('📊 MisPacientesTab - Distribución género-edad calculada:', {
+    generoFilterGeneroEdad,
+    totalPacientes: pacientes.length,
+    generoEdadData
+  })
+
   // Procesamiento de datos para distribución geográfica
   const geografiaData: GeografiaData[] = pacientes
-    .filter(p => p.ciudad)
+    .filter(p => {
+      // Aplicar filtro de género específico para geografía y que tenga ciudad
+      const pasaFiltroGenero = generoFilterGeografia === 'todos' || p.genero === generoFilterGeografia
+      return pasaFiltroGenero && p.ciudad
+    })
     .reduce((acc, p) => {
       const ciudad = p.ciudad!
       const existing = acc.find(item => item.ciudad === ciudad)
@@ -305,6 +340,17 @@ export default function MisPacientesTab({ professionalId, dateFrom, dateTo }: Mi
     }, [] as GeografiaData[])
     .sort((a, b) => b.total - a.total)
     .slice(0, maxCiudades)
+
+  // Debug log para distribución geográfica
+  console.log('📊 MisPacientesTab - Distribución geográfica calculada:', {
+    generoFilterGeografia,
+    totalPacientes: pacientes.length,
+    pacientesFiltradosConCiudad: pacientes.filter(p => {
+      const pasaFiltroGenero = generoFilterGeografia === 'todos' || p.genero === generoFilterGeografia
+      return pasaFiltroGenero && p.ciudad
+    }).length,
+    geografiaData
+  })
 
   // Configuración de gráficos
   const edadChartData = {
@@ -332,7 +378,7 @@ export default function MisPacientesTab({ professionalId, dateFrom, dateTo }: Mi
   const generoChartData = {
     labels: [...new Set(generoEdadData.map(d => d.rango))],
     datasets: generos.map((genero, index) => ({
-      label: genero === 'M' ? 'Masculino' : genero === 'F' ? 'Femenino' : 'Otro',
+      label: genero,
       data: [...new Set(generoEdadData.map(d => d.rango))].map(rango => {
         const item = generoEdadData.find(d => d.genero === genero && d.rango === rango)
         return item ? item.total : 0
@@ -460,15 +506,28 @@ export default function MisPacientesTab({ professionalId, dateFrom, dateTo }: Mi
               <h2 className="text-xl font-semibold text-gray-900">Distribución por Edad</h2>
               <p className="text-sm text-gray-500">Análisis de rangos etarios de pacientes</p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setShowEdadEditor(true)}>
-              <Settings className="h-4 w-4 mr-1" /> Editar rangos
-            </Button>
+            <div className="flex gap-2">
+              <Select value={generoFilterEdad} onValueChange={setGeneroFilterEdad}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="Masculino">Masculino</SelectItem>
+                  <SelectItem value="Femenino">Femenino</SelectItem>
+                  <SelectItem value="Otro">Otro</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="sm" onClick={() => setShowEdadEditor(true)}>
+                <Settings className="h-4 w-4 mr-1" /> Editar rangos
+              </Button>
+            </div>
           </div>
           
           {edadDistribucionData.some(d => d.total > 0) ? (
             <div className="h-80">
               <Bar 
-                key={`edad-chart-${dateFrom}-${dateTo}-${edadDistribucionData.map(d => d.total).join('-')}`}
+                key={`edad-chart-${dateFrom}-${dateTo}-${generoFilterEdad}-${edadDistribucionData.map(d => d.total).join('-')}`}
                 data={edadChartData} 
                 options={chartOptions} 
               />
@@ -488,14 +547,14 @@ export default function MisPacientesTab({ professionalId, dateFrom, dateTo }: Mi
               <p className="text-sm text-gray-500">Pacientes por número de consultas</p>
             </div>
             <div className="flex gap-2">
-              <Select value={generoFilter} onValueChange={setGeneroFilter}>
+              <Select value={generoFilterVisitas} onValueChange={setGeneroFilterVisitas}>
                 <SelectTrigger className="w-32">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="M">Masculino</SelectItem>
-                  <SelectItem value="F">Femenino</SelectItem>
+                  <SelectItem value="Masculino">Masculino</SelectItem>
+                  <SelectItem value="Femenino">Femenino</SelectItem>
                   <SelectItem value="Otro">Otro</SelectItem>
                 </SelectContent>
               </Select>
@@ -508,7 +567,7 @@ export default function MisPacientesTab({ professionalId, dateFrom, dateTo }: Mi
           {frecuenciaVisitasData.some(d => d.total > 0) ? (
             <div className="h-80">
               <Bar 
-                key={`visitas-chart-${dateFrom}-${dateTo}-${frecuenciaVisitasData.map(d => d.total).join('-')}`}
+                key={`visitas-chart-${dateFrom}-${dateTo}-${generoFilterVisitas}-${frecuenciaVisitasData.map(d => d.total).join('-')}`}
                 data={visitasChartData} 
                 options={chartOptions} 
               />
@@ -530,14 +589,14 @@ export default function MisPacientesTab({ professionalId, dateFrom, dateTo }: Mi
               <h2 className="text-xl font-semibold text-gray-900">Distribución Género y Edad</h2>
               <p className="text-sm text-gray-500">Composición demográfica</p>
             </div>
-            <Select value={generoFilter} onValueChange={setGeneroFilter}>
+            <Select value={generoFilterGeneroEdad} onValueChange={setGeneroFilterGeneroEdad}>
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos</SelectItem>
-                <SelectItem value="M">Masculino</SelectItem>
-                <SelectItem value="F">Femenino</SelectItem>
+                <SelectItem value="Masculino">Masculino</SelectItem>
+                <SelectItem value="Femenino">Femenino</SelectItem>
                 <SelectItem value="Otro">Otro</SelectItem>
               </SelectContent>
             </Select>
@@ -546,7 +605,7 @@ export default function MisPacientesTab({ professionalId, dateFrom, dateTo }: Mi
           {generoEdadData.length > 0 ? (
             <div className="h-80">
               <Bar 
-                key={`genero-chart-${dateFrom}-${dateTo}-${generoEdadData.map(d => d.total).join('-')}`}
+                key={`genero-chart-${dateFrom}-${dateTo}-${generoFilterGeneroEdad}-${generoEdadData.map(d => d.total).join('-')}`}
                 data={generoChartData} 
                 options={{...chartOptions, plugins: {...chartOptions.plugins, legend: {...chartOptions.plugins.legend, position: 'bottom' as const}}}} 
               />
@@ -566,6 +625,17 @@ export default function MisPacientesTab({ professionalId, dateFrom, dateTo }: Mi
               <p className="text-sm text-gray-500">Pacientes por ciudad</p>
             </div>
             <div className="flex items-center gap-2">
+              <Select value={generoFilterGeografia} onValueChange={setGeneroFilterGeografia}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="Masculino">Masculino</SelectItem>
+                  <SelectItem value="Femenino">Femenino</SelectItem>
+                  <SelectItem value="Otro">Otro</SelectItem>
+                </SelectContent>
+              </Select>
               <Filter className="h-4 w-4 text-gray-500" />
               <Input
                 type="number"
@@ -582,7 +652,7 @@ export default function MisPacientesTab({ professionalId, dateFrom, dateTo }: Mi
           {geografiaData.length > 0 ? (
             <div className="h-80">
               <Bar 
-                key={`geografia-chart-${dateFrom}-${dateTo}-${geografiaData.map(d => d.total).join('-')}`}
+                key={`geografia-chart-${dateFrom}-${dateTo}-${generoFilterGeografia}-${geografiaData.map(d => d.total).join('-')}`}
                 data={geografiaChartData} 
                 options={{...chartOptions, plugins: {...chartOptions.plugins, legend: {display: false}}}} 
               />
