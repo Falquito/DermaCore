@@ -25,8 +25,6 @@
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tabs": "^1.1.13",
-    "ag-charts-community": "^12.2.0",
-    "ag-charts-react": "^12.2.0",
     "bcryptjs": "^3.0.2",
     "chart.js": "^4.5.0",
     "class-variance-authority": "^0.7.1",
