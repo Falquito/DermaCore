@@ -1,3 +1,4 @@
+// app/api/professional-stats/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
       },
       include: {
         obraSocial: { select: { id: true, nombre: true } },
-        paciente: { select: { nombre: true, apellido: true } }
+        paciente: { select: { nombre: true, apellido: true, fechaNacimiento: true } }
       }
     })
 
@@ -117,6 +118,24 @@ export async function GET(request: NextRequest) {
       obraSocial: appointment.obraSocial?.nombre || 'Particular'
     }))
 
+    // Consultas por período
+    const consultationsByPeriod = await prisma.appointment.groupBy({
+        by: ['fecha'],
+        where: {
+            profesionalId: currentUser.id,
+            fecha: {
+                gte: fromDate,
+                lte: toDate,
+            },
+        },
+        _count: {
+            id: true,
+        },
+        orderBy: {
+            fecha: 'asc',
+        },
+    });
+
     const stats = {
       dateRange: {
         from: fromDate,
@@ -129,6 +148,21 @@ export async function GET(request: NextRequest) {
       completionRate,
       cancellationRate,
       recentAppointments,
+      dailyCounts: consultationsByPeriod.map(c => ({ date: c.fecha, count: c._count.id })),
+      appointments: appointments.map(a => ({
+        id: a.id,
+        fecha: a.fecha,
+        estado: a.estado,
+        tipoConsulta: a.tipoConsulta,
+        // --- CAMBIO CLAVE AQUÍ ---
+        // Se envía el objeto completo en lugar de solo el nombre
+        obraSocial: a.obraSocial, 
+        paciente: {
+          nombre: a.paciente?.nombre,
+          apellido: a.paciente?.apellido,
+          fechaNacimiento: a.paciente?.fechaNacimiento || null
+        }
+      })),
       // Additional metrics
       averageDaily: totalAppointments > 0 ? 
         Math.round(totalAppointments / Math.max(1, Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)))) : 0
