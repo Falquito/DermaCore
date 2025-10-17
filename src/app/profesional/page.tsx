@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useRef, ComponentType, SVGProps } from 'react';
 import { Filter, Loader2, Calendar, TrendingUp, Clock, Users } from 'lucide-react';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from 'chart.js';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, PointElement, LineElement } from 'chart.js';
 import { AppointmentStatus } from '@prisma/client';
 import { DatePicker } from '@/components/ui/date-picker';
 import PracticaClinicaTab from '@/components/indicadores-profesional/PracticaClinicaTab';
 import MisPacientesTab from '@/components/indicadores-profesional/MisPacientesTab';
 
 // Register Chart.js components
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title);
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, PointElement, LineElement);
 
 // Helper function para convertir Date a string ISO local
 const toISODateLocal = (d: Date): string => {
@@ -43,6 +43,10 @@ type ProfessionalStats = {
     obraSocial: string;
   }>;
   averageDaily: number;
+  dailyCounts: Array<{
+    date: string;
+    count: number;
+  }>;
 };
 
 const getDefaultDateRange = () => {
