@@ -75,6 +75,13 @@ const rangosEtarios = [
   { label: '65+ años', value: '65+' }
 ]
 
+const periodoLabelES: Record<string, string> = {
+  day: 'día', 
+  week: 'semana', 
+  month: 'mes', 
+  year: 'año',
+}
+
 // --- Funciones de Utilidad (Fuera del componente) ---
 
 const generateColors = (count: number) => {
@@ -367,10 +374,6 @@ export default function PracticaClinicaTab({
       ? groupCounts(dailyCountsFiltrados, groupBy)
       : []
   }, [dailyCountsFiltrados, groupBy]);
-
-  const periodoLabelES: Record<string, string> = {
-    day: 'día', week: 'semana', month: 'mes', year: 'año',
-  };
 
   const consultasPorPeriodoChartData = useMemo(() => groupedCounts.length ? {
     labels: groupedCounts.map(([key]) => formatLabel(String(key), groupBy)),
