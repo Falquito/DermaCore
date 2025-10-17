@@ -61,7 +61,7 @@ const sidebarItems = [
     name: 'Especialidades',
     icon: Stethoscope,
     href: '/gerente/especialidades',
-    description: 'ABM de especialidades médicas',
+    description: 'Gestión de especialidades médicas',
   },
   {
     id: 'obras-sociales',

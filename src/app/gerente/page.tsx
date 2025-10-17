@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import type { ComponentType, SVGProps } from "react";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -14,10 +13,6 @@ import {
 } from "chart.js";
 import {
   Filter,
-  CalendarDays,
-  Award,
-  Users,
-  PieChart as PieChartIcon,
   X,
   Plus,
   Trash2,
@@ -73,8 +68,6 @@ const PIE_COLORS = [
 const generateColors = (count: number): string[] =>
   Array.from({ length: count }, (_, i) => PIE_COLORS[i % PIE_COLORS.length]);
 
-const sum = (ns: number[]): number => ns.reduce((a, b) => a + b, 0);
-const fmtPct = (x: number) => `${Number.isFinite(x) ? x.toFixed(1) : "0.0"}%`;
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 const onlyDigits = (s: string) => s.replace(/\D+/g, "");
 const uid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2,8)}`;
@@ -84,11 +77,6 @@ const makeRange = (min: number, max: number): EdadRange => ({
   max,
   label: `${min}-${max}`,
 });
-const formatDateAR = (iso: string): string => {
-  if (!iso) return "";
-  const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${y}`;
-};
 const toISODateLocal = (d: Date): string => {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -215,64 +203,6 @@ const computePreset = (key: PresetKey): { from: string; to: string } => {
   }
 };
 
-/* ========= KPIs Card ========= */
-type KpiCardProps = {
-  title: string;
-  value: string | number;
-  subtitle?: string;
-  Icon: ComponentType<SVGProps<SVGSVGElement>>;
-  accent?: string;
-};
-
-const KpiCard = ({ title, value, subtitle, Icon, accent = "bg-blue-50" }: KpiCardProps) => {
-  // Map accent colors to gradients similar to profesionales page
-  const gradientMap: Record<string, string> = {
-    "bg-emerald-50": "from-emerald-500 to-emerald-600",
-    "bg-blue-50": "from-blue-500 to-blue-600", 
-    "bg-indigo-50": "from-indigo-500 to-indigo-600",
-    "bg-amber-50": "from-amber-500 to-amber-600"
-  };
-  
-  const gradient = gradientMap[accent] || "from-gray-500 to-gray-600";
-
-  return (
-    <div className="rounded-xl border border-emerald-100 bg-white/70 backdrop-blur-sm p-3.5 shadow-sm hover:shadow-md transition-all duration-200 hover:border-emerald-200">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium text-gray-600 mb-1 uppercase tracking-wide">{title}</p>
-          <p className="text-lg font-bold text-gray-900 truncate">{value}</p>
-          {subtitle && (
-            <p className="text-xs text-gray-500 mt-1 line-clamp-2">{subtitle}</p>
-          )}
-        </div>
-        <div className={`h-9 w-9 bg-gradient-to-br ${gradient} rounded-lg flex items-center justify-center shadow-sm shrink-0`}>
-          <Icon className="h-4 w-4 text-white" />
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/** Mensaje "Sin datos" reutilizable */
-// Movido al componente ExperienciaPacienteTab
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const NoData = ({
-  text,
-  onQuick,
-}: {
-  text: string;
-  onQuick: () => void;
-}) => (
-  <div className="h-96 w-full flex flex-col items-center justify-center gap-3 text-center">
-    <div className="text-gray-600">
-      {text}
-    </div>
-    <Button variant="outline" size="sm" onClick={onQuick}>
-      Ver último mes
-    </Button>
-  </div>
-);
-
 /* ========= Página ========= */
 export default function GerenteDashboard() {
   // Fechas default
@@ -369,17 +299,6 @@ export default function GerenteDashboard() {
     setDateTo(to);
     void fetchReports({ startDate: from, endDate: to });
   };
-
-  // KPIs
-  const totalConsultas = sum(especialidades.map(e => e.total));
-  const totalPacientes = sum(edadData.map(d => d.total));
-  const topEsp = [...especialidades].sort((a,b)=>b.total-a.total)[0];
-  const topEspPct = totalConsultas ? ((topEsp?.total ?? 0)*100)/totalConsultas : 0;
-  const topEdad: EdadReportData | undefined =
-  edadData.length ? [...edadData].sort((a, b) => b.total - a.total)[0] : undefined; // mantiene tu lógica original
-  const topEdadPct = totalPacientes ? ((topEdad?.total ?? 0)*100)/totalPacientes : 0;
-  const top3Sum = [...especialidades].sort((a,b)=>b.total-a.total).slice(0,3).reduce((acc,it)=>acc+it.total,0);
-  const concTop3Pct = totalConsultas ? (top3Sum*100)/totalConsultas : 0;
 
   // Charts
   const especialidadChart = {
@@ -565,13 +484,6 @@ export default function GerenteDashboard() {
           </div>
         </div>
 
-        {/* Key metrics cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard title="Total de consultas" value={totalConsultas} subtitle={`Periodo ${formatDateAR(dateFrom)} → ${formatDateAR(dateTo)}`} Icon={CalendarDays} accent="bg-emerald-50" />
-          <KpiCard title="Especialidad líder" value={topEsp?.nombre ?? "—"} subtitle={`${fmtPct(topEspPct)} del total`} Icon={Award} accent="bg-blue-50" />
-          <KpiCard title="Rango etario líder" value={topEdad?.rango ?? "—"} subtitle={`${fmtPct(topEdadPct)} de pacientes`} Icon={Users} accent="bg-indigo-50" />
-          <KpiCard title="Concentración Top 3" value={fmtPct(concTop3Pct)} subtitle="Participación de las 3 especialidades principales" Icon={PieChartIcon} accent="bg-amber-50" />
-        </div>
 
         {errorMsg && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded text-sm">
@@ -624,7 +536,10 @@ export default function GerenteDashboard() {
 
         {/* Tab content - Tendencias y Crecimiento */}
         {activeTab === 'tendencias' && (
-          <TendenciasCrecimientoTab />
+          <TendenciasCrecimientoTab 
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+          />
         )}
       </div>
 
@@ -780,10 +695,19 @@ export default function GerenteDashboard() {
       <style jsx global>{`
         @keyframes shake-strong {
           0%   { transform: translateX(0); }
-          10%  { transform: translateX(-4px); 
+          10%  { transform: translateX(-4px); }
+          20%  { transform: translateX(4px); }
+          30%  { transform: translateX(-4px); }
+          40%  { transform: translateX(4px); }
+          50%  { transform: translateX(-2px); }
+          60%  { transform: translateX(2px); }
+          70%  { transform: translateX(-2px); }
+          80%  { transform: translateX(2px); }
+          90%  { transform: translateX(-1px); }
+          100% { transform: translateX(0); }
         }
         .animate-shake-strong {
-          animation: shake-strong 0.12s linear infinite;
+          animation: shake-strong 0.6s ease-in-out;
         }
       `}</style>
     </main>
