@@ -226,6 +226,12 @@ export default function PracticaClinicaTab({
   
   const [distribucionRangoEtarioFiltro, setDistribucionRangoEtarioFiltro] = useState<string>('');
   const [selectedPatientId, setSelectedPatientId] = useState<string>('all');
+  const [selectedPatientName, setSelectedPatientName] = useState<string>('');
+  
+  // Estados para el buscador de pacientes
+  const [patientSearchTerm, setPatientSearchTerm] = useState<string>('');
+  const [isPatientDropdownOpen, setIsPatientDropdownOpen] = useState<boolean>(false);
+  const [filteredPatients, setFilteredPatients] = useState<Array<{id: string, name: string}>>([]);
   
   const obrasSocialesDisponibles = useMemo(() => {
     if (!stats?.appointments) return [];
@@ -267,7 +273,9 @@ export default function PracticaClinicaTab({
         if (!uniquePatients.has(patientId)) {
           uniquePatients.set(patientId, {
             id: patientId,
-            name: `${appointment.paciente.nombre || 'Sin nombre'} ${appointment.paciente.apellido || 'Sin apellido'}`
+            name: `${appointment.paciente.nombre || 'Sin nombre'} ${appointment.paciente.apellido || 'Sin apellido'}`,
+            // Agregamos más información para mejor búsqueda
+            searchTerm: `${appointment.paciente.nombre || ''} ${appointment.paciente.apellido || ''} ${appointment.paciente.id || ''}`.toLowerCase()
           });
         }
       }
@@ -277,6 +285,52 @@ export default function PracticaClinicaTab({
       .filter(patient => patient.id) // Asegurar que todos tengan ID válido
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [stats?.appointments]);
+
+  // Filtrar pacientes basado en el término de búsqueda
+  useEffect(() => {
+    if (!patientSearchTerm.trim()) {
+      setFilteredPatients(availablePatients.slice(0, 10)); // Mostrar solo 10 inicialmente
+    } else {
+      const filtered = availablePatients
+        .filter(patient => 
+          patient.searchTerm.includes(patientSearchTerm.toLowerCase())
+        )
+        .slice(0, 10); // Limitar a 10 resultados
+      setFilteredPatients(filtered);
+    }
+  }, [patientSearchTerm, availablePatients]);
+
+  // Función para seleccionar un paciente
+  const handleSelectPatient = (patient: { id: string, name: string } | null) => {
+    if (patient) {
+      setSelectedPatientId(patient.id);
+      setSelectedPatientName(patient.name);
+      setPatientSearchTerm(patient.name);
+    } else {
+      setSelectedPatientId('all');
+      setSelectedPatientName('');
+      setPatientSearchTerm('');
+    }
+    setIsPatientDropdownOpen(false);
+  };
+
+  // Función para limpiar la selección
+  const handleClearPatientSelection = () => {
+    handleSelectPatient(null);
+  };
+
+  // Cerrar dropdown al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.patient-search-container')) {
+        setIsPatientDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const appointments = stats?.appointments
 
@@ -691,28 +745,103 @@ export default function PracticaClinicaTab({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Panel de controles */}
               <div className="space-y-4">
-                {/* Selector de Paciente */}
+                {/* Selector de Paciente con Búsqueda */}
                 <div className='p-4 border rounded-lg bg-blue-50/30'>
                   <div className='flex items-center justify-between mb-3'>
-                    <p className='text-sm font-semibold text-blue-700 uppercase tracking-wide'>👤 Seleccionar Paciente</p>
+                    <p className='text-sm font-semibold text-blue-700 uppercase tracking-wide'>👤 Buscar Paciente</p>
+                    {selectedPatientId !== 'all' && (
+                      <button
+                        onClick={handleClearPatientSelection}
+                        className="text-xs text-red-600 hover:text-red-800 hover:underline font-medium"
+                      >
+                        Limpiar
+                      </button>
+                    )}
                   </div>
-                  <select 
-                    className="w-full border border-blue-200 rounded-lg px-3 py-2 text-base bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                    value={selectedPatientId} 
-                    onChange={e => setSelectedPatientId(e.target.value)}
-                  >
-                    <option value="all">📊 Todos los pacientes (Vista general)</option>
-                    {availablePatients.map((patient, index) => (
-                      <option key={`patient-${patient.id || index}`} value={patient.id}>
-                        👤 {patient.name}
-                      </option>
-                    ))}
-                  </select>
+                  
+                  <div className="relative patient-search-container">
+                    <input
+                      type="text"
+                      placeholder={selectedPatientId === 'all' ? "🔍 Buscar paciente por nombre..." : "Paciente seleccionado"}
+                      value={patientSearchTerm}
+                      onChange={(e) => {
+                        setPatientSearchTerm(e.target.value);
+                        setIsPatientDropdownOpen(true);
+                        if (!e.target.value) {
+                          setSelectedPatientId('all');
+                          setSelectedPatientName('');
+                        }
+                      }}
+                      onFocus={() => setIsPatientDropdownOpen(true)}
+                      className="w-full border border-blue-200 rounded-lg px-3 py-2 text-base bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    
+                    {/* Dropdown de resultados */}
+                    {isPatientDropdownOpen && (patientSearchTerm || selectedPatientId === 'all') && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {/* Opción "Todos los pacientes" */}
+                        <button
+                          onClick={() => handleSelectPatient(null)}
+                          className={`w-full text-left px-3 py-2 hover:bg-blue-50 border-b border-gray-100 text-sm ${
+                            selectedPatientId === 'all' ? 'bg-blue-100 text-blue-800 font-medium' : 'text-gray-700'
+                          }`}
+                        >
+                          📊 Todos los pacientes (Vista general)
+                        </button>
+                        
+                        {/* Lista de pacientes filtrados */}
+                        {filteredPatients.length > 0 ? (
+                          filteredPatients.map((patient, index) => (
+                            <button
+                              key={`patient-search-${patient.id || index}`}
+                              onClick={() => handleSelectPatient(patient)}
+                              className={`w-full text-left px-3 py-2 hover:bg-gray-50 border-b border-gray-100 text-sm last:border-b-0 ${
+                                selectedPatientId === patient.id ? 'bg-blue-100 text-blue-800 font-medium' : 'text-gray-700'
+                              }`}
+                            >
+                              👤 {patient.name}
+                            </button>
+                          ))
+                        ) : patientSearchTerm && (
+                          <div className="px-3 py-2 text-sm text-gray-500 italic">
+                            No se encontraron pacientes con &quot;{patientSearchTerm}&quot;
+                          </div>
+                        )}
+                        
+                        {/* Indicador si hay más resultados */}
+                        {patientSearchTerm && availablePatients.length > filteredPatients.length && (
+                          <div className="px-3 py-2 text-xs text-gray-400 bg-gray-50 text-center">
+                            Mostrando {filteredPatients.length} de {availablePatients.length} pacientes. Refina tu búsqueda.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Botón para cerrar dropdown */}
+                    {isPatientDropdownOpen && (
+                      <button
+                        onClick={() => setIsPatientDropdownOpen(false)}
+                        className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                  
                   {selectedPatientId !== 'all' && (
-                    <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
-                      ℹ️ Mostrando todas las consultas de este paciente con usted
+                    <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800">
+                      ✅ Mostrando consultas específicas de este paciente
                     </div>
                   )}
+                  
+                  {/* Información adicional */}
+                  <div className="mt-2 text-xs text-gray-500">
+                    {availablePatients.length > 0 ? (
+                      `${availablePatients.length} paciente${availablePatients.length !== 1 ? 's' : ''} disponible${availablePatients.length !== 1 ? 's' : ''}`
+                    ) : (
+                      'No hay datos de pacientes disponibles'
+                    )}
+                  </div>
                 </div>
 
                 {/* Selector de Rango Etario (solo si no hay paciente específico) */}
@@ -783,7 +912,7 @@ export default function PracticaClinicaTab({
                     <br />
                     {selectedPatientId === 'all' 
                       ? `Vista general de todos los pacientes${distribucionRangoEtarioFiltro ? ` (${rangosEtarios.find(r => r.value === distribucionRangoEtarioFiltro)?.label})` : ''}`
-                      : `Consultas específicas del paciente: ${availablePatients.find(p => p.id === selectedPatientId)?.name || 'Seleccionado'}`
+                      : `Consultas específicas del paciente: ${selectedPatientName || 'Seleccionado'}`
                     }
                   </div>
                 </div>
