@@ -3,10 +3,6 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   Line,
-  BarChart,
-  Bar,
-  AreaChart,
-  Area,
   CartesianGrid,
   XAxis,
   YAxis,
@@ -14,21 +10,22 @@ import {
   Legend,
   ResponsiveContainer,
   ComposedChart,
+  Area
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
   TrendingUp, 
-  Clock, 
   Calendar, 
   Users, 
-  Activity, 
   Target,
   Zap,
   Filter,
   RefreshCw,
   Settings2,
-  Minus
+  Minus,
+  Clock,
+  Stethoscope
 } from "lucide-react";
 
 interface TendenciasCrecimientoTabProps {
@@ -615,20 +612,48 @@ export default function TendenciasCrecimientoTab({ dateFrom, dateTo }: Tendencia
 
   const { 
     turnosPorMes, 
-    turnosPorHora, 
-    turnosPorDia, 
-    distribucionEspecialidades,
+    crecimientoPacientes,
+    // turnosPorHora, // Datos disponibles para futuras funcionalidades
+    // turnosPorDia,  // Datos disponibles para futuras funcionalidades
+    // distribucionEspecialidades, // No utilizado tras eliminar carta de especialidades
     estadisticasResumen 
   } = data;
 
-  // Datos reales para especialidades según filtros
-  const especialidadesFiltradas = filtros.especialidades.especialidadesSeleccionadas.length > 0
-    ? distribucionEspecialidades?.filter(esp => filtros.especialidades.especialidadesSeleccionadas.includes(esp.nombre)) || []
-    : distribucionEspecialidades || [];
+  // Datos reales para especialidades según filtros (no utilizado tras eliminar la carta de especialidades)
+  // const especialidadesFiltradas = filtros.especialidades.especialidadesSeleccionadas.length > 0
+  //   ? distribucionEspecialidades?.filter(esp => filtros.especialidades.especialidadesSeleccionadas.includes(esp.nombre)) || []
+  //   : distribucionEspecialidades || [];
 
   // Datos para gráficos (ya filtrados por el backend)
   const datosEvolucion = turnosPorMes || [];
-  const datosPatrones = filtros.patrones.dimension === 'diasemana' ? turnosPorDia : turnosPorHora;
+  
+  // Combinar datos para la gráfica comparativa de crecimiento
+  const datosComparativos = turnosPorMes?.map(turno => {
+    const crecimiento = crecimientoPacientes?.find(c => c.mes === turno.mes);
+    return {
+      mes: turno.mes,
+      consultas: turno.total,
+      pacientesNuevos: crecimiento?.nuevos || 0,
+      totalPacientes: crecimiento?.total || 0,
+      consultasCompletadas: turno.completados
+    };
+  }) || [];
+
+  // Análisis de patrones reales basado en datos existentes
+  const patronesReales = {
+    mejorMes: turnosPorMes?.reduce((max, mes) => 
+      mes.total > (max?.total || 0) ? mes : max, turnosPorMes[0]),
+    peorMes: turnosPorMes?.reduce((min, mes) => 
+      mes.total < (min?.total || Infinity) ? mes : min, turnosPorMes[0]),
+    promedioMensual: turnosPorMes?.reduce((sum, mes) => sum + mes.total, 0) / (turnosPorMes?.length || 1) || 0,
+    variabilidad: turnosPorMes?.length > 1 ? 
+      Math.sqrt(turnosPorMes.reduce((sum, mes) => {
+        const promedio = turnosPorMes.reduce((s, m) => s + m.total, 0) / turnosPorMes.length;
+        return sum + Math.pow(mes.total - promedio, 2);
+      }, 0) / turnosPorMes.length) : 0
+  };
+  
+  // Los datos se cargan desde la API al montar el componente
 
   // Tooltip personalizado para gráficos
   const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ color: string; name: string; value: number; dataKey?: string }>; label?: string }) => {
@@ -690,7 +715,7 @@ export default function TendenciasCrecimientoTab({ dateFrom, dateTo }: Tendencia
       </div>
 
       {/* Métricas Principales */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <MetricCard
           title="Variación de Consultas"
           value={`${estadisticasResumen.tendenciaMensual > 0 ? '+' : ''}${estadisticasResumen.tendenciaMensual.toFixed(1)}%`}
@@ -703,17 +728,37 @@ export default function TendenciasCrecimientoTab({ dateFrom, dateTo }: Tendencia
         <MetricCard
           title="Pacientes Nuevos"
           value={estadisticasResumen.crecimientoPacientesUltimoMes}
-          subtitle={`Filtro: ${filtros.evolucionTemporal.profesional === 'todos' ? 'Todos' : 'Específico'}`}
+          subtitle={`Crecimiento mensual`}
           Icon={Users}
           delay={100}
         />
         
         <MetricCard
-          title="Tasa de Asistencia"
-          value={`${estadisticasResumen.tasaAsistenciaPromedio.toFixed(1)}%`}
-          subtitle={`Estado: ${filtros.evolucionTemporal.estado}`}
+          title="Consultas Resueltas"
+          value={`${(() => {
+            const completados = turnosPorMes?.reduce((sum, mes) => sum + mes.completados, 0) || 0;
+            const cancelados = turnosPorMes?.reduce((sum, mes) => sum + mes.cancelados, 0) || 0;
+            const total = turnosPorMes?.reduce((sum, mes) => sum + mes.total, 0) || 0;
+            return total > 0 ? (((completados + cancelados) / total) * 100).toFixed(1) : '0';
+          })()}%`}
+          subtitle={`Del total de consultas`}
           Icon={Target}
           delay={200}
+        />
+
+        <MetricCard
+          title="Saturación de Agenda"
+          value={`${(() => {
+            const totalConsultas = turnosPorMes?.reduce((sum, mes) => sum + mes.total, 0) || 0;
+            const mesesConDatos = turnosPorMes?.length || 1;
+            const promedioMensual = totalConsultas / mesesConDatos;
+            // Asumiendo capacidad máxima promedio de 200 consultas por mes
+            const capacidadMaxima = 200;
+            return ((promedioMensual / capacidadMaxima) * 100).toFixed(1);
+          })()}%`}
+          subtitle="Uso de capacidad disponible"
+          Icon={Zap}
+          delay={300}
         />
       </div>
 
@@ -810,165 +855,344 @@ export default function TendenciasCrecimientoTab({ dateFrom, dateTo }: Tendencia
           </CardContent>
         </Card>
 
-          {/* Especialidades mejorado */}
-          <Card className="rounded-3xl border-emerald-100 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
-              <CardTitle className="flex items-center gap-3 text-blue-800">
-                <div className="p-2 rounded-lg bg-blue-100">
-                  <Activity className="h-5 w-5 text-blue-600" />
+        {/* Gráfica Comparativa de Crecimiento */}
+        <Card className="rounded-3xl border-blue-100 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-100">
+            <CardTitle className="flex items-center gap-3 text-blue-800">
+              <div className="p-2 rounded-lg bg-blue-100">
+                <TrendingUp className="h-5 w-5 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <span className="text-lg">Análisis Comparativo de Crecimiento</span>
+                <p className="text-sm text-gray-600 font-normal">
+                  Evolución de consultas vs. crecimiento de pacientes
+                </p>
+              </div>
+              {/* Indicadores de las líneas */}
+              <div className="flex gap-4 text-xs">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                  <span>Consultas</span>
                 </div>
-                <div>
-                  <span className="text-lg">Análisis por Especialidad</span>
-                  <p className="text-sm text-gray-600 font-normal">
-                    {filtros.especialidades.periodo}
-                  </p>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-emerald-500 rounded"></div>
+                  <span>Nuevos</span>
                 </div>
-              </CardTitle>
-              <PanelFiltrosAvanzados 
-                tipo="especialidades" 
-                filtros={filtros} 
-                setFiltros={handleFiltroChange}
-                opciones={{ especialidades: getEspecialidadesCombinadas(), profesionales }}
-              />
-            </CardHeader>
-            <CardContent className="p-6">
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={especialidadesFiltradas} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="nombre" stroke="#6b7280" angle={-45} textAnchor="end" height={80} fontSize={11} />
-                  <YAxis stroke="#6b7280" fontSize={12} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar 
-                    dataKey="cantidad" 
-                    fill="#3b82f6" 
-                    name="Consultas" 
-                    radius={[4, 4, 0, 0]} 
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Segunda fila - Gráficos de apoyo */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Distribución por Horarios */}
-          <Card className="rounded-3xl border-purple-100 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100">
-              <CardTitle className="flex items-center gap-3 text-purple-800">
-                <div className="p-2 rounded-lg bg-purple-100">
-                  <Clock className="h-5 w-5 text-purple-600" />
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-purple-500 rounded"></div>
+                  <span>Total</span>
                 </div>
-                <div>
-                  <span className="text-base">
-                    {filtros.patrones.dimension === 'horario' ? 'Por Horarios' :
-                     filtros.patrones.dimension === 'diasemana' ? 'Por Días' :
-                     filtros.patrones.dimension === 'feriados' ? 'Feriados vs Normales' :
-                     'Por Estaciones'}
-                  </span>
-                  <p className="text-xs text-gray-600 font-normal">
-                    {filtros.patrones.dimension === 'horario' ? 'Patrón diario' :
-                     filtros.patrones.dimension === 'diasemana' ? 'Patrón semanal' :
-                     filtros.patrones.dimension === 'feriados' ? 'Análisis festivos' :
-                     'Tendencia anual'}
-                  </p>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              {/* Estadísticas de comparación */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">Métricas del Período</h4>
+                
+                <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                  <div className="text-xl font-bold text-blue-700">
+                    {datosComparativos.reduce((sum, item) => sum + item.consultas, 0)}
+                  </div>
+                  <div className="text-xs text-gray-600">Total Consultas</div>
                 </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <ResponsiveContainer width="100%" height={240}>
-                <AreaChart data={datosPatrones} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
-                  <defs>
-                    <linearGradient id="gradientHora" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.1}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="hora" stroke="#6b7280" fontSize={10} />
-                  <YAxis stroke="#6b7280" fontSize={10} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Area
-                    type="monotone"
-                    dataKey="cantidad"
-                    fill="url(#gradientHora)"
-                    stroke="#8b5cf6"
-                    strokeWidth={2}
-                    name="Consultas"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* Distribución por Días */}
-          <Card className="rounded-3xl border-orange-100 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-orange-50 to-yellow-50 border-b border-orange-100">
-              <CardTitle className="flex items-center gap-3 text-orange-800">
-                <div className="p-2 rounded-lg bg-orange-100">
-                  <Calendar className="h-5 w-5 text-orange-600" />
+                
+                <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-100">
+                  <div className="text-xl font-bold text-emerald-700">
+                    {datosComparativos.reduce((sum, item) => sum + item.pacientesNuevos, 0)}
+                  </div>
+                  <div className="text-xs text-gray-600">Pacientes Nuevos</div>
                 </div>
-                <div>
-                  <span className="text-base">Por Días</span>
-                  <p className="text-xs text-gray-600 font-normal">Patrón semanal</p>
+                
+                <div className="bg-purple-50 rounded-lg p-3 border border-purple-100">
+                  <div className="text-xl font-bold text-purple-700">
+                    {datosComparativos.length > 0 ? 
+                      Math.round((datosComparativos.reduce((sum, item) => sum + item.pacientesNuevos, 0) / 
+                      datosComparativos.reduce((sum, item) => sum + item.consultas, 0)) * 100) : 0}%
+                  </div>
+                  <div className="text-xs text-gray-600">Ratio Nuevos/Consultas</div>
                 </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={turnosPorDia} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="dia" stroke="#6b7280" fontSize={10} />
-                  <YAxis stroke="#6b7280" fontSize={10} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar 
-                    dataKey="cantidad" 
-                    fill="#f59e0b" 
-                    name="Consultas"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* Insights Clínicos rediseñados */}
-          <Card className="rounded-3xl border-teal-100 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-teal-50 to-cyan-50 border-b border-teal-100">
-              <CardTitle className="flex items-center gap-3 text-teal-800">
-                <div className="p-2 rounded-lg bg-teal-100">
-                  <Target className="h-5 w-5 text-teal-600" />
-                </div>
-                <div>
-                  <span className="text-base">Insights Clínicos</span>
-                  <p className="text-xs text-gray-600 font-normal">Patrones clave</p>
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 space-y-4">
-              <div className="bg-white rounded-lg p-3 border border-gray-100">
-                <div className="text-lg font-bold text-teal-700 mb-1">
-                  {estadisticasResumen.horasMasConcurridas?.[0] || '--:--'}
-                </div>
-                <div className="text-xs text-gray-600">Hora Peak</div>
               </div>
               
-              <div className="bg-white rounded-lg p-3 border border-gray-100">
-                <div className="text-lg font-bold text-blue-700 mb-1">
-                  {estadisticasResumen.diasMasConcurridos?.[0] || 'N/A'}
-                </div>
-                <div className="text-xs text-gray-600">Día de Mayor Demanda</div>
+              {/* Gráfica principal */}
+              <div className="lg:col-span-3">
+                <ResponsiveContainer width="100%" height={350}>
+                  <ComposedChart data={datosComparativos} margin={{ top: 20, right: 50, left: 20, bottom: 5 }}>
+                    <defs>
+                      <linearGradient id="gradientConsultas" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="mes" stroke="#6b7280" fontSize={12} />
+                    <YAxis yAxisId="left" stroke="#3b82f6" fontSize={11} label={{ value: 'Consultas', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } }} />
+                    <YAxis yAxisId="right" orientation="right" stroke="#10b981" fontSize={11} label={{ value: 'Pacientes', angle: 90, position: 'insideRight', style: { textAnchor: 'middle' } }} />
+                    <Tooltip 
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+                              <p className="font-semibold text-gray-700 mb-2">{`${label}`}</p>
+                              {payload.map((entry, index) => (
+                                <p key={index} style={{ color: entry.color }}>
+                                  {`${entry.name}: ${entry.value}`}
+                                </p>
+                              ))}
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    
+                    {/* Área para consultas totales */}
+                    <Area
+                      yAxisId="left"
+                      type="monotone"
+                      dataKey="consultas"
+                      fill="url(#gradientConsultas)"
+                      stroke="#3b82f6"
+                      strokeWidth={3}
+                      name="Consultas Totales"
+                    />
+                    
+                    {/* Línea para pacientes nuevos */}
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="pacientesNuevos"
+                      stroke="#10b981"
+                      strokeWidth={3}
+                      name="Pacientes Nuevos"
+                      dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+                    />
+                    
+                    {/* Línea para total de pacientes */}
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="totalPacientes"
+                      stroke="#8b5cf6"
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      name="Total Pacientes Atendidos"
+                      dot={{ fill: '#8b5cf6', strokeWidth: 2, r: 3 }}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
               </div>
-              
-              <div className="bg-white rounded-lg p-3 border border-gray-100">
-                <div className="text-sm font-bold text-purple-700 mb-1 truncate" title={estadisticasResumen.especialidadMasPopular}>
-                  {estadisticasResumen.especialidadMasPopular || 'N/A'}
-                </div>
-                <div className="text-xs text-gray-600">Especialidad Líder</div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Insights de Datos - Reestructurado y Responsive */}
+      <Card className="rounded-3xl border-emerald-100 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-100">
+          <CardTitle className="flex items-center gap-3 text-emerald-800">
+            <div className="p-2 rounded-lg bg-emerald-100">
+              <Users className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div>
+              <span className="text-lg">Insights de Datos</span>
+              <p className="text-sm text-gray-600 font-normal">Análisis basado en información real</p>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="space-y-8">
+            {/* Estadísticas Principales */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">Estadísticas Principales</h3>
+                <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent"></div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl p-4 border border-emerald-100 hover:shadow-md transition-shadow">
+                  <div className="text-sm text-gray-600 mb-1">Mejor Período</div>
+                  <div className="text-2xl font-bold text-emerald-700 mb-1">
+                    {patronesReales.mejorMes?.mes || 'N/A'}
+                  </div>
+                  <div className="text-sm text-emerald-600">
+                    {patronesReales.mejorMes?.total || 0} consultas
+                  </div>
+                </div>
+                
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100 hover:shadow-md transition-shadow">
+                  <div className="text-sm text-gray-600 mb-1">Promedio</div>
+                  <div className="text-2xl font-bold text-blue-700 mb-1">
+                    {Math.round(patronesReales.promedioMensual)}
+                  </div>
+                  <div className="text-sm text-blue-600">
+                    consultas/período
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl p-4 border border-purple-100 hover:shadow-md transition-shadow">
+                  <div className="text-sm text-gray-600 mb-1">Total Consultas</div>
+                  <div className="text-2xl font-bold text-purple-700 mb-1">
+                    {turnosPorMes?.reduce((sum, mes) => sum + mes.total, 0) || 0}
+                  </div>
+                  <div className="text-sm text-purple-600">
+                    en período seleccionado
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl p-4 border border-orange-100 hover:shadow-md transition-shadow">
+                  <div className="text-sm text-gray-600 mb-1">Variabilidad</div>
+                  <div className="text-2xl font-bold text-orange-700 mb-1">
+                    {patronesReales.variabilidad ? Math.round(patronesReales.variabilidad) : 0}
+                  </div>
+                  <div className="text-sm text-orange-600">
+                    desviación estándar
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Patrones Operativos */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">Patrones Operativos</h3>
+                <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent"></div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-4 border border-blue-100">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="text-sm text-gray-600 mb-1">Hora más concurrida</div>
+                      <div className="text-xl font-bold text-blue-700">
+                        {estadisticasResumen.horasMasConcurridas?.[0] || 'Analizando...'}
+                      </div>
+                    </div>
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <Clock className="h-4 w-4 text-blue-600" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-100">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="text-sm text-gray-600 mb-1">Día más activo</div>
+                      <div className="text-xl font-bold text-green-700">
+                        {estadisticasResumen.diasMasConcurridos?.[0] || 'Analizando...'}
+                      </div>
+                    </div>
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <Calendar className="h-4 w-4 text-green-600" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-4 border border-purple-100">
+                  <div className="flex justify-between items-start">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm text-gray-600 mb-1">Especialidad líder</div>
+                      <div className="text-lg font-bold text-purple-700 truncate" title={estadisticasResumen.especialidadMasPopular}>
+                        {estadisticasResumen.especialidadMasPopular || 'Analizando...'}
+                      </div>
+                    </div>
+                    <div className="p-2 bg-purple-100 rounded-lg ml-2">
+                      <Stethoscope className="h-4 w-4 text-purple-600" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Estado de Consultas */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">Estado de Consultas</h3>
+                <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent"></div>
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Desglose de Estados */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Distribución por Estado</h4>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-green-50 rounded-xl p-4 border border-green-100 text-center">
+                      <div className="text-2xl font-bold text-green-700 mb-1">
+                        {turnosPorMes?.reduce((sum, mes) => sum + mes.completados, 0) || 0}
+                      </div>
+                      <div className="text-xs text-gray-600 mb-1">Completadas</div>
+                      <div className="text-sm font-semibold text-green-600">
+                        {turnosPorMes && turnosPorMes.length > 0 ? 
+                          ((turnosPorMes.reduce((sum, mes) => sum + mes.completados, 0) / 
+                            turnosPorMes.reduce((sum, mes) => sum + mes.total, 0)) * 100).toFixed(1) 
+                          : '0'}%
+                      </div>
+                    </div>
+                    
+                    <div className="bg-red-50 rounded-xl p-4 border border-red-100 text-center">
+                      <div className="text-2xl font-bold text-red-700 mb-1">
+                        {turnosPorMes?.reduce((sum, mes) => sum + mes.cancelados, 0) || 0}
+                      </div>
+                      <div className="text-xs text-gray-600 mb-1">Canceladas</div>
+                      <div className="text-sm font-semibold text-red-600">
+                        {turnosPorMes && turnosPorMes.length > 0 ? 
+                          ((turnosPorMes.reduce((sum, mes) => sum + mes.cancelados, 0) / 
+                            turnosPorMes.reduce((sum, mes) => sum + mes.total, 0)) * 100).toFixed(1) 
+                          : '0'}%
+                      </div>
+                    </div>
+                    
+                    <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 text-center">
+                      <div className="text-2xl font-bold text-amber-700 mb-1">
+                        {(turnosPorMes?.reduce((sum, mes) => sum + mes.total, 0) || 0) - 
+                         (turnosPorMes?.reduce((sum, mes) => sum + mes.completados + mes.cancelados, 0) || 0)}
+                      </div>
+                      <div className="text-xs text-gray-600 mb-1">Programadas</div>
+                      <div className="text-sm font-semibold text-amber-600">
+                        {turnosPorMes && turnosPorMes.length > 0 ? 
+                          (((turnosPorMes.reduce((sum, mes) => sum + mes.total, 0) - 
+                             turnosPorMes.reduce((sum, mes) => sum + mes.completados + mes.cancelados, 0)) / 
+                            turnosPorMes.reduce((sum, mes) => sum + mes.total, 0)) * 100).toFixed(1) 
+                          : '0'}%
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Eficiencia de Resolución */}
+                  <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-sm font-medium text-gray-700">Eficiencia de resolución</span>
+                      <span className="text-lg font-bold text-green-700">
+                        {(() => {
+                          const completados = turnosPorMes?.reduce((sum, mes) => sum + mes.completados, 0) || 0;
+                          const cancelados = turnosPorMes?.reduce((sum, mes) => sum + mes.cancelados, 0) || 0;
+                          const resueltos = completados + cancelados;
+                          return resueltos > 0 ? ((completados / resueltos) * 100).toFixed(1) : '0';
+                        })()}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+                      <div 
+                        className="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full transition-all duration-700 ease-out"
+                        style={{ 
+                          width: `${(() => {
+                            const completados = turnosPorMes?.reduce((sum, mes) => sum + mes.completados, 0) || 0;
+                            const cancelados = turnosPorMes?.reduce((sum, mes) => sum + mes.cancelados, 0) || 0;
+                            const resueltos = completados + cancelados;
+                            return resueltos > 0 ? (completados / resueltos) * 100 : 0;
+                          })()}%` 
+                        }}
+                      ></div>
+                    </div>
+                    <div className="text-xs text-gray-600 text-center">
+                      De las consultas resueltas, qué porcentaje fue exitoso
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+              </CardContent>
+            </Card>
+          </div>
   );
 }

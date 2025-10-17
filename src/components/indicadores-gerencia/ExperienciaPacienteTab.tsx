@@ -17,9 +17,10 @@ import {
   Legend,
   Title,
 } from 'chart.js'
-import { Loader2, Plus, X } from 'lucide-react'
+import { Loader2, Plus, X, Activity, Clock, Users, BarChart3, Target, Percent } from 'lucide-react'
 import type { TooltipItem, ScriptableContext, ChartOptions, PointStyle } from 'chart.js'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 ChartJS.register(
   ArcElement,
@@ -141,6 +142,59 @@ const NoData = ({ text, onQuick }: { text: string; onQuick: () => void }) => (
     </Button>
   </div>
 )
+
+// Componente para métricas con animaciones (igual que TendenciasCrecimientoTab)
+interface MetricCardProps {
+  title: string
+  value: string | number
+  change?: number
+  subtitle?: string
+  Icon: React.ComponentType<{ className?: string }>
+  delay?: number
+}
+
+const MetricCard = ({ title, value, change, subtitle, Icon, delay = 0 }: MetricCardProps) => {
+  const [isVisible, setIsVisible] = useState(false)
+  
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), delay)
+    return () => clearTimeout(timer)
+  }, [delay])
+
+  const changeColor = change && change > 0 ? 'text-emerald-600' : change && change < 0 ? 'text-red-500' : 'text-gray-500'
+  const changeBg = change && change > 0 ? 'bg-emerald-50' : change && change < 0 ? 'bg-red-50' : 'bg-gray-50'
+
+  return (
+    <div 
+      className={`
+        rounded-2xl border border-emerald-100 bg-gradient-to-br from-white via-emerald-50/30 to-teal-50/20 
+        p-6 shadow-sm hover:shadow-lg transition-all duration-500 hover:border-emerald-200
+        ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}
+      `}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-3">
+            <Icon className="h-5 w-5 text-emerald-600" />
+            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">{title}</h3>
+          </div>
+          <div className="space-y-2">
+            <p className="text-2xl font-bold text-gray-900">{value}</p>
+            {change !== undefined && (
+              <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${changeBg} ${changeColor}`}>
+                {change > 0 ? '↗' : change < 0 ? '↘' : '→'} {Math.abs(change).toFixed(1)}%
+              </div>
+            )}
+            {subtitle && (
+              <p className="text-sm text-gray-600">{subtitle}</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function ExperienciaPacienteTab({
   loading,
@@ -316,7 +370,13 @@ export default function ExperienciaPacienteTab({
   const [distLoading, setDistLoading] = useState<boolean>(false)
   const [distData, setDistData] = useState<DistBarChartData | null>(null)
 
-  const [distDate, setDistDate] = useState<string>(dateFrom ?? '')
+  // Inicializar con dateFrom o fecha actual si no está disponible
+  const [distDate, setDistDate] = useState<string>(() => {
+    if (dateFrom) return dateFrom
+    // Si no hay dateFrom, usar la fecha actual
+    const today = new Date()
+    return today.toISOString().split('T')[0]
+  })
   const [distEspecialidad, setDistEspecialidad] = useState<string>('Todas')
   const [distDuracion, setDistDuracion] = useState<string>('cualquiera')
 
@@ -336,11 +396,25 @@ export default function ExperienciaPacienteTab({
   const [statusEspecialidad, setStatusEspecialidad] = useState<string>('Todas')
 
   useEffect(() => {
-    if (!distDate && dateFrom) setDistDate(dateFrom)
+    // Actualizar distDate cuando cambie dateFrom, pero solo si dateFrom no está vacío
+    if (dateFrom && dateFrom !== distDate) {
+      console.log('Updating distDate from dateFrom', { dateFrom, currentDistDate: distDate })
+      setDistDate(dateFrom)
+    }
   }, [dateFrom, distDate])
 
   const fetchDistribucion = useCallback(async () => {
-    if (!distDate) return
+    if (!distDate) {
+      console.log('fetchDistribucion: No distDate provided', { distDate })
+      return
+    }
+    
+    console.log('fetchDistribucion: Starting fetch', { 
+      distDate, 
+      distEspecialidad, 
+      distDuracion 
+    })
+    
     setDistLoading(true)
     try {
       const body = {
@@ -348,16 +422,28 @@ export default function ExperienciaPacienteTab({
         especialidad: distEspecialidad === 'Todas' ? null : distEspecialidad,
         duracion: distDuracion,
       }
+      
+      console.log('fetchDistribucion: Request body', body)
+      
       const res = await fetch('/api/reportes/distribucion-horaria', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
+      
+      console.log('fetchDistribucion: Response status', res.status)
+      
       if (!res.ok) {
+        console.error('fetchDistribucion: Response not ok', {
+          status: res.status,
+          statusText: res.statusText
+        })
         setDistData(null)
         return
       }
       const json = await res.json() as DistribRow[]
+      console.log('fetchDistribucion: Response data', json)
+      
       const startHour = 8
       const endHour = 18
       const labels = Array.from({ length: endHour - startHour + 1 }, (_, i) => {
@@ -372,7 +458,8 @@ export default function ExperienciaPacienteTab({
       const colors = labels.map((_, i) => PIE_COLORS[i % PIE_COLORS.length])
       const bg = colors.map(c => transparentize(c, 0.9))
       const borders = labels.map(() => '#000000')
-      setDistData({
+      
+      const chartData = {
         labels,
         datasets: [{
           data: counts,
@@ -380,9 +467,12 @@ export default function ExperienciaPacienteTab({
           borderColor: borders,
           borderWidth: 1.5,
         }],
-      })
+      }
+      
+      console.log('fetchDistribucion: Chart data prepared', { chartData, counts })
+      setDistData(chartData)
     } catch (err) {
-      console.error('Error distribucion horaria', err)
+      console.error('fetchDistribucion: Error', err)
       setDistData(null)
     } finally {
       setDistLoading(false)
@@ -390,7 +480,15 @@ export default function ExperienciaPacienteTab({
   }, [distDate, distEspecialidad, distDuracion])
 
   useEffect(() => {
-    if (distDate) void fetchDistribucion()
+    console.log('useEffect triggered for fetchDistribucion', { 
+      distDate, 
+      distEspecialidad, 
+      distDuracion,
+      hasDistDate: !!distDate 
+    })
+    if (distDate) {
+      void fetchDistribucion()
+    }
   }, [distDate, distEspecialidad, distDuracion, fetchDistribucion])
 
   // --- Fetch Estados de Citas (HU 37) ---
@@ -427,226 +525,348 @@ export default function ExperienciaPacienteTab({
     void fetchAppointmentStatus()
   }, [fetchAppointmentStatus])
 
+  // Calcular métricas clave
+  const totalConsultas = especialidades.reduce((sum, esp) => sum + esp.total, 0)
+  
+  // Calcular tasa de asistencia basada en statusData
+  const tasaAsistencia = statusData 
+    ? statusData.totalAppointments > 0 
+      ? ((statusData.totals.COMPLETADO * 100) / statusData.totalAppointments)
+      : 0
+    : 0
+
+  // Calcular total de obras sociales únicas
+  const totalObrasSociales = obraChartData ? obraChartData.labels.length : 0
+
   return (
-    <>
+    <div className="space-y-8">
       {loading ? (
-        <div className="rounded-3xl border border-emerald-100 bg-white p-8 shadow-sm">
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
-            <span className="ml-2 text-gray-600 text-lg">Cargando reportes...</span>
+        <div className="flex items-center justify-center h-96">
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+            <span className="text-lg text-gray-600">Cargando análisis de experiencia del paciente...</span>
           </div>
         </div>
       ) : (
         <Fragment>
-          {/* SECCIÓN 1: dos gráficos lado a lado (Especialidad y Edad) */}
-          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* PASTEL - Consultas por Especialidad */}
-            <div className="bg-white/70 backdrop-blur-sm p-6 rounded-2xl border border-emerald-200 shadow-sm hover:shadow-md transition-shadow flex flex-col">
-              <h2 className="text-2xl font-semibold text-gray-900">Consultas por Especialidad</h2>
-              <p className="text-base text-gray-500 mb-4">
-                Periodo: {formatDateAR(dateFrom)} → {formatDateAR(dateTo)}
-              </p>
+          {/* Header con información del período */}
+          <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-emerald-50 via-white to-teal-50 p-6 shadow-lg">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-emerald-800 mb-2">Experiencia del Paciente</h2>
+                <div className="text-sm text-gray-600 space-y-1">
+                  <p>📊 Análisis integral de la atención y demografía</p>
+                  <p>📅 Período: {formatDateAR(dateFrom)} → {formatDateAR(dateTo)}</p>
+                  <p>🏥 Distribución por especialidades, edades y obras sociales</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm text-gray-500 mb-1">Resumen del Período</div>
+                <div className="flex flex-wrap gap-1 justify-end">
+                  <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs">
+                    {totalConsultas} consultas
+                  </span>
+                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
+                    {tasaAsistencia.toFixed(1)}% asistencia
+                  </span>
+                  <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs">
+                    {totalObrasSociales} coberturas
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
 
-              {especialidades.length > 0 ? (
-                <div className="h-96">
-                  <Pie
-                    data={especialidadChart}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      plugins: {
-                        legend: {
-                          position: 'bottom',
-                          labels: { usePointStyle: true, pointStyle: 'circle', font: { size: 12 } },
-                        },
-                        tooltip: {
-                          titleFont: { size: 14 },
-                          bodyFont: { size: 13 },
-                          callbacks: {
-                            label: (ctx: TooltipItem<'pie'>) => {
-                              const ds = ctx.dataset.data as number[]
-                              const total = ds.reduce((a, b) => a + (b as number), 0)
-                              const value = Number(ctx.raw)
-                              const pct = total ? (value * 100) / total : 0
-                              return `${ctx.label}: ${value} (${pct.toFixed(1)}%)`
+          {/* Métricas Principales */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <MetricCard
+              title="Total Consultas"
+              value={totalConsultas}
+              subtitle="En el período seleccionado"
+              Icon={BarChart3}
+              delay={0}
+            />
+            
+            <MetricCard
+              title="Tasa de Asistencia"
+              value={`${tasaAsistencia.toFixed(1)}%`}
+              subtitle={statusData ? `${statusData.totals.COMPLETADO} de ${statusData.totalAppointments} citas` : "Calculando..."}
+              Icon={Percent}
+              delay={100}
+            />
+            
+            <MetricCard
+              title="Cobertura Médica"
+              value={`${totalObrasSociales} obras sociales`}
+              subtitle={obraChartData && obraChartData.labels.length > 0 ? `Incluyendo ${obraChartData.labels[0]}` : "Analizando cobertura"}
+              Icon={Target}
+              delay={200}
+            />
+          </div>
+
+          {/* SECCIÓN 1: Gráficos principales con Cards */}
+          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* PASTEL - Consultas por Especialidad */}
+            <Card className="rounded-3xl border-emerald-100 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-100">
+                <CardTitle className="flex items-center gap-3 text-emerald-800">
+                  <div className="p-2 rounded-lg bg-emerald-100">
+                    <Activity className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold">Consultas por Especialidad</div>
+                    <div className="text-sm font-normal text-gray-600">
+                      Distribución de atención médica especializada
+                    </div>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                {especialidades.length > 0 ? (
+                  <div className="h-96">
+                    <Pie
+                      data={especialidadChart}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: {
+                            position: 'bottom',
+                            labels: { usePointStyle: true, pointStyle: 'circle', font: { size: 12 } },
+                          },
+                          tooltip: {
+                            titleFont: { size: 14 },
+                            bodyFont: { size: 13 },
+                            callbacks: {
+                              label: (ctx: TooltipItem<'pie'>) => {
+                                const ds = ctx.dataset.data as number[]
+                                const total = ds.reduce((a, b) => a + (b as number), 0)
+                                const value = Number(ctx.raw)
+                                const pct = total ? (value * 100) / total : 0
+                                return `${ctx.label}: ${value} (${pct.toFixed(1)}%)`
+                              },
                             },
                           },
                         },
-                      },
-                    }}
-                  />
-                </div>
-              ) : (
-                <NoData text="No hay consultas por especialidad para el período seleccionado." onQuick={() => onApplyPreset('ultimo_mes')} />
-              )}
-            </div>
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <NoData text="No hay consultas por especialidad para el período seleccionado." onQuick={() => onApplyPreset('ultimo_mes')} />
+                )}
+              </CardContent>
+            </Card>
 
             {/* BARRAS - Distribución Etaria */}
-            <div className="bg-white/70 backdrop-blur-sm p-6 rounded-2xl border border-emerald-200 shadow-sm hover:shadow-md transition-shadow flex flex-col">
-              <div className="flex justify-between items-center mb-4">
-                <div>
-                  <h2 className="text-2xl font-semibold text-gray-900">Distribución demográfica de pacientes</h2>
-                  <p className="text-base text-gray-500">Rango mínimo 1 año, máximo 100 años</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={onEditRangos}>Editar rangos</Button>
-                  <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={onAgregarRango} disabled={addDisabled}>
-                    <Plus className="h-4 w-4 mr-1" /> Agregar rango
-                  </Button>
-                </div>
-              </div>
-
-              {edadData.length > 0 ? (
-                <div className="h-96">
-                  <Bar 
-                    data={edadBarChart} 
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                          titleFont: { size: 14 },
-                          bodyFont: { size: 13 },
+            <Card className="rounded-3xl border-blue-100 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
+                <CardTitle className="flex items-center gap-3 text-blue-800">
+                  <div className="p-2 rounded-lg bg-blue-100">
+                    <Users className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xl font-bold">Distribución Demográfica</div>
+                    <div className="text-sm font-normal text-gray-600">
+                      Rango mínimo 1 año, máximo 100 años
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={onEditRangos}>Editar rangos</Button>
+                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={onAgregarRango} disabled={addDisabled}>
+                      <Plus className="h-4 w-4 mr-1" /> Agregar rango
+                    </Button>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                {edadData.length > 0 ? (
+                  <div className="h-96">
+                    <Bar 
+                      data={edadBarChart} 
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: { display: false },
+                          tooltip: {
+                            titleFont: { size: 14 },
+                            bodyFont: { size: 13 },
+                          },
                         },
-                      },
-                      scales: {
-                        y: {
-                          beginAtZero: true,
-                          ticks: { stepSize: 1, font: { size: 12 } },
-                          title: { display: true, text: 'Cantidad', font: { size: 14 } },
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1, font: { size: 12 } },
+                            title: { display: true, text: 'Cantidad', font: { size: 14 } },
+                          },
+                          x: {
+                            ticks: { font: { size: 12 } },
+                          },
                         },
-                        x: {
-                          ticks: { font: { size: 12 } },
-                        },
-                      },
-                    }}
-                  />
-                </div>
-              ) : (
-                <NoData text="No hay pacientes por rango etario en este período." onQuick={() => onApplyPreset('ultimo_mes')} />
-              )}
-            </div>
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <NoData text="No hay pacientes por rango etario en este período." onQuick={() => onApplyPreset('ultimo_mes')} />
+                )}
+              </CardContent>
+            </Card>
           </section>
 
-          {/* SECCIÓN 2: Distribución Horaria (izquierda) y Obras Sociales (derecha) - MISMO TAMAÑO */}
-          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Columna izquierda: Distribución Horaria */}
-            <div className="bg-white/70 backdrop-blur-sm p-6 rounded-2xl border border-emerald-200 shadow-sm hover:shadow-md transition-shadow flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-2xl font-semibold text-gray-900">Distribución Horaria</h2>
-                  <p className="text-base text-gray-500">Carga de citas por franja horaria</p>
+          {/* SECCIÓN 2: Distribución Horaria y Obras Sociales con Cards */}
+          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Distribución Horaria */}
+            <Card className="rounded-3xl border-purple-100 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100">
+                <CardTitle className="flex items-center gap-3 text-purple-800">
+                  <div className="p-2 rounded-lg bg-purple-100">
+                    <Clock className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold">Distribución Horaria</div>
+                    <div className="text-sm font-normal text-gray-600">
+                      Carga de citas por franja horaria
+                    </div>
+                  </div>
+                </CardTitle>
+                <div className="flex items-center gap-2 flex-wrap mt-4">
+                  <input
+                    type="date"
+                    value={distDate}
+                    onChange={(e) => setDistDate(e.target.value)}
+                    className="border rounded p-1.5 text-sm"
+                  />
+                  <select value={distEspecialidad} onChange={(e) => setDistEspecialidad(e.target.value)} className="border rounded p-1.5 text-sm">
+                    <option>Todas</option>
+                    {especialidades.map((s) => <option key={s.nombre}>{s.nombre}</option>)}
+                  </select>
+                  <select value={distDuracion} onChange={(e) => setDistDuracion(e.target.value)} className="border rounded p-1.5 text-sm">
+                    <option value="cualquiera">Cualquier duración</option>
+                    <option value="<=15">≤ 15 min</option>
+                    <option value="<=30">≤ 30 min</option>
+                    <option value=">30">&gt; 30 min</option>
+                  </select>
+                  <Button size="sm" onClick={fetchDistribucion}>Generar</Button>
                 </div>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap mb-4">
-                <input
-                  type="date"
-                  value={distDate}
-                  onChange={(e) => setDistDate(e.target.value)}
-                  className="border rounded p-1.5 text-base"
-                />
-                <select value={distEspecialidad} onChange={(e) => setDistEspecialidad(e.target.value)} className="border rounded p-1.5 text-base">
-                  <option>Todas</option>
-                  {especialidades.map((s) => <option key={s.nombre}>{s.nombre}</option>)}
-                </select>
-                <select value={distDuracion} onChange={(e) => setDistDuracion(e.target.value)} className="border rounded p-1.5 text-base">
-                  <option value="cualquiera">Cualquier duración</option>
-                  <option value="<=15">≤ 15 min</option>
-                  <option value="<=30">≤ 30 min</option>
-                  <option value=">30">&gt; 30 min</option>
-                </select>
-                <Button size="sm" onClick={fetchDistribucion}>Generar</Button>
-              </div>
-
-              {distLoading ? (
-                <div className="h-96 flex items-center justify-center">
-                  <Loader2 className="animate-spin" />
-                </div>
-              ) : distData ? (
-                <div className="h-96">
-                  <Bar
-                    data={distData}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                          titleFont: { size: 14 },
-                          bodyFont: { size: 13 },
-                          callbacks: {
-                            label: (ctx) => {
-                              const value = Number(ctx.raw) || 0
-                              return `${value} turnos`
+              </CardHeader>
+              <CardContent className="p-6">
+                {distLoading ? (
+                  <div className="h-96 flex items-center justify-center">
+                    <Loader2 className="animate-spin" />
+                  </div>
+                ) : distData ? (
+                  <div className="h-96">
+                    <Bar
+                      data={distData}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: { display: false },
+                          tooltip: {
+                            titleFont: { size: 14 },
+                            bodyFont: { size: 13 },
+                            callbacks: {
+                              label: (ctx) => {
+                                const value = Number(ctx.raw) || 0
+                                return `${value} turnos`
+                              },
                             },
                           },
                         },
-                      },
-                      scales: {
-                        y: {
-                          beginAtZero: true,
-                          ticks: { font: { size: 12 } },
-                          title: { display: true, text: 'Cantidad de Citas', font: { size: 14 } },
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            ticks: { font: { size: 12 } },
+                            title: { display: true, text: 'Cantidad de Citas', font: { size: 14 } },
+                          },
+                          x: {
+                            ticks: { font: { size: 12 } },
+                          },
                         },
-                        x: {
-                          ticks: { font: { size: 12 } },
-                        },
-                      },
-                    }}
-                  />
-                </div>
-              ) : (
-                <NoData text="No hay datos para esta selección." onQuick={() => { setDistDate(dateFrom ?? '') }} />
-              )}
-            </div>
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="h-96 flex flex-col items-center justify-center">
+                    <p className="text-gray-500 text-center mb-4 text-base">
+                      {!distDate 
+                        ? "Selecciona una fecha para ver la distribución horaria" 
+                        : "No hay datos de distribución horaria para esta selección"}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setDistDate(dateFrom || new Date().toISOString().split('T')[0])}>
+                        Usar fecha del período
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={fetchDistribucion}>
+                        Reintentar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-            {/* Columna derecha: Obras Sociales - MISMO TAMAÑO */}
-            <div className="bg-white/70 backdrop-blur-sm p-6 rounded-2xl border border-emerald-200 shadow-sm hover:shadow-md transition-shadow flex flex-col">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h2 className="text-2xl font-semibold text-gray-900">Distribución por obra social</h2>
-                  <p className="text-base text-gray-500">Periodo: {formatDateAR(dateFrom)} → {formatDateAR(dateTo)}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setModalOpen(true)}>Ampliar</Button>
-                </div>
-              </div>
-
-              {loadingObras ? (
-                <div className="h-96 flex items-center justify-center">
-                  <Loader2 className="animate-spin" />
-                </div>
-              ) : obraChartData && obraChartData.labels.length ? (
-                <div className="h-96">
-                  <Radar data={radarData} options={radarOptions} />
-                </div>
-              ) : (
-                <NoData text="No se encontraron obras sociales en el periodo seleccionado" onQuick={() => onApplyPreset('ultimo_mes')} />
-              )}
-            </div>
+            {/* Obras Sociales */}
+            <Card className="rounded-3xl border-orange-100 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-orange-50 to-yellow-50 border-b border-orange-100">
+                <CardTitle className="flex items-center gap-3 text-orange-800">
+                  <div className="p-2 rounded-lg bg-orange-100">
+                    <Target className="h-5 w-5 text-orange-600" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xl font-bold">Distribución por Obra Social</div>
+                    <div className="text-sm font-normal text-gray-600">
+                      Análisis de cobertura médica
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setModalOpen(true)}>Ampliar</Button>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                {loadingObras ? (
+                  <div className="h-96 flex items-center justify-center">
+                    <Loader2 className="animate-spin" />
+                  </div>
+                ) : obraChartData && obraChartData.labels.length ? (
+                  <div className="h-96">
+                    <Radar data={radarData} options={radarOptions} />
+                  </div>
+                ) : (
+                  <NoData text="No se encontraron obras sociales en el periodo seleccionado" onQuick={() => onApplyPreset('ultimo_mes')} />
+                )}
+              </CardContent>
+            </Card>
           </section>
 
-          {/* SECCIÓN 3: Estados de Citas (HU 37) */}
-          <section className="mb-6">
-            <div className="bg-white/70 backdrop-blur-sm p-6 rounded-2xl border border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-2xl font-semibold text-gray-900">Estados de Citas</h2>
-                  <p className="text-base text-gray-500">Análisis de completados, cancelados y ausentismo</p>
+          {/* SECCIÓN 3: Estados de Citas con Card mejorado */}
+          <Card className="rounded-3xl border-teal-100 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-teal-50 to-cyan-50 border-b border-teal-100">
+              <CardTitle className="flex items-center gap-3 text-teal-800">
+                <div className="p-2 rounded-lg bg-teal-100">
+                  <BarChart3 className="h-5 w-5 text-teal-600" />
+                </div>
+                <div className="flex-1">
+                  <div className="text-xl font-bold">Estados de Citas</div>
+                  <div className="text-sm font-normal text-gray-600">
+                    Análisis de completados, cancelados y ausentismo
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <select 
                     value={statusEspecialidad} 
                     onChange={(e) => setStatusEspecialidad(e.target.value)} 
-                    className="border rounded p-1.5 text-base"
+                    className="border rounded p-1.5 text-sm"
                   >
                     <option>Todas</option>
                     {especialidades.map((s) => <option key={s.nombre}>{s.nombre}</option>)}
                   </select>
                 </div>
-              </div>
-
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
               {statusLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="animate-spin" />
@@ -728,8 +948,8 @@ export default function ExperienciaPacienteTab({
                   onQuick={() => onApplyPreset('ultimo_mes')} 
                 />
               )}
-            </div>
-          </section>
+            </CardContent>
+          </Card>
 
           {/* Modal ampliado */}
           {modalOpen && obraChartData && (
@@ -750,6 +970,6 @@ export default function ExperienciaPacienteTab({
           )}
         </Fragment>
       )}
-    </>
+    </div>
   )
 }
