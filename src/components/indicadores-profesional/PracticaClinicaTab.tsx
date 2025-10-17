@@ -228,15 +228,19 @@ export default function PracticaClinicaTab({
   const [selectedPatientId, setSelectedPatientId] = useState<string>('all');
   
   const obrasSocialesDisponibles = useMemo(() => {
-    if (!stats?.obraSocialPercentages) return [];
-    return stats.obraSocialPercentages
-      .map(item => item.name)
-      .filter(name => name !== 'Particular');
-  }, [stats?.obraSocialPercentages]);
+    if (!stats?.appointments) return [];
+    const uniqueObrasSociales = new Set<string>();
+    stats.appointments.forEach(appointment => {
+      const obraSocialName = appointment.obraSocial?.nombre || 'Particular';
+      uniqueObrasSociales.add(obraSocialName);
+    });
+    return Array.from(uniqueObrasSociales).sort();
+  }, [stats?.appointments]);
 
-  const [selectedDistribucionOS, setSelectedDistribucionOS] = useState<Set<string>>(new Set(obrasSocialesDisponibles));
+  const [selectedDistribucionOS, setSelectedDistribucionOS] = useState<Set<string>>(new Set());
   
   useEffect(() => {
+    // Inicializar con todas las obras sociales disponibles
     setSelectedDistribucionOS(new Set(obrasSocialesDisponibles));
   }, [obrasSocialesDisponibles]);
 
@@ -251,10 +255,6 @@ export default function PracticaClinicaTab({
       return newSet;
     });
   };
-
-  useEffect(() => {
-    setSelectedDistribucionOS(new Set(obrasSocialesDisponibles));
-  }, [obrasSocialesDisponibles]);
 
   // Lista de pacientes únicos para el selector
   const availablePatients = useMemo(() => {
@@ -284,42 +284,47 @@ export default function PracticaClinicaTab({
   const obraSocialChartData = useMemo(() => {
     if (!stats?.appointments) return null;
     
-    const filteredAppointments = stats.appointments.filter(a => {
-      // Filtro por paciente específico
-      if (selectedPatientId !== 'all' && a.paciente?.id !== selectedPatientId) {
-        return false;
-      }
-      
-      // Filtro por rango etario
-      if (!distribucionRangoEtarioFiltro || !a.paciente?.fechaNacimiento) {
-        // No hay filtro etario, seguir con otros filtros
-      } else {
-        const edad = new Date().getFullYear() - new Date(a.paciente.fechaNacimiento).getFullYear();
-        if (distribucionRangoEtarioFiltro === '0-17' && edad > 17) return false;
-        if (distribucionRangoEtarioFiltro === '18-39' && (edad < 18 || edad > 39)) return false;
-        if (distribucionRangoEtarioFiltro === '40-64' && (edad < 40 || edad > 64)) return false;
-        if (distribucionRangoEtarioFiltro === '65+' && edad < 65) return false;
-      }
-      
-      // Filtro por obra social seleccionada
-      const obraSocialName = a.obraSocial?.nombre || 'Particular';
-      return selectedDistribucionOS.has(obraSocialName);
-    });
+    let filteredAppointments = stats.appointments;
 
+    // Filtro por paciente específico
+    if (selectedPatientId !== 'all') {
+      filteredAppointments = filteredAppointments.filter(a => a.paciente?.id === selectedPatientId);
+    }
+    
+    // Filtro por rango etario (solo si no hay paciente específico seleccionado)
+    if (selectedPatientId === 'all' && distribucionRangoEtarioFiltro) {
+      filteredAppointments = filteredAppointments.filter(a => {
+        if (!a.paciente?.fechaNacimiento) return true;
+        const edad = new Date().getFullYear() - new Date(a.paciente.fechaNacimiento).getFullYear();
+        if (distribucionRangoEtarioFiltro === '0-17') return edad <= 17;
+        if (distribucionRangoEtarioFiltro === '18-39') return edad >= 18 && edad <= 39;
+        if (distribucionRangoEtarioFiltro === '40-64') return edad >= 40 && edad <= 64;
+        if (distribucionRangoEtarioFiltro === '65+') return edad >= 65;
+        return true;
+      });
+    }
+    
+    // Contar por obra social
     const counts = filteredAppointments.reduce((acc, appointment) => {
       const name = appointment.obraSocial?.nombre || 'Particular';
       acc[name] = (acc[name] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
-    const total = filteredAppointments.length;
-    if (total === 0) return null;
+    // Filtrar por obras sociales seleccionadas
+    const filteredCounts = Object.entries(counts)
+      .filter(([name]) => selectedDistribucionOS.has(name))
+      .sort(([,a], [,b]) => b - a);
 
-    const percentages = Object.entries(counts).map(([name, count]) => ({
+    if (filteredCounts.length === 0) return null;
+
+    const total = filteredCounts.reduce((sum, [, count]) => sum + count, 0);
+    
+    const percentages = filteredCounts.map(([name, count]) => ({
       name,
       count,
       percentage: (count / total) * 100,
-    })).sort((a,b) => b.count - a.count);
+    }));
 
     return {
       labels: percentages.map(item => item.name),
@@ -683,79 +688,159 @@ export default function PracticaClinicaTab({
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
-            {/* Selector de Paciente */}
-            <div className='mb-4 p-2 border rounded-lg bg-blue-50/30'>
-              <div className='flex items-center justify-between mb-2'>
-                <p className='text-sm font-semibold text-blue-700 uppercase'>Seleccionar Paciente</p>
-              </div>
-              <select 
-                className="w-full border rounded px-3 py-2 text-base bg-white" 
-                value={selectedPatientId} 
-                onChange={e => setSelectedPatientId(e.target.value)}
-              >
-                <option value="all">📊 Todos los pacientes (Vista general)</option>
-                {availablePatients.map((patient, index) => (
-                  <option key={`patient-${patient.id || index}`} value={patient.id}>
-                    👤 {patient.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Panel de controles */}
+              <div className="space-y-4">
+                {/* Selector de Paciente */}
+                <div className='p-4 border rounded-lg bg-blue-50/30'>
+                  <div className='flex items-center justify-between mb-3'>
+                    <p className='text-sm font-semibold text-blue-700 uppercase tracking-wide'>👤 Seleccionar Paciente</p>
+                  </div>
+                  <select 
+                    className="w-full border border-blue-200 rounded-lg px-3 py-2 text-base bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                    value={selectedPatientId} 
+                    onChange={e => setSelectedPatientId(e.target.value)}
+                  >
+                    <option value="all">📊 Todos los pacientes (Vista general)</option>
+                    {availablePatients.map((patient, index) => (
+                      <option key={`patient-${patient.id || index}`} value={patient.id}>
+                        👤 {patient.name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedPatientId !== 'all' && (
+                    <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                      ℹ️ Mostrando todas las consultas de este paciente con usted
+                    </div>
+                  )}
+                </div>
 
-            {/* Filtros de Obras Sociales */}
-            <div className='mb-4 p-2 border rounded-lg bg-gray-50/50'>
-              <div className='flex items-center justify-between mb-2'>
-                <p className='text-sm font-semibold text-gray-700 uppercase'>Filtrar Obras Sociales</p>
-                <div className='flex gap-2'>
-                  <button onClick={() => setSelectedDistribucionOS(new Set(obrasSocialesDisponibles))} className='text-sm text-blue-600 hover:underline'>Todas</button>
-                  <button onClick={() => setSelectedDistribucionOS(new Set())} className='text-sm text-red-600 hover:underline'>Ninguna</button>
-                </div>
-              </div>
-              <div className='flex flex-wrap gap-1.5 max-h-20 overflow-y-auto'>
-                {obrasSocialesDisponibles.map(os => {
-                  const isSelected = selectedDistribucionOS.has(os);
-                  return (
-                    <button 
-                      key={os}
-                      onClick={() => handleToggleDistribucionOS(os)}
-                      className={`px-2 py-0.5 rounded text-sm font-medium transition-colors border ${
-                        isSelected 
-                          ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100' 
-                          : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-100'
-                      }`}
+                {/* Selector de Rango Etario (solo si no hay paciente específico) */}
+                {selectedPatientId === 'all' && (
+                  <div className='p-4 border rounded-lg bg-green-50/30'>
+                    <div className='flex items-center justify-between mb-3'>
+                      <p className='text-sm font-semibold text-green-700 uppercase tracking-wide'>📊 Rango Etario</p>
+                    </div>
+                    <select 
+                      className="w-full border border-green-200 rounded-lg px-3 py-2 text-base bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" 
+                      value={distribucionRangoEtarioFiltro} 
+                      onChange={e => setDistribucionRangoEtarioFiltro(e.target.value)}
                     >
-                      {os}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-            
-            {/* Selector de Rango Etario */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
-              <div className="text-sm text-gray-600 mb-2 sm:mb-0">
-                {selectedPatientId === 'all' ? 
-                  'Distribución general por obra social' : 
-                  `Consultas de ${availablePatients.find(p => p.id === selectedPatientId)?.name || 'Paciente seleccionado'}`
-                }
-              </div>
-              <select className="border rounded px-2 py-1 text-base bg-white" value={distribucionRangoEtarioFiltro} onChange={e => setDistribucionRangoEtarioFiltro(e.target.value)}>
-                {rangosEtarios.map(rango => <option key={rango.value} value={rango.value}>{rango.label}</option>)}
-              </select>
-            </div>
-            
-            {/* Gráfico */}
-            {obraSocialChartData ? (
-              <div className="flex justify-center">
-                <div className="h-80 w-80">
-                  <Pie ref={chartRef} data={obraSocialChartData} options={customPieChartOptions} />
+                      {rangosEtarios.map(rango => (
+                        <option key={rango.value} value={rango.value}>{rango.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Filtros de Obras Sociales */}
+                <div className='p-4 border rounded-lg bg-gray-50/50'>
+                  <div className='flex items-center justify-between mb-3'>
+                    <p className='text-sm font-semibold text-gray-700 uppercase tracking-wide'>🏥 Filtrar Obras Sociales</p>
+                    <div className='flex gap-2'>
+                      <button 
+                        onClick={() => setSelectedDistribucionOS(new Set(obrasSocialesDisponibles))} 
+                        className='text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium'
+                      >
+                        Todas
+                      </button>
+                      <span className="text-gray-300">|</span>
+                      <button 
+                        onClick={() => setSelectedDistribucionOS(new Set())} 
+                        className='text-sm text-red-600 hover:text-red-800 hover:underline font-medium'
+                      >
+                        Ninguna
+                      </button>
+                    </div>
+                  </div>
+                  <div className='flex flex-wrap gap-2 max-h-32 overflow-y-auto'>
+                    {obrasSocialesDisponibles.map(os => {
+                      const isSelected = selectedDistribucionOS.has(os);
+                      return (
+                        <button 
+                          key={os}
+                          onClick={() => handleToggleDistribucionOS(os)}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+                            isSelected 
+                              ? 'bg-blue-500 border-blue-500 text-white hover:bg-blue-600 shadow-sm' 
+                              : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400'
+                          }`}
+                        >
+                          {os === 'Particular' ? '💰 Particular' : `🏥 ${os}`}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <div className="mt-3 text-xs text-gray-500">
+                    {selectedDistribucionOS.size} de {obrasSocialesDisponibles.length} obras sociales seleccionadas
+                  </div>
+                </div>
+
+                {/* Información contextual */}
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="text-sm text-blue-800">
+                    <strong>📈 Análisis actual:</strong>
+                    <br />
+                    {selectedPatientId === 'all' 
+                      ? `Vista general de todos los pacientes${distribucionRangoEtarioFiltro ? ` (${rangosEtarios.find(r => r.value === distribucionRangoEtarioFiltro)?.label})` : ''}`
+                      : `Consultas específicas del paciente: ${availablePatients.find(p => p.id === selectedPatientId)?.name || 'Seleccionado'}`
+                    }
+                  </div>
                 </div>
               </div>
-            ) : (
-              <div className="h-80 flex items-center justify-center text-gray-500">
-                <p>No hay datos para mostrar con los filtros aplicados</p>
+
+              {/* Gráfico */}
+              <div className="flex flex-col">
+                <div className="text-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800">Distribución por Obra Social</h3>
+                  <p className="text-sm text-gray-600">
+                    {obraSocialChartData ? 
+                      `${obraSocialChartData.percentages.reduce((sum, item) => sum + item.count, 0)} consultas analizadas` : 
+                      'Sin datos para mostrar'
+                    }
+                  </p>
+                </div>
+                
+                {obraSocialChartData ? (
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="h-80 w-80">
+                      <Pie ref={chartRef} data={obraSocialChartData} options={customPieChartOptions} />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <div className="text-center p-8">
+                      <div className="text-4xl mb-2">📊</div>
+                      <p className="text-lg font-medium">No hay datos para mostrar</p>
+                      <p className="text-sm">Ajuste los filtros para ver información</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Leyenda personalizada */}
+                {obraSocialChartData && (
+                  <div className="mt-4 space-y-2">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Distribución detallada:</h4>
+                    <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
+                      {obraSocialChartData.percentages.map((item, index) => (
+                        <div key={item.name} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full" 
+                              style={{ backgroundColor: obraSocialChartData.datasets[0].backgroundColor[index] }}
+                            />
+                            <span className="text-sm font-medium">{item.name}</span>
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            <span className="font-medium">{item.count}</span> ({item.percentage.toFixed(1)}%)
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </CardContent>
         </Card>
 
