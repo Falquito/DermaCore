@@ -208,6 +208,12 @@ export default function MisPacientesTab({ professionalId, dateFrom, dateTo }: Mi
         const response = await fetch(`/api/professional/patients/stats?professionalId=${professionalId}&dateFrom=${dateFrom}&dateTo=${dateTo}`)
         if (response.ok) {
           const data = await response.json()
+          console.log('📊 MisPacientesTab - Datos recibidos:', {
+            dateFrom,
+            dateTo,
+            totalPacientes: data.pacientes?.length || 0,
+            pacientes: data.pacientes
+          })
           setPacientes(data.pacientes || [])
         }
       } catch (error) {
@@ -235,6 +241,14 @@ export default function MisPacientesTab({ professionalId, dateFrom, dateTo }: Mi
       minEdad: range.min,
       maxEdad: range.max
     }
+  })
+
+  // Debug log
+  console.log('📊 MisPacientesTab - Distribución por edad calculada:', {
+    dateFrom,
+    dateTo,
+    totalPacientes: pacientes.length,
+    edadDistribucionData
   })
 
   // Procesamiento de datos para frecuencia de visitas
@@ -453,7 +467,11 @@ export default function MisPacientesTab({ professionalId, dateFrom, dateTo }: Mi
           
           {edadDistribucionData.some(d => d.total > 0) ? (
             <div className="h-80">
-              <Bar data={edadChartData} options={chartOptions} />
+              <Bar 
+                key={`edad-chart-${dateFrom}-${dateTo}-${edadDistribucionData.map(d => d.total).join('-')}`}
+                data={edadChartData} 
+                options={chartOptions} 
+              />
             </div>
           ) : (
             <div className="flex items-center justify-center h-80 text-gray-500">
@@ -489,7 +507,11 @@ export default function MisPacientesTab({ professionalId, dateFrom, dateTo }: Mi
           
           {frecuenciaVisitasData.some(d => d.total > 0) ? (
             <div className="h-80">
-              <Bar data={visitasChartData} options={chartOptions} />
+              <Bar 
+                key={`visitas-chart-${dateFrom}-${dateTo}-${frecuenciaVisitasData.map(d => d.total).join('-')}`}
+                data={visitasChartData} 
+                options={chartOptions} 
+              />
             </div>
           ) : (
             <div className="flex items-center justify-center h-80 text-gray-500">
@@ -523,7 +545,11 @@ export default function MisPacientesTab({ professionalId, dateFrom, dateTo }: Mi
           
           {generoEdadData.length > 0 ? (
             <div className="h-80">
-              <Bar data={generoChartData} options={{...chartOptions, plugins: {...chartOptions.plugins, legend: {...chartOptions.plugins.legend, position: 'bottom' as const}}}} />
+              <Bar 
+                key={`genero-chart-${dateFrom}-${dateTo}-${generoEdadData.map(d => d.total).join('-')}`}
+                data={generoChartData} 
+                options={{...chartOptions, plugins: {...chartOptions.plugins, legend: {...chartOptions.plugins.legend, position: 'bottom' as const}}}} 
+              />
             </div>
           ) : (
             <div className="flex items-center justify-center h-80 text-gray-500">
@@ -555,7 +581,11 @@ export default function MisPacientesTab({ professionalId, dateFrom, dateTo }: Mi
           
           {geografiaData.length > 0 ? (
             <div className="h-80">
-              <Bar data={geografiaChartData} options={{...chartOptions, plugins: {...chartOptions.plugins, legend: {display: false}}}} />
+              <Bar 
+                key={`geografia-chart-${dateFrom}-${dateTo}-${geografiaData.map(d => d.total).join('-')}`}
+                data={geografiaChartData} 
+                options={{...chartOptions, plugins: {...chartOptions.plugins, legend: {display: false}}}} 
+              />
             </div>
           ) : (
             <div className="flex items-center justify-center h-80 text-gray-500">

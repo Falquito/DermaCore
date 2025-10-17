@@ -1,3 +1,12 @@
+:root { 
+	--agenda-border: #cfe7dd; /* light border for containers like grids/cards */
+	--agenda-text: #0b7a5c;   /* unified agenda text color */
+	--ctrl-border: #6b7280;   /* dark gray border for controls (chips, inputs, buttons) */
+    /* Agenda grid sizing defaults */
+    --hour-height: 56px;
+    --hours-count: 14; /* inclusive range, e.g., 07:00–20:00 => 14 */
+}
+
 .borderAgenda { border: 1px solid var(--agenda-border); }
 .textAgenda { color: var(--agenda-text); }
 .borderCtrl { border: 1px solid var(--ctrl-border); }
