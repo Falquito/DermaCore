@@ -514,7 +514,7 @@ export default function ExperienciaPacienteTab({
       const json = await res.json()
       setStatusData(json)
     } catch (err) {
-      console.error('Error estados de citas', err)
+      console.error('Error estados de consultas', err)
       setStatusData(null)
     } finally {
       setStatusLoading(false)
@@ -590,7 +590,7 @@ export default function ExperienciaPacienteTab({
             <MetricCard
               title="Tasa de Asistencia"
               value={`${tasaAsistencia.toFixed(1)}%`}
-              subtitle={statusData ? `${statusData.totals.COMPLETADO} de ${statusData.totalAppointments} citas` : "Calculando..."}
+              subtitle={statusData ? `${statusData.totals.COMPLETADO} de ${statusData.totalAppointments} consultas` : "Calculando..."}
               Icon={Percent}
               delay={100}
             />
@@ -725,7 +725,7 @@ export default function ExperienciaPacienteTab({
                   <div>
                     <div className="text-xl font-bold">Distribución Horaria</div>
                     <div className="text-sm font-normal text-gray-600">
-                      Carga de citas por franja horaria
+                      Carga de consultas por franja horaria
                     </div>
                   </div>
                 </CardTitle>
@@ -778,7 +778,7 @@ export default function ExperienciaPacienteTab({
                           y: {
                             beginAtZero: true,
                             ticks: { font: { size: 12 } },
-                            title: { display: true, text: 'Cantidad de Citas', font: { size: 14 } },
+                            title: { display: true, text: 'Cantidad de consultas', font: { size: 14 } },
                           },
                           x: {
                             ticks: { font: { size: 12 } },
@@ -849,7 +849,7 @@ export default function ExperienciaPacienteTab({
                   <BarChart3 className="h-5 w-5 text-teal-600" />
                 </div>
                 <div className="flex-1">
-                  <div className="text-xl font-bold">Estados de Citas</div>
+                  <div className="text-xl font-bold">Estados de consultas</div>
                   <div className="text-sm font-normal text-gray-600">
                     Análisis de completados, cancelados y ausentismo
                   </div>
@@ -918,7 +918,7 @@ export default function ExperienciaPacienteTab({
                   {/* Métricas clave */}
                   <div className="flex flex-col justify-center gap-4">
                     <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-4 rounded-xl border border-emerald-200">
-                      <p className="text-sm text-gray-600 mb-1">Total de Citas</p>
+                      <p className="text-sm text-gray-600 mb-1">Total de consultas</p>
                       <p className="text-3xl font-bold text-gray-900">{statusData.totalAppointments}</p>
                       <p className="text-xs text-gray-500 mt-1">Periodo: {formatDateAR(dateFrom)} → {formatDateAR(dateTo)}</p>
                     </div>
@@ -944,7 +944,7 @@ export default function ExperienciaPacienteTab({
                 </div>
               ) : (
                 <NoData 
-                  text="No hay datos de estados de citas para el periodo seleccionado" 
+                  text="No hay datos de estados de consultas para el periodo seleccionado" 
                   onQuick={() => onApplyPreset('ultimo_mes')} 
                 />
               )}
