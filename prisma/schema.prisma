@@ -9,9 +9,63 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Paciente {
+  idPaciente        Int      @id @default(autoincrement())
+  nombrePaciente    String
+  apellidoPaciente  String
+  telefonoPaciente  String?
+  domicilioPaciente String?
+  dniPaciente       String   @unique
+  fechaHoraPaciente DateTime @default(now())
+  estadoPaciente    Boolean  @default(true)
+
+  // Relaciones
+  consultas         Consultas[]
+  pacienteXObra     PacienteXObra[]
+}
+
 model ObraSocial {
-  idObraSocial   Int     @id @default(autoincrement())
+  idObraSocial        Int      @id @default(autoincrement())
   nombreObraSocial    String   @unique
   estadoObraSocial    Boolean  @default(true)
-  fechaHoraObraSocial DateTime @default(dbgenerated("NOW() - INTERVAL '3 hours'"))
+  fechaHoraObraSocial DateTime @default(now())
+
+  // Relaciones
+  consultas     Consultas[]
+  pacienteXObra PacienteXObra[]
+}
+
+model Consultas {
+  idConsulta          Int      @id @default(autoincrement())
+  motivoConsulta      String
+  diagnosticoConsulta String?
+  tratamientoConsulta String?
+  fechaHoraConsulta   DateTime @default(now())
+
+  // FK
+  idPaciente    Int
+  idObraSocial  Int
+
+  // Relaciones (1 consulta pertenece a 1 paciente y 1 obra social)
+  paciente    Paciente   @relation(fields: [idPaciente], references: [idPaciente], onDelete: Restrict)
+  obraSocial  ObraSocial @relation(fields: [idObraSocial], references: [idObraSocial], onDelete: Restrict)
+
+  @@index([idPaciente])
+  @@index([idObraSocial])
+}
+
+model PacienteXObra {
+  idPacientexObra Int @id @default(autoincrement())
+
+  // FK
+  idPaciente   Int
+  idObraSocial Int
+
+  // Relaciones
+  paciente    Paciente   @relation(fields: [idPaciente], references: [idPaciente], onDelete: Cascade)
+  obraSocial  ObraSocial @relation(fields: [idObraSocial], references: [idObraSocial], onDelete: Cascade)
+
+  // Evita duplicados (un mismo paciente no se repite con la misma obra social)
+  @@unique([idPaciente, idObraSocial])
+  @@index([idObraSocial])
 }
