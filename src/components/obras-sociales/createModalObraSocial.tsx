@@ -2,20 +2,20 @@
 
 import { useState } from "react"
 import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog" // Usamos Dialog en vez de AlertDialog
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label" // Importante para accesibilidad
 import { InputsCreateObraSocial } from "@/types/inputsCreateObraSocial"
-import { Plus, Loader2 } from "lucide-react"
+import { Plus, Loader2, Building2 } from "lucide-react"
 import { useForm, SubmitHandler } from "react-hook-form"
-import { Field, FieldGroup, FieldLabel, FieldSet } from "../ui/field"
 import NotifySuccessComponent from "./notifySuccess"
 import { createObraSocial } from "@/lib/utils"
 
@@ -55,58 +55,79 @@ export default function CreateModalObraSocialComponent({onSuccess}:{onSuccess:()
     <>
       <NotifySuccessComponent 
          open={openNotify} 
-         title="Éxito" 
-         description="La obra social ha sido creada correctamente." 
+         title="Operación exitosa" 
+         description="La nueva obra social se ha registrado en el sistema." 
       />
 
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogTrigger asChild>
-          <Button className="bg-cyan-600 hover:bg-cyan-700 text-white shadow-sm shadow-cyan-200">
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button className="bg-cyan-600 hover:bg-cyan-700 text-white shadow-sm transition-all hover:shadow-md">
             <Plus className="mr-2 h-4 w-4" />
             Nueva Obra Social
           </Button>
-        </AlertDialogTrigger>
+        </DialogTrigger>
         
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Nueva Obra Social</AlertDialogTitle>
-          </AlertDialogHeader>
+        {/* sm:max-w-[425px] controla el ancho del modal para que sea elegante */}
+        <DialogContent className="sm:max-w-[500px] gap-6">
+          
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-cyan-50 rounded-lg">
+                    <Building2 className="h-5 w-5 text-cyan-600" />
+                </div>
+                <div>
+                    <DialogTitle className="text-xl">Nueva Obra Social</DialogTitle>
+                    <DialogDescription>
+                        Ingresa los datos para dar de alta una nueva cobertura médica.
+                    </DialogDescription>
+                </div>
+            </div>
+          </DialogHeader>
 
-          <form id="create-obra-form" onSubmit={handleSubmit(onSubmit)} className="py-4">
-            <FieldSet>
-              <FieldGroup>
-                <Field>
-                  <FieldLabel htmlFor="nombre">Nombre</FieldLabel>
-                  <Input
-                    id="nombre"
-                    placeholder="Ej: Nobis Medical"
-                    disabled={isLoading} 
-                    className={`focus-visible:ring-cyan-500 focus-visible:border-cyan-500 ${
-                        errors.name ? "border-red-500 focus-visible:ring-red-500" : ""
-                      }`}
-                    {...register("name", { required: true })} 
-                  />
-                </Field>
-              </FieldGroup>
-            </FieldSet>
-
-            {errors.name && (
-              <span className="text-red-500 text-sm mt-1 block">
-                El nombre es obligatorio
-              </span>
-            )}
+          <form id="create-obra-form" onSubmit={handleSubmit(onSubmit)}>
+            <div className="grid gap-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="nombre" className="text-sm font-medium text-slate-700">
+                    Nombre de la Obra Social
+                </Label>
+                <Input
+                  id="nombre"
+                  placeholder="Ej: OSDE, Swiss Medical, Galeno..."
+                  disabled={isLoading} 
+                  className={`
+                    col-span-3 bg-white focus-visible:ring-2 focus-visible:ring-cyan-500/20 focus-visible:border-cyan-500 transition-all
+                    ${errors.name ? "border-red-500 focus-visible:ring-red-500" : "border-slate-200"}
+                  `}
+                  {...register("name", { required: true, minLength: 2 })} 
+                />
+                {errors.name && (
+                    <p className="text-red-500 text-xs font-medium flex items-center mt-1">
+                        Este campo es obligatorio
+                    </p>
+                )}
+                <p className="text-[0.8rem] text-slate-500">
+                    Este nombre será visible en los selectores de turnos y facturación.
+                </p>
+              </div>
+            </div>
           </form>
 
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLoading} className="border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600">
+          <DialogFooter className="gap-2 sm:gap-0">
+            {/* El botón cancelar ahora es "outline" para menos peso visual */}
+            <Button 
+                variant="outline" 
+                onClick={() => setOpen(false)}
+                disabled={isLoading}
+                className="border-slate-200 hover:bg-slate-50 text-slate-700"
+            >
               Cancelar
-            </AlertDialogCancel>
+            </Button>
             
             <Button 
               type="submit" 
               form="create-obra-form"
               disabled={isLoading}
-              className="bg-cyan-600 hover:bg-cyan-700 text-white min-w-[100px]"
+              className="bg-cyan-600 hover:bg-cyan-700 text-white min-w-[120px]"
             >
               {isLoading ? (
                 <>
@@ -114,12 +135,12 @@ export default function CreateModalObraSocialComponent({onSuccess}:{onSuccess:()
                   Guardando
                 </>
               ) : (
-                "Guardar"
+                "Guardar Registro"
               )}
             </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
