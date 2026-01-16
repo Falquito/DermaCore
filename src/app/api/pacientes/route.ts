@@ -1,0 +1,127 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { validateCreatePaciente } from "./dto/create-paciente.dto";
+
+function parsePositiveInt(value: string | null, fallback: number) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
+}
+
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+
+  const q = (searchParams.get("q") ?? "").trim();
+  const estado = searchParams.get("estado"); // "true" | "false" | null | ""
+
+  // ✅ Pagination
+  const page = parsePositiveInt(searchParams.get("page"), 1);
+  const pageSize = parsePositiveInt(searchParams.get("pageSize"), 12);
+  const skip = (page - 1) * pageSize;
+  const take = pageSize;
+
+  const where: any = {};
+
+  if (estado === "true") where.estadoPaciente = true;
+  if (estado === "false") where.estadoPaciente = false;
+
+  if (q) {
+    where.OR = [
+      { nombrePaciente: { contains: q, mode: "insensitive" } },
+      { apellidoPaciente: { contains: q, mode: "insensitive" } },
+      { dniPaciente: { contains: q, mode: "insensitive" } },
+      { telefonoPaciente: { contains: q, mode: "insensitive" } },
+    ];
+  }
+
+  const [total, items] = await Promise.all([
+    prisma.paciente.count({ where }),
+    prisma.paciente.findMany({
+      where,
+      orderBy: { idPaciente: "desc" },
+      skip,
+      take,
+      select: {
+        idPaciente: true,
+        nombrePaciente: true,
+        apellidoPaciente: true,
+        dniPaciente: true,
+        telefonoPaciente: true,
+        domicilioPaciente: true,
+        fechaHoraPaciente: true,
+        estadoPaciente: true,
+        pacienteXObra: {
+          select: {
+            obraSocial: {
+              select: {
+                idObraSocial: true,
+                nombreObraSocial: true,
+                estadoObraSocial: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  return NextResponse.json({
+    items,
+    page,
+    pageSize,
+    total,
+    totalPages,
+  });
+}
+
+export async function POST(req: Request) {
+  const body = await req.json().catch(() => null);
+  const parsed = validateCreatePaciente(body);
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+
+  try {
+    const { idObraSocial, ...pacienteData } = parsed.data;
+
+    const created = await prisma.paciente.create({
+      data: {
+        ...pacienteData,
+        ...(idObraSocial
+          ? {
+              pacienteXObra: {
+                create: [{ idObraSocial }],
+              },
+            }
+          : {}),
+      },
+      select: {
+        idPaciente: true,
+        nombrePaciente: true,
+        apellidoPaciente: true,
+        dniPaciente: true,
+        telefonoPaciente: true,
+        domicilioPaciente: true,
+        fechaHoraPaciente: true,
+        estadoPaciente: true,
+        pacienteXObra: {
+          select: {
+            obraSocial: {
+              select: {
+                idObraSocial: true,
+                nombreObraSocial: true,
+                estadoObraSocial: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(created, { status: 201 });
+  } catch (e: any) {
+    if (e?.code === "P2002") {
+      return NextResponse.json({ error: "Ya existe un paciente con ese DNI" }, { status: 409 });
+    }
+    return NextResponse.json({ error: "Error creando paciente" }, { status: 500 });
+  }
+}
