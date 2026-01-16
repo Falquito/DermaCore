@@ -22,7 +22,6 @@ export default function PacientePage() {
     error,
     refrescar,
 
-    // ✅ paginación
     page,
     setPage,
     totalPages,

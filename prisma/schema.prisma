@@ -57,6 +57,8 @@ model Consultas {
 model PacienteXObra {
   idPacientexObra Int @id @default(autoincrement())
 
+  nroAfiliado     String?
+
   // FK
   idPaciente   Int
   idObraSocial Int
