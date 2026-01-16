@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   const skip = (page - 1) * pageSize;
   const take = pageSize;
 
-  const where: any = {};
+  const where: Record<string, unknown> = {};
 
   if (estado === "true") where.estadoPaciente = true;
   if (estado === "false") where.estadoPaciente = false;
@@ -127,8 +127,9 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(created, { status: 201 });
-  } catch (e: any) {
-    if (e?.code === "P2002") {
+  } catch (e: unknown) {
+    const error = e as { code?: string };
+    if (error?.code === "P2002") {
       return NextResponse.json({ error: "Ya existe un paciente con ese DNI" }, { status: 409 });
     }
     return NextResponse.json({ error: "Error creando paciente" }, { status: 500 });

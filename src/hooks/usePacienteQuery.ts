@@ -56,7 +56,7 @@ export function usePacientesQuery(q: string, pageSize: number = 12) {
       const res = await fetch(url);
       const data = (await res.json()) as PacientesPagedResponse & { error?: string };
 
-      if ((data as any)?.error) throw new Error((data as any).error);
+      if ((data as Record<string, unknown>)?.error) throw new Error((data as Record<string, unknown>).error as string);
 
       // ✅ la API ahora devuelve { items, total, totalPages, ... }
       setPacientes(Array.isArray(data.items) ? data.items : []);

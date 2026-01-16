@@ -64,8 +64,9 @@ export default function CreatePacienteModal({ onCreated }: Props) {
 
                 onCreated?.();
                 setOpen(false);
-              } catch (e: any) {
-                const msg = e?.message ? String(e.message) : "Error al crear paciente";
+              } catch (e: unknown) {
+                const error = e as { message?: string };
+                const msg = error?.message ? String(error.message) : "Error al crear paciente";
 
                 if (msg.toLowerCase().includes("dni")) {
                   setDniServerError(msg);

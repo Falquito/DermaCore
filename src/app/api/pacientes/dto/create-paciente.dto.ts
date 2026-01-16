@@ -9,13 +9,15 @@ export type CreatePacienteDto = {
 };
 
 export function validateCreatePaciente(
-  body: any
+  body: unknown
 ): { ok: true; data: CreatePacienteDto } | { ok: false; error: string } {
-  if (!body) return { ok: false, error: "Body requerido" };
+  if (!body || typeof body !== 'object') return { ok: false, error: "Body requerido" };
+  
+  const b = body as Record<string, unknown>;
 
-  const nombrePaciente = String(body.nombrePaciente ?? "").trim();
-  const apellidoPaciente = String(body.apellidoPaciente ?? "").trim();
-  const dniPaciente = String(body.dniPaciente ?? "").trim();
+  const nombrePaciente = String(b.nombrePaciente ?? "").trim();
+  const apellidoPaciente = String(b.apellidoPaciente ?? "").trim();
+  const dniPaciente = String(b.dniPaciente ?? "").trim();
 
   if (!nombrePaciente) return { ok: false, error: "nombrePaciente es requerido" };
   if (!apellidoPaciente) return { ok: false, error: "apellidoPaciente es requerido" };
@@ -24,10 +26,10 @@ export function validateCreatePaciente(
   if (!/^\d{7,9}$/.test(dniPaciente))
     return { ok: false, error: "dniPaciente inválido (7 a 9 dígitos)" };
 
-  const telefonoPaciente = body.telefonoPaciente == null ? null : String(body.telefonoPaciente).trim();
-  const domicilioPaciente = body.domicilioPaciente == null ? null : String(body.domicilioPaciente).trim();
+  const telefonoPaciente = b.telefonoPaciente == null ? null : String(b.telefonoPaciente).trim();
+  const domicilioPaciente = b.domicilioPaciente == null ? null : String(b.domicilioPaciente).trim();
 
-  const rawIdObra = body.idObraSocial;
+  const rawIdObra = b.idObraSocial;
   const idObraSocial =
     rawIdObra == null || rawIdObra === "" ? null : Number(rawIdObra);
 

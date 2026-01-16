@@ -78,8 +78,9 @@ export default function EditPacienteModal({ open, onOpenChange, paciente, onSave
 
       onSaved?.();
       onOpenChange(false);
-    } catch (e: any) {
-      const msg = e?.message ? String(e.message) : "Error al actualizar paciente";
+    } catch (e: unknown) {
+      const error = e as { message?: string };
+      const msg = error?.message ? String(error.message) : "Error al actualizar paciente";
       if (msg.toLowerCase().includes("dni")) {
         setDniServerError(msg);
         return;

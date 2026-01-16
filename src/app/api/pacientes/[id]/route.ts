@@ -58,9 +58,10 @@ export async function PUT(req: Request, { params }: Ctx) {
     });
 
     return NextResponse.json(updated);
-  } catch (e: any) {
-    if (e?.code === "P2025") return NextResponse.json({ error: "Paciente no encontrado" }, { status: 404 });
-    if (e?.code === "P2002") return NextResponse.json({ error: "Ya existe un paciente con ese DNI" }, { status: 409 });
+  } catch (e: unknown) {
+    const error = e as { code?: string };
+    if (error?.code === "P2025") return NextResponse.json({ error: "Paciente no encontrado" }, { status: 404 });
+    if (error?.code === "P2002") return NextResponse.json({ error: "Ya existe un paciente con ese DNI" }, { status: 409 });
     return NextResponse.json({ error: "Error actualizando paciente" }, { status: 500 });
   }
 }
@@ -78,8 +79,9 @@ export async function DELETE(_: Request, { params }: Ctx) {
     });
 
     return NextResponse.json({ ok: true, ...result });
-  } catch (e: any) {
-    if (e?.code === "P2025") return NextResponse.json({ error: "Paciente no encontrado" }, { status: 404 });
+  } catch (e: unknown) {
+    const error = e as { code?: string };
+    if (error?.code === "P2025") return NextResponse.json({ error: "Paciente no encontrado" }, { status: 404 });
     return NextResponse.json({ error: "Error dando de baja paciente" }, { status: 500 });
   }
 }

@@ -180,14 +180,14 @@ export default function CreatePacienteForm({
 
             if (!data?.error && Array.isArray(data)) {
               const match = data.find(
-                (o: any) =>
-                  String(o?.nombreObraSocial ?? "").toLowerCase() === lastCreatedObraName.toLowerCase()
+                (o: unknown) =>
+                  String((o as Record<string, unknown>)?.nombreObraSocial ?? "").toLowerCase() === lastCreatedObraName.toLowerCase()
               );
 
               if (match) {
                 setObraSelected({
-                  id: Number(match.idObraSocial),
-                  nombre: String(match.nombreObraSocial),
+                  id: Number((match as Record<string, unknown>).idObraSocial),
+                  nombre: String((match as Record<string, unknown>).nombreObraSocial),
                 });
               }
             }
