@@ -5,14 +5,12 @@ import PacienteCard from "@/components/pacientes/pacienteCard";
 
 type ListaPacientesProps = {
   pacientes: PacienteConObras[];
-  getUltimaConsulta?: (p: PacienteConObras) => string | undefined;
   onVerHistoria?: (idPaciente: number) => void;
   onChanged?: () => void;
 };
 
 export default function ListaPacientes({
   pacientes,
-  getUltimaConsulta,
   onVerHistoria,
   onChanged,
 }: ListaPacientesProps) {
@@ -30,7 +28,6 @@ export default function ListaPacientes({
         <PacienteCard
           key={p.idPaciente}
           paciente={p}
-          ultimaConsulta={getUltimaConsulta?.(p)}
           onVerHistoria={onVerHistoria}
           onChanged={onChanged}
         />
