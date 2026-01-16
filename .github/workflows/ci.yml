@@ -2,9 +2,7 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches: [ main, develop ]
-
+    branches: [ "main" ]
 jobs:
   build-test:
     runs-on: ubuntu-latest
@@ -28,58 +26,30 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/testdb?schema=public
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Detect Node project
-        id: detect
-        run: |
-          if [ -f package.json ]; then
-            echo "has_node=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_node=false" >> $GITHUB_OUTPUT
-          fi
-          if [ -f prisma/schema.prisma ]; then
-            echo "has_prisma=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_prisma=false" >> $GITHUB_OUTPUT
-          fi
-
-      - uses: actions/setup-node@v4
-        if: steps.detect.outputs.has_node == 'true'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+          cache: 'npm'
 
-      - name: Install deps
-        if: steps.detect.outputs.has_node == 'true'
+      - name: Install dependencies
         run: npm ci
 
-      - name: Wait for Postgres
-        if: steps.detect.outputs.has_node == 'true' && steps.detect.outputs.has_prisma == 'true'
-        run: |
-          sudo apt-get update && sudo apt-get install -y postgresql-client
-          until pg_isready -h localhost -p 5432 -U postgres; do echo "⏳ waiting db"; sleep 2; done
-
-      - name: Prisma generate
-        if: steps.detect.outputs.has_node == 'true' && steps.detect.outputs.has_prisma == 'true'
+      - name: Prisma Generate
         run: npx prisma generate
 
-      - name: Apply migrations (deploy)
-        if: steps.detect.outputs.has_node == 'true' && steps.detect.outputs.has_prisma == 'true' && ${{ hashFiles('prisma/migrations/**') != '' }}
+      - name: Run Migrations (Deploy)
+        if: hashFiles('prisma/migrations/**') != ''
         run: npx prisma migrate deploy
 
       - name: Lint
-        if: steps.detect.outputs.has_node == 'true'
         run: npm run lint --if-present
 
       - name: Build
-        if: steps.detect.outputs.has_node == 'true'
         run: npm run build --if-present
 
       - name: Test
-        if: steps.detect.outputs.has_node == 'true'
         run: npm test --if-present
-
-      - name: No-op
-        if: steps.detect.outputs.has_node == 'false'
-        run: echo "No Node project yet; skipping CI steps successfully."
