@@ -72,6 +72,49 @@ export async function deleteObraSocial(id:number){
 
 }
 
+export function formatFechaArgentina(fechaInput: string | Date | null | undefined): string {
+  // 1. Si no hay dato, devolvemos un guion
+  if (!fechaInput) return "-";
+
+  let fecha: Date;
+
+  // 2. Normalización inteligente
+  if (typeof fechaInput === 'string') {
+    // Caso A: Viene como "2026-01-14 22:50:57" (SQL standard) -> Lo convertimos a ISO UTC
+    if (fechaInput.includes(' ') && !fechaInput.includes('T')) {
+      fecha = new Date(fechaInput.replace(" ", "T") + "Z");
+    } 
+    // Caso B: Viene como "2026-01-14T22:50:57.000Z" (ISO standard) -> JS lo entiende directo
+    else {
+      fecha = new Date(fechaInput);
+    }
+  } else {
+    // Caso C: Ya es un objeto Date
+    fecha = fechaInput;
+  }
+
+  // 3. ¡VALIDACIÓN CRÍTICA! 
+  // Verificamos si la fecha es válida. Si es "Invalid Date", getTime() devuelve NaN.
+  if (isNaN(fecha.getTime())) {
+    return "Fecha inválida"; 
+  }
+
+  // 4. Formateamos si todo está bien
+  try {
+    return new Intl.DateTimeFormat("es-AR", {
+      timeZone: "America/Argentina/Buenos_Aires",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false 
+    }).format(fecha);
+  } catch (error) {
+    return "Error fecha";
+  }
+}
 // Pacientes
 
 export async function fetchPacientesApi(): Promise<PacienteConObras[]> {

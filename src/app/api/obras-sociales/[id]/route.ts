@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+
 export async function PATCH(
   request: NextRequest, 
   { params }: { params: Promise<{ id: string }> }
@@ -28,11 +29,22 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    
+    const obraSocial = await prisma.obraSocial.findUnique({
+      where:{
+        idObraSocial:+id
+      }
+    })
+
+    if (!obraSocial) {
+      return NextResponse.json(
+        { error: 'Obra social no encontrada' }, 
+        { status: 404 }
+      )
+    }
     await prisma.obraSocial.update({
       where: { idObraSocial: +id },
       data: {
-        estadoObraSocial: false
+        estadoObraSocial: !obraSocial.estadoObraSocial
       }
     })
 
