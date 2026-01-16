@@ -11,9 +11,8 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
 
   const q = (searchParams.get("q") ?? "").trim();
-  const estado = searchParams.get("estado"); // "true" | "false" | null | ""
+  const estado = searchParams.get("estado");
 
-  // ✅ Pagination
   const page = parsePositiveInt(searchParams.get("page"), 1);
   const pageSize = parsePositiveInt(searchParams.get("pageSize"), 12);
   const skip = (page - 1) * pageSize;
@@ -49,6 +48,7 @@ export async function GET(req: Request) {
         domicilioPaciente: true,
         fechaHoraPaciente: true,
         estadoPaciente: true,
+
         pacienteXObra: {
           select: {
             obraSocial: {
@@ -60,7 +60,16 @@ export async function GET(req: Request) {
             },
           },
         },
+
+        consultas: {
+          take: 1,
+          orderBy: { fechaHoraConsulta: "desc" },
+          select: {
+            fechaHoraConsulta: true,
+          },
+        },
       },
+
     }),
   ]);
 

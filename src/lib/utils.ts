@@ -128,3 +128,23 @@ export async function setEstadoPaciente(id: number, estadoPaciente: boolean): Pr
   if (response.error) throw new Error(response.error);
   return response;
 }
+
+export function formatFechaHoraAR(iso: string) {
+  return new Intl.DateTimeFormat("es-AR", {
+    timeZone: "America/Argentina/Cordoba",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
+export function formatFechaAR(iso: string) {
+  return new Intl.DateTimeFormat("es-AR", {
+    timeZone: "America/Argentina/Cordoba",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(iso));
+}

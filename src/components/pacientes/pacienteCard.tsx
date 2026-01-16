@@ -5,10 +5,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { CreditCard, MapPin, Phone, MoreHorizontal, Pencil, CornerDownRight } from "lucide-react";
+import {
+  CreditCard,
+  MapPin,
+  Phone,
+  MoreHorizontal,
+  Pencil,
+  CornerDownRight,
+} from "lucide-react";
 
 import type { PacienteConObras } from "@/types/pacienteConObras";
-import { setEstadoPaciente } from "@/lib/utils";
+import { setEstadoPaciente, formatFechaAR } from "@/lib/utils";
 
 import {
   DropdownMenu,
@@ -32,17 +39,12 @@ import EditPacienteModal from "@/components/pacientes/editPacienteModal";
 
 type PacienteCardProps = {
   paciente: PacienteConObras;
-
-  ultimaConsulta?: string;
-
   onVerHistoria?: (idPaciente: number) => void;
-
   onChanged?: () => void;
 };
 
 export default function PacienteCard({
   paciente,
-  ultimaConsulta,
   onVerHistoria,
   onChanged,
 }: PacienteCardProps) {
@@ -70,6 +72,9 @@ export default function PacienteCard({
 
   const labelEstadoAction = estadoPaciente ? "Dar de baja" : "Dar de alta";
   const nextEstado = !estadoPaciente;
+
+  // ✅ última consulta real (viene del backend: take 1)
+  const ultimaConsultaIso = paciente.consultas?.[0]?.fechaHoraConsulta;
 
   return (
     <>
@@ -99,15 +104,17 @@ export default function PacienteCard({
                     <span>Editar</span>
                   </DropdownMenuItem>
 
-                <DropdownMenuItem
-                  onClick={() => setOpenConfirmEstado(true)}
-                  className={estadoPaciente ? "text-red-600" : "text-cyan-700"}
-                >
-                  <CornerDownRight 
-                    className={`mr-2 h-4 w-4 ${estadoPaciente ? "text-red-600" : "text-cyan-700"}`} 
-                  />
-                  <span>{labelEstadoAction}</span>
-                </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setOpenConfirmEstado(true)}
+                    className={estadoPaciente ? "text-red-600" : "text-cyan-700"}
+                  >
+                    <CornerDownRight
+                      className={`mr-2 h-4 w-4 ${
+                        estadoPaciente ? "text-red-600" : "text-cyan-700"
+                      }`}
+                    />
+                    <span>{labelEstadoAction}</span>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -159,9 +166,10 @@ export default function PacienteCard({
 
           <Separator className="my-5" />
 
-          {/* Última consulta */}
+          {/* ✅ Última consulta (real) */}
           <p className="text-xs text-muted-foreground">
-            Última consulta: {ultimaConsulta ?? "—"}
+            Última consulta:{" "}
+            {ultimaConsultaIso ? formatFechaAR(ultimaConsultaIso) : "—"}
           </p>
 
           {/* CTA */}

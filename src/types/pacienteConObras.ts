@@ -8,4 +8,8 @@ export type PacienteConObras = Paciente & {
       estadoObraSocial: boolean;
     };
   }>;
+
+  consultas: Array<{
+    fechaHoraConsulta: string;
+  }>;
 };
