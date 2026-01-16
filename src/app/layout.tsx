@@ -1,10 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
-import { Header } from "@/components/header";
-import SideBar from "@/components/sideBar";
-import { Footer } from "@/components/footer";
-import { SidebarProvider } from "@/components/ui/sidebar-context";
 
 export const metadata: Metadata = {
   title: "Dermacor",
@@ -22,13 +18,7 @@ export default function RootLayout({
     <html lang="es">
       <body className="antialiased">
         <Providers>
-           <SidebarProvider>
-                <Header />
-                <SideBar>
-                    {children} 
-                </SideBar>
-            </SidebarProvider>
-          
+          {children}
         </Providers>
       </body>
     </html>
