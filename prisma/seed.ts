@@ -9,7 +9,6 @@ function pad(num: number, size: number) {
 
 async function main() {
   // Limpieza (orden importante por FKs)
-  await prisma.pacienteXObra.deleteMany();
   await prisma.consultas.deleteMany();
   await prisma.paciente.deleteMany();
   await prisma.obraSocial.deleteMany();
@@ -24,18 +23,17 @@ async function main() {
     { nombreObraSocial: "PAMI" },
   ];
 
-  const obras = await prisma.obraSocial.createMany({
+  await prisma.obraSocial.createMany({
     data: obrasSocialesData,
-    skipDuplicates: true, // por si ya existían (nombreObraSocial es unique)
+    skipDuplicates: true,
   });
 
-  // Traigo las obras creadas para asignarlas
   const obrasSociales = await prisma.obraSocial.findMany({
     orderBy: { idObraSocial: "asc" },
   });
 
   // 2) Pacientes (15)
-  const nombres = [
+  const nombres: Array<[string, string]> = [
     ["Juan", "Pérez"],
     ["María", "Gómez"],
     ["Lucas", "Fernández"],
@@ -53,15 +51,13 @@ async function main() {
     ["Nicolás", "Vega"],
   ];
 
-  // DNIs únicos (string) - 8 dígitos estilo AR
   const baseDni = 35000000;
 
-  // Creo pacientes 1 por 1 para tener IDs
   const pacientes = [];
   for (let i = 0; i < 15; i++) {
     const [nombrePaciente, apellidoPaciente] = nombres[i];
     const dniPaciente = String(baseDni + i); // unique
-    const telefonoPaciente = `351${pad(1000000 + i, 7)}`; // ejemplo
+    const telefonoPaciente = `351${pad(1000000 + i, 7)}`;
     const domicilioPaciente = `Calle ${i + 1} #${100 + i}`;
 
     const p = await prisma.paciente.create({
@@ -78,7 +74,7 @@ async function main() {
     pacientes.push(p);
   }
 
-  // 3) Relación PacienteXObra (15) y 4) Consultas (15)
+  // 3) Consultas (15): 1 por paciente y 1 obra social
   const motivos = [
     "Control general",
     "Dolor de cabeza",
@@ -133,38 +129,39 @@ async function main() {
     "Derivar según resultado",
   ];
 
+  const tiposConsulta = ["Primera vez", "Control", "Urgencia", "Seguimiento"];
+
   for (let i = 0; i < pacientes.length; i++) {
     const paciente = pacientes[i];
-    const obra = obrasSociales[i % obrasSociales.length]; // reparte entre 6 obras
+    const obra = obrasSociales[i % obrasSociales.length];
 
-    // PacienteXObra (1 por paciente)
-    await prisma.pacienteXObra.create({
-      data: {
-        idPaciente: paciente.idPaciente,
-        idObraSocial: obra.idObraSocial,
-        nroAfiliado: `AF-${obra.idObraSocial}-${pad(paciente.idPaciente, 4)}`,
-      },
-    });
-
-    // Consulta (1 por paciente y 1 obra social)
     await prisma.consultas.create({
       data: {
         idPaciente: paciente.idPaciente,
         idObraSocial: obra.idObraSocial,
+
         motivoConsulta: motivos[i],
         diagnosticoConsulta: diagnosticos[i],
         tratamientoConsulta: tratamientos[i],
+
+        // Campos extra del schema actual
+        nroAfiliado: `AF-${obra.idObraSocial}-${pad(paciente.idPaciente, 4)}`,
+        tipoConsulta: tiposConsulta[i % tiposConsulta.length],
+        montoConsulta: 5000 + i * 750, // ejemplo
       },
     });
   }
 
   const countOS = await prisma.obraSocial.count();
   const countPac = await prisma.paciente.count();
-  const countPxO = await prisma.pacienteXObra.count();
   const countCons = await prisma.consultas.count();
 
   console.log("Seed OK ✅");
-  console.log({ obrasSociales: countOS, pacientes: countPac, pacienteXObra: countPxO, consultas: countCons });
+  console.log({
+    obrasSociales: countOS,
+    pacientes: countPac,
+    consultas: countCons,
+  });
 }
 
 main()

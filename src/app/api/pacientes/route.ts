@@ -49,8 +49,11 @@ export async function GET(req: Request) {
         fechaHoraPaciente: true,
         estadoPaciente: true,
 
-        pacienteXObra: {
+        consultas: {
+          take: 1,
+          orderBy: { fechaHoraConsulta: "desc" },
           select: {
+            fechaHoraConsulta: true,
             obraSocial: {
               select: {
                 idObraSocial: true,
@@ -60,16 +63,7 @@ export async function GET(req: Request) {
             },
           },
         },
-
-        consultas: {
-          take: 1,
-          orderBy: { fechaHoraConsulta: "desc" },
-          select: {
-            fechaHoraConsulta: true,
-          },
-        },
       },
-
     }),
   ]);
 
@@ -87,21 +81,14 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const parsed = validateCreatePaciente(body);
-  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
 
   try {
-    const { idObraSocial, ...pacienteData } = parsed.data;
-
     const created = await prisma.paciente.create({
       data: {
-        ...pacienteData,
-        ...(idObraSocial
-          ? {
-              pacienteXObra: {
-                create: [{ idObraSocial }],
-              },
-            }
-          : {}),
+        ...parsed.data,
       },
       select: {
         idPaciente: true,
@@ -112,17 +99,6 @@ export async function POST(req: Request) {
         domicilioPaciente: true,
         fechaHoraPaciente: true,
         estadoPaciente: true,
-        pacienteXObra: {
-          select: {
-            obraSocial: {
-              select: {
-                idObraSocial: true,
-                nombreObraSocial: true,
-                estadoObraSocial: true,
-              },
-            },
-          },
-        },
       },
     });
 
@@ -130,7 +106,10 @@ export async function POST(req: Request) {
   } catch (e: unknown) {
     const error = e as { code?: string };
     if (error?.code === "P2002") {
-      return NextResponse.json({ error: "Ya existe un paciente con ese DNI" }, { status: 409 });
+      return NextResponse.json(
+        { error: "Ya existe un paciente con ese DNI" },
+        { status: 409 }
+      );
     }
     return NextResponse.json({ error: "Error creando paciente" }, { status: 500 });
   }
