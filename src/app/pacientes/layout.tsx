@@ -14,7 +14,7 @@ export default function PacientesLayout({
       <SideBar>
         {children}
       </SideBar>
-      <Footer />
     </SidebarProvider>
   );
 }
+
