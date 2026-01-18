@@ -11,6 +11,8 @@ import CreatePacienteModal from "@/components/pacientes/createPacienteModal";
 import PacientesPagination from "@/components/pacientes/pacientesPagination";
 import NotifySuccessPaciente from "@/components/pacientes/notifySuccessPaciente";
 
+import FiltroEstadoPacientes, { EstadoPacienteFilter } from "@/components/pacientes/filtroEstadoPacientes";
+
 import { usePacientesQuery } from "@/hooks/usePacienteQuery";
 
 type SuccessToast = {
@@ -21,6 +23,9 @@ type SuccessToast = {
 
 export default function PacientePage() {
   const [q, setQ] = useState("");
+
+  // ✅ default Activos
+  const [estado, setEstado] = useState<EstadoPacienteFilter>("true");
 
   const [successToast, setSuccessToast] = useState<SuccessToast>({
     open: false,
@@ -45,7 +50,7 @@ export default function PacientePage() {
     setPage,
     totalPages,
     total,
-  } = usePacientesQuery(q, 12);
+  } = usePacientesQuery(q, 12, estado);
 
   const sinResultados = !loading && !error && pacientes.length === 0;
 
@@ -60,7 +65,17 @@ export default function PacientePage() {
       <HeaderPacientes />
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <SearcherPacientes value={q} onChange={setQ} disabled={loading} />
+        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
+          <SearcherPacientes value={q} onChange={setQ} disabled={loading} />
+          
+          <div className="w-full sm:w-[320px]">
+            <FiltroEstadoPacientes
+              value={estado}
+              onChange={setEstado}
+              disabled={loading}
+            />
+          </div>
+        </div>
 
         <CreatePacienteModal
           onCreated={refrescar}

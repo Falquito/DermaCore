@@ -22,7 +22,13 @@ type PacientesPagedResponse = {
   totalPages: number;
 };
 
-export function usePacientesQuery(q: string, pageSize: number = 12) {
+export type EstadoPacienteFilter = "true" | "false" | "all";
+
+export function usePacientesQuery(
+  q: string,
+  pageSize: number = 12,
+  estado: EstadoPacienteFilter = "true" 
+) {
   const [pacientes, setPacientes] = useState<PacienteConObras[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,18 +41,20 @@ export function usePacientesQuery(q: string, pageSize: number = 12) {
 
   useEffect(() => {
     setPage(1);
-  }, [qDebounced]);
+  }, [qDebounced, estado]);
 
   const url = useMemo(() => {
     const params = new URLSearchParams();
 
     if (qDebounced) params.set("q", qDebounced);
 
+    if (estado !== "all") params.set("estado", estado);
+
     params.set("page", String(page));
     params.set("pageSize", String(pageSize));
 
     return `/api/pacientes?${params.toString()}`;
-  }, [qDebounced, page, pageSize]);
+  }, [qDebounced, estado, page, pageSize]);
 
   const refrescar = async () => {
     setLoading(true);
@@ -54,14 +62,20 @@ export function usePacientesQuery(q: string, pageSize: number = 12) {
       const res = await fetch(url);
       const data = (await res.json()) as PacientesPagedResponse & { error?: string };
 
-      if ((data as Record<string, unknown>)?.error) throw new Error((data as Record<string, unknown>).error as string);
+      if ((data as Record<string, unknown>)?.error) {
+        throw new Error((data as Record<string, unknown>).error as string);
+      }
 
       setPacientes(Array.isArray(data.items) ? data.items : []);
       setTotal(typeof data.total === "number" ? data.total : 0);
       setTotalPages(typeof data.totalPages === "number" ? data.totalPages : 1);
       setError(null);
 
-      if (typeof data.totalPages === "number" && data.totalPages >= 1 && page > data.totalPages) {
+      if (
+        typeof data.totalPages === "number" &&
+        data.totalPages >= 1 &&
+        page > data.totalPages
+      ) {
         setPage(data.totalPages);
       }
     } catch {
