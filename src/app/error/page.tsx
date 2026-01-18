@@ -1,152 +1,190 @@
-import { auth } from '@/lib/auth'
-import { signOut } from 'next-auth/react'
-import { redirect } from 'next/navigation'
-import { AlertCircle, Home, LogOut } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+'use client';
 
-export const dynamic = 'force-dynamic'
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import InteractiveBackground from "@/components/auth/InteractiveBackground";
 
-async function signOutAction() {
-  'use server'
-  const res = await signOut({ redirect: false })
-  if (res) {
-    redirect('/')
-  }
-}
+export default function ErrorPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [mounted, setMounted] = useState(false);
 
-async function goHomeAction() {
-  'use server'
-  redirect('/')
-}
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-export default async function ErrorPage() {
-  const session = await auth()
-  
-  // If user is not logged in, redirect to login
-  if (!session) {
-    redirect('/auth/login')
-  }
+  const errorType = searchParams.get('error') || 'unknown';
+  const reason = searchParams.get('reason') || '';
 
-  const roleLabels = {
-    PROFESIONAL: 'Profesional',
-    MESA_ENTRADA: 'Mesa de entrada',
-    GERENTE: 'Gerente'
+  const getErrorDetails = (error: string) => {
+    const errors: Record<string, { title: string; description: string; icon: string }> = {
+      access_denied: {
+        title: 'Acceso Denegado',
+        description: 'No tienes permiso para acceder a esta sección.',
+        icon: '🔒',
+      },
+      callback: {
+        title: 'Error en Autenticación',
+        description: 'Ocurrió un error durante el proceso de autenticación.',
+        icon: '⚠️',
+      },
+      oauthsignin: {
+        title: 'Error de Inicio de Sesión',
+        description: 'No se pudo completar el inicio de sesión con el proveedor.',
+        icon: '❌',
+      },
+      oauthcallback: {
+        title: 'Error en Devolución de Llamada',
+        description: 'Hubo un problema al procesar la respuesta del proveedor.',
+        icon: '🔄',
+      },
+      oauthprofile: {
+        title: 'Error en Perfil',
+        description: 'No se pudo obtener la información del perfil.',
+        icon: '👤',
+      },
+      emailsignin: {
+        title: 'Error de Correo Electrónico',
+        description: 'No se pudo procesar el inicio de sesión por correo.',
+        icon: '📧',
+      },
+      emailcallback: {
+        title: 'Enlace Inválido',
+        description: 'El enlace de verificación es inválido o ha expirado.',
+        icon: '🔗',
+      },
+      credentialssignin: {
+        title: 'Credenciales Inválidas',
+        description: 'El email o contraseña que ingresaste no son correctos.',
+        icon: '🔑',
+      },
+      sessioncallback: {
+        title: 'Error de Sesión',
+        description: 'No se pudo establecer la sesión correctamente.',
+        icon: '⏱️',
+      },
+      jwkcallback: {
+        title: 'Error de Configuración',
+        description: 'Ocurrió un error en la configuración de seguridad.',
+        icon: '⚙️',
+      },
+      unknown: {
+        title: 'Error Desconocido',
+        description: 'Ocurrió un error inesperado. Por favor, intenta de nuevo.',
+        icon: '😕',
+      },
+    };
+
+    return errors[error] || errors.unknown;
+  };
+
+  const errorDetails = getErrorDetails(errorType);
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="h-12 w-12 rounded-full border-4 border-cyan-200 border-t-cyan-600 animate-spin mb-4"></div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 text-gray-900 relative overflow-hidden">
-      {/* Blurred background image */}
-      <div
-        className="absolute inset-0 w-full h-full"
-        style={{
-          backgroundImage: 'url(/doctor-icon-virtual-screen-health-care-and-medical-on-background-copy-space-free-photo.jpg)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          filter: 'blur(8px)',
-          zIndex: 0,
-        }}
-      />
-      {/* Gradient overlay for diffuminated effect */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.7) 100%)',
-          zIndex: 1,
-        }}
-      />
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-xl shadow-lg border border-red-200 overflow-hidden bg-opacity-90 backdrop-blur-sm relative" style={{zIndex:2}}>
-          {/* Header */}
-          <div className="bg-red-600 px-6 py-5 text-center">
-            <div className="flex justify-center mb-3">
-              <div className="bg-white bg-opacity-20 p-3 rounded-full">
-                <AlertCircle className="h-8 w-8 text-white" />
-              </div>
+    <div className="min-h-screen w-full flex flex-col lg:flex-row relative overflow-hidden">
+      
+      {/* FONDO INTERACTIVO */}
+      <div className="absolute inset-0 z-0 lg:static lg:w-1/2 lg:order-2 lg:h-screen bg-cyan-950">
+        <InteractiveBackground />
+      </div>
+
+      {/* CONTENEDOR DEL CONTENIDO DE ERROR */}
+      <div className="w-full relative z-10 flex items-center justify-center min-h-screen lg:min-h-0 lg:w-1/2 lg:order-1 lg:bg-white">
+        
+        {/* TARJETA DE ERROR */}
+        <div className="w-full max-w-[480px] px-6 py-8 mx-4 
+                        bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20
+                        lg:bg-transparent lg:shadow-none lg:rounded-none lg:border-none lg:p-0 lg:mx-0 lg:max-w-sm animate-[fadeIn_0.6s_ease-out]">
+          
+          {/* ENCABEZADO */}
+          <div className="mb-8 lg:mb-10 text-center lg:text-left">
+            <div className="flex items-center justify-center lg:justify-start gap-2 mb-6">
+              <div className="w-10 h-10 bg-cyan-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">D</div>
+              <span className="text-2xl font-bold text-gray-800 tracking-tight">Dermacor</span>
             </div>
-            <h1 className="text-xl font-bold text-white">
-              USTED NO CUENTA CON LOS PERMISOS NECESARIOS
-            </h1>
+
+            <h2 className="text-3xl font-extrabold text-gray-900 mb-2 tracking-tight">
+              {errorDetails.title}
+            </h2>
+            <p className="text-gray-500">
+              {errorDetails.description}
+            </p>
           </div>
 
-          {/* Content */}
-          <div className="px-6 py-8">
-            <div className="space-y-6">
-              {/* User Info */}
-              <div className="text-center">
-                <p className="text-gray-700 mb-2">
-                  <span className="font-medium">Usuario:</span> {session.user.name || session.user.email}
-                </p>
-                <p className="text-gray-700">
-                  <span className="font-medium">Email:</span> {session.user.email}
+          {/* ICONO Y DETALLES DE ERROR */}
+          <div className="mb-8 flex flex-col items-center text-center">
+            <div className="text-6xl mb-4">{errorDetails.icon}</div>
+            
+            {reason && (
+              <div className="mb-6 rounded-xl bg-yellow-50 p-4 border border-yellow-100 w-full">
+                <p className="text-sm text-yellow-700">
+                  <span className="font-semibold">Detalle:</span> {reason}
                 </p>
               </div>
+            )}
 
-              {/* Roles */}
-              <div className="border-t border-gray-200 pt-6">
-                <p className="text-gray-700 text-center mb-3">
-                  <span className="font-medium">Sus roles:</span>
-                </p>
-                <div className="flex flex-wrap justify-center gap-2">
-                  {session.user?.role ? (
-                    <span 
-                      className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 text-gray-800 border"
-                    >
-                      {roleLabels[session.user.role as keyof typeof roleLabels] || session.user.role}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-orange-100 text-orange-800 border border-orange-200">
-                      Sin roles asignados
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Message */}
-              <div className="text-center text-sm text-gray-600 bg-gray-50 p-4 rounded-lg border">
-                {!session.user?.role ? (
-                  <p>
-                    Su cuenta no tiene ningún rol asignado. Por favor, contacte con el administrador del sistema para que le asigne los permisos necesarios.
-                  </p>
-                ) : (
-                  <p>
-                    Sus roles actuales no tienen permisos para acceder a la sección solicitada. Si cree que esto es un error, contacte con el administrador del sistema.
-                  </p>
-                )}
-              </div>
-
-              {/* Actions */}
-              <div className="flex flex-col space-y-3 pt-2">
-                <form action={goHomeAction}>
-                  <Button 
-                    type="submit"
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-                  >
-                    <Home className="h-4 w-4 mr-2" />
-                    Volver al inicio
-                  </Button>
-                </form>
-                
-                <form action={signOutAction}>
-                  <Button 
-                    type="submit"
-                    variant="outline" 
-                    className="w-full border-gray-300 text-gray-700 hover:bg-gray-50"
-                  >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Cerrar sesión
-                  </Button>
-                </form>
-              </div>
+            <div className="rounded-xl bg-cyan-50 p-4 border border-cyan-100 w-full">
+              <p className="text-sm text-cyan-700">
+                Si el problema persiste, contacta con el equipo de soporte.
+              </p>
             </div>
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className="text-center mt-6 text-sm text-gray-500">
-          ¿Necesita ayuda? Contacte al administrador del sistema
+          {/* BOTONES DE ACCIÓN */}
+          <div className="space-y-3 flex flex-col">
+            <button
+              onClick={() => router.push('/auth/login')}
+              className="w-full py-4 px-4 rounded-xl bg-cyan-600 hover:bg-cyan-700 active:scale-[0.99] text-white font-bold text-lg shadow-lg shadow-cyan-500/30 transition-all duration-200"
+            >
+              Volver a Iniciar Sesión
+            </button>
+
+            <button
+              onClick={() => router.back()}
+              className="w-full py-4 px-4 rounded-xl bg-gray-200 hover:bg-gray-300 active:scale-[0.99] text-gray-800 font-bold text-lg transition-all duration-200"
+            >
+              Atrás
+            </button>
+          </div>
+
+          {/* ENLACES ADICIONALES */}
+          <div className="mt-8 pt-6 border-t border-gray-100/50 text-center space-y-3">
+            <div>
+              <p className="text-gray-500 text-sm">
+                ¿No tienes cuenta?{' '}
+                <Link
+                  href="/auth/register"
+                  className="font-bold text-cyan-600 hover:text-cyan-800 transition-colors"
+                >
+                  Registrate aquí
+                </Link>
+              </p>
+            </div>
+
+            <div>
+              <p className="text-gray-500 text-sm">
+                <Link
+                  href="/"
+                  className="font-bold text-cyan-600 hover:text-cyan-800 transition-colors"
+                >
+                  Ir a Inicio
+                </Link>
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-  )
+  );
 }

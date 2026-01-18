@@ -65,9 +65,27 @@ export default function RegisterPage() {
     }
 
     try {
-      // Simulación
-       await new Promise(resolve => setTimeout(resolve, 1500));
-       router.push('/auth/login?registered=true');
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          name: formData.name,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Error al registrar el usuario');
+        setLoading(false);
+        return;
+      }
+
+      router.push('/auth/login?registered=true');
     } catch {
       setError('Error al conectar con el servidor');
       setLoading(false);

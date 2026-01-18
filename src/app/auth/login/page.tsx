@@ -141,9 +141,6 @@ function LoginContent() {
                 <label htmlFor="password" className="block text-sm font-semibold text-gray-700">
                   Contraseña
                 </label>
-                <a href="#" className="text-xs font-medium text-cyan-600 hover:text-cyan-700 hover:underline">
-                  ¿Olvidaste tu contraseña?
-                </a>
               </div>
               <input
                 id="password"
@@ -172,7 +169,7 @@ function LoginContent() {
                 href="/auth/register"
                 className="font-bold text-cyan-600 hover:text-cyan-800 transition-colors"
               >
-                Regístrate gratis
+                Regístrate
               </Link>
             </p>
           </div>
