@@ -14,7 +14,6 @@ export default function HomeLayout({
       <SideBar>
         {children}
       </SideBar>
-      <Footer />
     </SidebarProvider>
   );
 }

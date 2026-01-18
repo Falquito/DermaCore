@@ -14,7 +14,6 @@ export default function ObrasSocialesLayout({
       <SideBar>
         {children}
       </SideBar>
-      <Footer />
     </SidebarProvider>
   );
 }
