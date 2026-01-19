@@ -12,6 +12,7 @@ import {
   MoreHorizontal,
   Pencil,
   CornerDownRight,
+  IdCard,
 } from "lucide-react";
 
 import type { PacienteConObras } from "@/types/pacienteConObras";
@@ -41,7 +42,6 @@ type PacienteCardProps = {
   paciente: PacienteConObras;
   onVerHistoria?: (idPaciente: number) => void;
   onChanged?: () => void;
-
   onEditSuccess?: () => void;
 };
 
@@ -69,6 +69,9 @@ export default function PacienteCard({
   const ultimaConsulta = consultas?.[0];
   const obraSocialActual = ultimaConsulta?.obraSocial?.nombreObraSocial ?? null;
   const ultimaConsultaIso = ultimaConsulta?.fechaHoraConsulta ?? null;
+
+  const nroAfiliado = (ultimaConsulta?.nroAfiliado ?? "")?.trim();
+  const nroAfiliadoLabel = nroAfiliado ? nroAfiliado : "Sin número de afiliado";
 
   const labelEstadoAction = estadoPaciente ? "Dar de baja" : "Dar de alta";
   const nextEstado = !estadoPaciente;
@@ -127,6 +130,7 @@ export default function PacienteCard({
           </div>
 
           <div className="mt-5 space-y-3 text-sm">
+
             <div className="flex items-center gap-3">
               <CreditCard className="h-4 w-4 text-muted-foreground" />
               {obraSocialActual ? (
@@ -136,6 +140,11 @@ export default function PacienteCard({
               ) : (
                 <span className="text-muted-foreground">Sin obra social</span>
               )}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <IdCard className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">{nroAfiliadoLabel}</span>
             </div>
 
             <div className="flex items-center gap-3">
@@ -156,7 +165,8 @@ export default function PacienteCard({
           <Separator className="my-5" />
 
           <p className="text-xs text-muted-foreground">
-            Última consulta: {ultimaConsultaIso ? formatFechaAR(ultimaConsultaIso) : "—"}
+            Última consulta:{" "}
+            {ultimaConsultaIso ? formatFechaAR(ultimaConsultaIso) : "—"}
           </p>
 
           <Button
@@ -174,7 +184,7 @@ export default function PacienteCard({
         paciente={paciente}
         onSaved={() => {
           onChanged?.();
-          onEditSuccess?.(); // ✅ toast de edición OK
+          onEditSuccess?.();
         }}
       />
 

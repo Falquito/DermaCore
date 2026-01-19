@@ -54,6 +54,7 @@ export async function GET(req: Request) {
           orderBy: { fechaHoraConsulta: "desc" },
           select: {
             fechaHoraConsulta: true,
+            nroAfiliado: true,
             obraSocial: {
               select: {
                 idObraSocial: true,
