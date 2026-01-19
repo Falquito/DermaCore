@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Menu } from 'lucide-react'; // Importamos el ícono
 import { useSidebarContext } from '@/components/ui/sidebar-context'; // Importamos nuestro hook
+import LogoComponent from './Logo';
 
 export function Header() {
   const { data: session } = useSession();
@@ -28,11 +29,7 @@ export function Header() {
           >
             <Menu size={24} />
           </button>
-
-          {/* LOGO */}
-          <Link href="/" className="text-xl font-bold text-cyan-700 tracking-tight">
-            Dermacore
-          </Link>
+            <LogoComponent/>
         </div>
 
         <div className="hidden md:flex items-center gap-4">
