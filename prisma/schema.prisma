@@ -42,16 +42,16 @@ model Consultas {
   tratamientoConsulta String?
   fechaHoraConsulta   DateTime @default(now())
   nroAfiliado        String?
-  tipoConsulta       String?
+  tipoConsulta       String
   montoConsulta      Float?
 
   // FK
   idPaciente    Int
-  idObraSocial  Int
+  idObraSocial  Int?
 
   // Relaciones (1 consulta pertenece a 1 paciente y 1 obra social)
   paciente    Paciente   @relation(fields: [idPaciente], references: [idPaciente], onDelete: Restrict)
-  obraSocial  ObraSocial @relation(fields: [idObraSocial], references: [idObraSocial], onDelete: Restrict)
+  obraSocial  ObraSocial? @relation(fields: [idObraSocial], references: [idObraSocial], onDelete: Restrict)
 
   @@index([idPaciente])
   @@index([idObraSocial])
