@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Users, Settings, ChevronLeft, ChevronRight, IdCard, X, LogOut, LogIn, UserPlus, User, Home } from "lucide-react";
+import { Users, ChevronLeft, ChevronRight, IdCard, X, LogOut, LogIn, UserPlus, User, Home } from "lucide-react";
 import { Footer } from "@/components/footer";
 import { useSession, signOut } from "next-auth/react";
 import { useSidebarContext } from "@/components/ui/sidebar-context"; // Importamos el hook

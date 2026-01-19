@@ -109,7 +109,7 @@ export default function ListadoObraSocial({ obras, onRefresh, isFiltered }: List
                             <Building2 className="h-5 w-5" />
                           </div>
                           <div>
-                              <span className={`block font-medium ${obra.estadoObraSocial ? 'text-slate-900' : 'text-slate-500 line-through decoration-slate-300'}`}>
+                              <span className={`block font-medium capitalize ${obra.estadoObraSocial ? 'text-slate-900' : 'text-slate-500 line-through decoration-slate-300'}`}>
                                   {obra.nombreObraSocial}
                               </span>
                               <span className="text-xs text-slate-400">ID: #{obra.idObraSocial}</span>

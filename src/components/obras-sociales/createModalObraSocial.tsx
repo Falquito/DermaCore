@@ -18,12 +18,14 @@ import { Plus, Loader2, Building2 } from "lucide-react"
 import { useForm, SubmitHandler } from "react-hook-form"
 import NotifySuccessComponent from "./notifySuccess"
 import { createObraSocial } from "@/lib/utils"
+import NotifyNotSuccessComponent from "./notifyNotSuccess"
 
 export default function CreateModalObraSocialComponent({onSuccess}:{onSuccess:()=>void}) {
   const [open, setOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [openNotify, setOpenNotify] = useState(false)
-
+  const [openNotifySuccess, setOpenNotify] = useState(false)
+  const [openNotifyNotSuccess,setOpenNotifyNotSuccess] = useState(false)
+  const [msgError,setMsgError] = useState("")
   const {
     register,
     handleSubmit,
@@ -44,8 +46,16 @@ export default function CreateModalObraSocialComponent({onSuccess}:{onSuccess:()
       }, 2000)
 
     } catch (error) {
-      console.error(error)
-      alert("Hubo un error al guardar.")
+      const message = error instanceof Error ? error.message : String(error)
+      
+      setMsgError(message) // Ahora sí le pasamos un string
+      setOpenNotifyNotSuccess(true)
+      console.log(error)
+      
+      setTimeout(()=>{
+        setOpenNotifyNotSuccess(false)
+      },3000)
+      
     } finally {
       setIsLoading(false)
     }
@@ -54,10 +64,15 @@ export default function CreateModalObraSocialComponent({onSuccess}:{onSuccess:()
   return (
     <>
       <NotifySuccessComponent 
-         open={openNotify} 
+         open={openNotifySuccess} 
          title="Operación exitosa" 
          description="La nueva obra social se ha registrado en el sistema." 
       />
+      <NotifyNotSuccessComponent 
+      open={openNotifyNotSuccess}
+      title = "Algo ha fallado"
+      description={`${msgError}`}
+      ></NotifyNotSuccessComponent>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
@@ -105,15 +120,13 @@ export default function CreateModalObraSocialComponent({onSuccess}:{onSuccess:()
                         Este campo es obligatorio
                     </p>
                 )}
-                <p className="text-[0.8rem] text-slate-500">
-                    Este nombre será visible en los selectores de turnos y facturación.
-                </p>
+                
               </div>
             </div>
           </form>
 
-          <DialogFooter className="gap-2 sm:gap-0">
-            {/* El botón cancelar ahora es "outline" para menos peso visual */}
+          <DialogFooter className="gap-3 sm:gap-1">
+            
             <Button 
                 variant="outline" 
                 onClick={() => setOpen(false)}

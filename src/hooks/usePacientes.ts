@@ -13,7 +13,7 @@ export function usePacientes() {
       const data = await fetchPacientesApi();
       setPacientes(data);
       setError(null);
-    } catch (err) {
+    } catch (_) {
       setError("Error al cargar los pacientes");
     } finally {
       setLoading(false);
