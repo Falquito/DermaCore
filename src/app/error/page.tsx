@@ -103,7 +103,7 @@ function ErrorPageContent() {
       <div className="w-full relative z-10 flex items-center justify-center min-h-screen lg:min-h-0 lg:w-1/2 lg:order-1 lg:bg-white">
         
         {/* TARJETA DE ERROR */}
-        <div className="w-full max-w-[480px] px-6 py-8 mx-4 
+        <div className="w-full max-w-120 px-6 py-8 mx-4 
                         bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20
                         lg:bg-transparent lg:shadow-none lg:rounded-none lg:border-none lg:p-0 lg:mx-0 lg:max-w-sm animate-[fadeIn_0.6s_ease-out]">
           

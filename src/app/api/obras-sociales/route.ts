@@ -1,8 +1,12 @@
 // app/api/obras-sociales/route.ts
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { verifyAuth } from '@/lib/apiAuth'
 
-export async function GET() {
+export async function GET(req: NextRequest): Promise<Response> {
+  const auth = await verifyAuth(req);
+  if (auth.error) return auth.response;
+
   try {
     const obras = await prisma.obraSocial.findMany({
       orderBy: { idObraSocial: 'desc' }
@@ -13,9 +17,12 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(req: NextRequest): Promise<Response> {
+  const auth = await verifyAuth(req);
+  if (auth.error) return auth.response;
+
   try {
-    const body = await request.json()
+    const body = await req.json()
     
     if (!body.nombreObraSocial) {
       return NextResponse.json({ error: 'El nombre es obligatorio' }, { status: 400 })
@@ -28,9 +35,7 @@ export async function POST(request: Request) {
     })
 
     return NextResponse.json(nuevaObra, { status: 201 })
-  } catch (e: unknown) { // Cambiamos 'any' por 'unknown' para complacer al linter
-    
-    // Comprobamos si 'e' es un objeto y tiene la propiedad 'code' de forma segura
+  } catch (e: unknown) {
     if (
       typeof e === 'object' && 
       e !== null && 
@@ -45,5 +50,4 @@ export async function POST(request: Request) {
     const errorMessage = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ error: 'Error al crear: ' + errorMessage }, { status: 500 })
   }
-
 }

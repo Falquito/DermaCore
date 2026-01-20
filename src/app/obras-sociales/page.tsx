@@ -6,8 +6,9 @@ import SearcherObraSocialComponent from '@/components/obras-sociales/searcherObr
 import { useObraSocial } from '@/hooks/useObras'
 import ListadoObraSocial from '@/components/obras-sociales/listaObraSocial'
 import SkeletonListObraSocialComponent from '@/components/obras-sociales/skeletonListObraSocial'
+import { ProtectedPage } from '@/components/auth/ProtectedPage'
 
-export default function ObrasSocialesPage() {
+function ObrasSocialesContent() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const { obras, loading, error, refrescar } = useObraSocial()
@@ -74,5 +75,13 @@ export default function ObrasSocialesPage() {
         />
       </div>
     </LayoutWrapper>
+  )
+}
+
+export default function ObrasSocialesPage() {
+  return (
+    <ProtectedPage>
+      <ObrasSocialesContent />
+    </ProtectedPage>
   )
 }

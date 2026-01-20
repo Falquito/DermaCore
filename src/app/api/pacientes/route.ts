@@ -1,13 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateCreatePaciente } from "./dto/create-paciente.dto";
+import { verifyAuth } from "@/lib/apiAuth";
 
 function parsePositiveInt(value: string | null, fallback: number) {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
 }
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest): Promise<Response> {
+  const auth = await verifyAuth(req);
+  if (auth.error) return auth.response;
+
   const { searchParams } = new URL(req.url);
 
   const q = (searchParams.get("q") ?? "").trim();
@@ -79,7 +83,10 @@ export async function GET(req: Request) {
   });
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest): Promise<Response> {
+  const auth = await verifyAuth(req);
+  if (auth.error) return auth.response;
+
   const body = await req.json().catch(() => null);
   const parsed = validateCreatePaciente(body);
   if (!parsed.ok) {

@@ -1,27 +1,30 @@
 "use client";
 
-import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
+import { signIn } from "next-auth/react";
 import Link from "next/link";
 import InteractiveBackground from "@/components/auth/InteractiveBackground";
 
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { data: session, status } = useSession();
+  const [isLoaded, setIsLoaded] = useState(false);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [registered, setRegistered] = useState(false);
 
-  // ... (useEffects se mantienen igual)
   useEffect(() => {
-    if (status === "authenticated" && session) {
-      router.push("/obras-sociales");
-    }
-  }, [status, session, router]);
+    // Mostrar la pantalla de carga por 500ms mínimo, luego mostrar contenido
+    const timer = setTimeout(() => {
+      setIsLoaded(true);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (searchParams.get("registered") === "true") {
@@ -31,40 +34,45 @@ function LoginContent() {
     }
   }, [searchParams]);
 
-  if (status === "loading") {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-pulse flex flex-col items-center">
-          <div className="h-12 w-12 rounded-full border-4 border-cyan-200 border-t-cyan-600 animate-spin mb-4"></div>
-          <div className="text-cyan-600 font-semibold tracking-wide">Cargando Dermacor...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (status === "authenticated") return null;
-
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    try {
+      const res = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
 
-    if (res?.ok) {
-      router.push("/obras-sociales");
-    } else {
-      setError("Email o contraseña incorrectos");
+      if (res?.ok) {
+        router.push("/obras-sociales");
+      } else {
+        setError(res?.error || "Email o contraseña incorrectos");
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error("Error al iniciar sesión:", err);
+      setError("Error al conectar con el servidor");
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen w-full flex flex-col lg:flex-row relative overflow-hidden">
+    <>
+      {/* Pantalla de carga mientras se cargan los componentes */}
+      {!isLoaded && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-linear-to-br from-cyan-900 via-cyan-950 to-cyan-950">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-cyan-400 border-t-cyan-200 rounded-full animate-spin"></div>
+            <p className="text-cyan-200 font-medium tracking-wide">Cargando Dermacor...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Contenido principal - aparece cuando isLoaded es true */}
+      <div className={`min-h-screen w-full flex flex-col lg:flex-row relative overflow-hidden transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
       
       {/* 1. AREA DEL FONDO INTERACTIVO 
           Móvil: Absolute inset-0 (Fondo total detrás de todo)
@@ -84,9 +92,9 @@ function LoginContent() {
             Móvil: Tiene fondo blanco translúcido, bordes redondeados y sombra (look tarjeta flotante).
             Desktop (lg): Se quitan los bordes, sombras y fondo para que se vea limpio sobre el blanco.
         */}
-        <div className="w-full max-w-[420px] px-6 py-8 mx-4 
+        <div className="w-full max-w-105 px-6 py-8 mx-4 
                         bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20
-                        lg:bg-transparent lg:shadow-none lg:rounded-none lg:border-none lg:p-0 lg:mx-0 lg:max-w-md animate-[fadeIn_0.5s_ease-out]">
+                        lg:bg-transparent lg:shadow-none lg:rounded-none lg:border-none lg:p-0 lg:mx-0 lg:max-w-md">
           
           {/* Header */}
           <div className="mb-8 lg:mb-10">
@@ -105,7 +113,7 @@ function LoginContent() {
 
           {/* Alertas */}
           {registered && (
-            <div className="mb-6 rounded-xl bg-cyan-50 p-4 border border-cyan-100 flex items-center gap-3 animate-[slideIn_0.3s_ease-out]">
+            <div className="mb-6 rounded-xl bg-cyan-50 p-4 border border-cyan-100 flex items-center gap-3">
               <div className="w-2 h-2 rounded-full bg-cyan-500" />
               <p className="text-sm text-cyan-800 font-medium">
                 ¡Cuenta creada! Ya puedes iniciar sesión.
@@ -114,7 +122,7 @@ function LoginContent() {
           )}
 
           {error && (
-            <div className="mb-6 rounded-xl bg-red-50 p-4 border border-red-100 animate-[shake_0.4s_ease-in-out]">
+            <div className="mb-6 rounded-xl bg-red-50 p-4 border border-red-100">
               <p className="text-sm text-red-600 font-medium text-center">{error}</p>
             </div>
           )}
@@ -175,7 +183,8 @@ function LoginContent() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

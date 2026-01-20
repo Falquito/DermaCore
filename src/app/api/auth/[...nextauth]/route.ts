@@ -1,3 +1,3 @@
 export const runtime = "nodejs";
 
-export { GET, POST } from "@/lib/auth";
+export { handler as GET, handler as POST } from "@/lib/auth";

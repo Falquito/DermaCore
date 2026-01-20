@@ -1,10 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { verifyAuth } from "@/lib/apiAuth";
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
-) {
+): Promise<Response> {
+  const auth = await verifyAuth(request);
+  if (auth.error) return auth.response;
+
   try {
     const { id } = await context.params;
     const idPaciente = parseInt(id, 10);

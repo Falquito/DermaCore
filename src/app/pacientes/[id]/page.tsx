@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { ProtectedPage } from "@/components/auth/ProtectedPage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -51,7 +52,7 @@ function formatPhoneNumber(phone: string | null): string {
   return phone;
 }
 
-export default function HistoriaClinicaPage() {
+function PacienteDetailContent() {
   const params = useParams();
   const id = params.id as string;
 
@@ -180,7 +181,7 @@ export default function HistoriaClinicaPage() {
           </Button>
         </Link>
         <h1 className="text-3xl font-bold text-foreground">Historia Clínica</h1>
-        <div className="w-[100px]" />
+        <div className="w-25" />
       </div>
 
       {/* Datos del Paciente */}
@@ -306,5 +307,13 @@ export default function HistoriaClinicaPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function HistoriaClinicaPage() {
+  return (
+    <ProtectedPage>
+      <PacienteDetailContent />
+    </ProtectedPage>
   );
 }

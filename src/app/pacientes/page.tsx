@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
+import { ProtectedPage } from "@/components/auth/ProtectedPage";
 import HeaderPacientes from "@/components/pacientes/headerPacientes";
 import SearcherPacientes from "@/components/pacientes/searcherPacientes";
 import ListaPacientes from "@/components/pacientes/listaPacientes";
@@ -21,7 +21,7 @@ type SuccessToast = {
   description: string;
 };
 
-export default function PacientePage() {
+function PacienteContent() {
   const [q, setQ] = useState("");
 
   // ✅ default Activos
@@ -114,5 +114,13 @@ export default function PacientePage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function PacientePage() {
+  return (
+    <ProtectedPage>
+      <PacienteContent />
+    </ProtectedPage>
   );
 }

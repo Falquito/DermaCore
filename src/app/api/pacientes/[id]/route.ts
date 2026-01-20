@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateUpdatePaciente } from "../dto/update-paciente.dto";
+import { verifyAuth } from "@/lib/apiAuth";
 
 function parseId(id: string) {
   const n = Number(id);
@@ -9,7 +10,10 @@ function parseId(id: string) {
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export async function GET(_: Request, { params }: Ctx) {
+export async function GET(req: NextRequest, { params }: Ctx): Promise<Response> {
+  const auth = await verifyAuth(req);
+  if (auth.error) return auth.response;
+
   const { id } = await params;
   const idPaciente = parseId(id);
   if (!idPaciente) return NextResponse.json({ error: "id inválido" }, { status: 400 });
@@ -32,7 +36,10 @@ export async function GET(_: Request, { params }: Ctx) {
   return NextResponse.json(paciente);
 }
 
-export async function PUT(req: Request, { params }: Ctx) {
+export async function PUT(req: NextRequest, { params }: Ctx): Promise<Response> {
+  const auth = await verifyAuth(req);
+  if (auth.error) return auth.response;
+
   const { id } = await params;
   const idPaciente = parseId(id);
   if (!idPaciente) return NextResponse.json({ error: "id inválido" }, { status: 400 });
@@ -66,7 +73,10 @@ export async function PUT(req: Request, { params }: Ctx) {
   }
 }
 
-export async function DELETE(_: Request, { params }: Ctx) {
+export async function DELETE(req: NextRequest, { params }: Ctx): Promise<Response> {
+  const auth = await verifyAuth(req);
+  if (auth.error) return auth.response;
+
   const { id } = await params;
   const idPaciente = parseId(id);
   if (!idPaciente) return NextResponse.json({ error: "id inválido" }, { status: 400 });

@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import InteractiveBackground from "@/components/auth/InteractiveBackground";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const [isLoaded, setIsLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
@@ -19,22 +18,13 @@ export default function RegisterPage() {
   });
 
   useEffect(() => {
-    if (status === "authenticated" && session) {
-      router.push("/obras-sociales");
-    }
-  }, [status, session, router]);
+    // Mostrar la pantalla de carga por 500ms mínimo, luego mostrar contenido
+    const timer = setTimeout(() => {
+      setIsLoaded(true);
+    }, 500);
 
-  if (status === "loading") {
-    return (
-       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-pulse flex flex-col items-center">
-          <div className="h-12 w-12 rounded-full border-4 border-cyan-200 border-t-cyan-600 animate-spin mb-4"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (status === "authenticated") return null;
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -93,7 +83,19 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col lg:flex-row relative overflow-hidden">
+    <>
+      {/* Pantalla de carga mientras se cargan los componentes */}
+      {!isLoaded && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-linear-to-br from-cyan-900 via-cyan-950 to-cyan-950">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-cyan-400 border-t-cyan-200 rounded-full animate-spin"></div>
+            <p className="text-cyan-200 font-medium tracking-wide">Cargando Dermacor...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Contenido principal - aparece cuando isLoaded es true */}
+      <div className={`min-h-screen w-full flex flex-col lg:flex-row relative overflow-hidden transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
       
       {/* 1. FONDO INTERACTIVO 
           Móvil: Absolute inset-0 (Fondo completo)
@@ -113,9 +115,9 @@ export default function RegisterPage() {
             Móvil: Estilo 'Glassmorphism' (blanco translúcido, bordes, sombras)
             Desktop: Estilo limpio (sin fondo, sin sombras, integrado)
         */}
-        <div className="w-full max-w-[480px] px-6 py-8 mx-4 
+        <div className="w-full max-w-120 px-6 py-8 mx-4 
                         bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20
-                        lg:bg-transparent lg:shadow-none lg:rounded-none lg:border-none lg:p-0 lg:mx-0 lg:max-w-sm animate-[fadeIn_0.6s_ease-out]">
+                        lg:bg-transparent lg:shadow-none lg:rounded-none lg:border-none lg:p-0 lg:mx-0 lg:max-w-sm">
           
           <div className="mb-8 lg:mb-10 text-center lg:text-left">
             <div className="flex items-center justify-center lg:justify-start gap-2 mb-6">
@@ -133,7 +135,7 @@ export default function RegisterPage() {
 
           {error && (
             <div className="mb-6 rounded-xl bg-red-50 p-4 border border-red-100 flex items-center gap-3">
-               <svg className="w-5 h-5 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <svg className="w-5 h-5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                </svg>
               <p className="text-sm text-red-600 font-medium">{error}</p>
@@ -228,6 +230,7 @@ export default function RegisterPage() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

@@ -1,11 +1,15 @@
 import { NextResponse, NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { verifyAuth } from '@/lib/apiAuth'
 
 
 export async function PATCH(
   request: NextRequest, 
   { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<Response> {
+  const auth = await verifyAuth(request);
+  if (auth.error) return auth.response;
+
   try {
     const body = await request.json()
     const { id } = await params
@@ -26,7 +30,10 @@ export async function PATCH(
 export async function DELETE(
   request: NextRequest, 
   { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<Response> {
+  const auth = await verifyAuth(request);
+  if (auth.error) return auth.response;
+
   try {
     const { id } = await params
     const obraSocial = await prisma.obraSocial.findUnique({

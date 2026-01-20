@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { verifyAuth } from "@/lib/apiAuth";
 
 function parseId(id: string) {
   const n = Number(id);
@@ -9,7 +10,10 @@ function parseId(id: string) {
 type Ctx = { params: Promise<{ id: string }> };
 
 // GET: Obtener todas las consultas de un paciente con filtrado opcional por fecha
-export async function GET(request: Request, { params }: Ctx) {
+export async function GET(request: NextRequest, { params }: Ctx): Promise<Response> {
+  const auth = await verifyAuth(request);
+  if (auth.error) return auth.response;
+
   try {
     const { id } = await params;
     const idPaciente = parseId(id);
@@ -73,7 +77,10 @@ export async function GET(request: Request, { params }: Ctx) {
 }
 
 // POST: Crear una nueva consulta
-export async function POST(req: Request, { params }: Ctx) {
+export async function POST(req: NextRequest, { params }: Ctx): Promise<Response> {
+  const auth = await verifyAuth(req);
+  if (auth.error) return auth.response;
+
   try {
     const { id } = await params;
     const idPaciente = parseId(id);
