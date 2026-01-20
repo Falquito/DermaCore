@@ -11,15 +11,17 @@ export async function middleware(req: NextRequest) {
   // Obtener token del request
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
 
+  // TODO: Descomentar cuando se complete la autenticación
   // Si el usuario no está autenticado y trata de acceder a una ruta privada
-  if (!token && !isPublicRoute) {
-    return NextResponse.redirect(new URL("/auth/login", req.url));
-  }
+  // if (!token && !isPublicRoute) {
+  //   return NextResponse.redirect(new URL("/auth/login", req.url));
+  // }
 
+  // TODO: Descomentar cuando se complete la autenticación
   // Si el usuario está autenticado y trata de acceder a rutas de autenticación
-  if (token && isPublicRoute) {
-    return NextResponse.redirect(new URL("/", req.url));
-  }
+  // if (token && isPublicRoute) {
+  //   return NextResponse.redirect(new URL("/", req.url));
+  // }
 
   return NextResponse.next();
 }
