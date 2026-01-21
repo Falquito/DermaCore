@@ -3,7 +3,8 @@ import {
   Building2, 
   Trash2,
   RefreshCcw,
-  SearchX
+  SearchX,
+  Pencil
 } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -30,7 +31,7 @@ import {
 import { ObraSocial } from '@/types/obraSocial' 
 import UpdateModalObraSocialComponent from './updateModalObraSocial'
 import { useState } from 'react'
-import { deleteObraSocial, formatFechaArgentina } from '@/lib/utils'
+import { deleteObraSocial } from '@/lib/utils'
 import NotifySuccessComponent from './notifySuccess'
 import ConfirmModalChangeStateObraSocial from './confirmModalChangeStateObraSocial'
 
@@ -44,7 +45,8 @@ export default function ListadoObraSocial({ obras, onRefresh, isFiltered }: List
   const [loadingDelete, setIsLoading] = useState(false)
   const [openNotify, setOpenNotify] = useState(false)
   const [itemToToggle, setItemToToggle] = useState<{id: number, isActive: boolean} | null>(null)
-
+  // NUEVO: ESTADO PARA LA EDICIÓN (Almacena la Obra Social entera)
+  const [obraToEdit, setObraToEdit] = useState<ObraSocial | null>(null)
   const handleOpenConfirm = (id: number, isActive: boolean) => {
     setItemToToggle({ id, isActive })
   }
@@ -81,11 +83,19 @@ export default function ListadoObraSocial({ obras, onRefresh, isFiltered }: List
         title="Estado actualizado" 
         description="La operación se realizó con éxito." 
       />
-
-      <Card className="border-slate-200 shadow-sm overflow-hidden bg-white">
+    {obraToEdit && (
+        <UpdateModalObraSocialComponent 
+            open={!!obraToEdit} // Se abre si hay una obra seleccionada
+            onClose={() => setObraToEdit(null)} // Al cerrar, limpiamos el estado
+            idObraSocial={obraToEdit.idObraSocial}
+            currentName={obraToEdit.nombreObraSocial}
+            onSuccess={onRefresh}
+        />
+      )}
+      <Card className="border-slate-200 shadow-sm overflow-hidden">
         <CardContent className="p-0">
             <Table>
-              <TableHeader className="bg-slate-50 border-b border-slate-100">
+              <TableHeader className="border-b border-slate-100">
                 <TableRow className="hover:bg-slate-50">
                   <TableHead className="w-[400px] text-xs font-semibold uppercase tracking-wider text-slate-500 pl-6 h-12">Obra Social</TableHead>
                   <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 h-12">Estado</TableHead>
@@ -148,19 +158,22 @@ export default function ListadoObraSocial({ obras, onRefresh, isFiltered }: List
                           <DropdownMenuContent align="end" className="w-[160px]">
                             <DropdownMenuLabel className="text-xs text-slate-500 font-normal">Acciones</DropdownMenuLabel>
                             
-                            <DropdownMenuItem asChild>
-                                <div onClick={(e) => e.preventDefault()} className="cursor-pointer">
-                                   <UpdateModalObraSocialComponent idObraSocial={obra.idObraSocial} onSuccess={onRefresh} />
-                                </div>
+                            <DropdownMenuItem 
+                                onClick={() => setObraToEdit(obra)} // <--- AQUI CAMBIAMOS LA LOGICA
+                                className="cursor-pointer"
+                            >
+                                <Pencil className="mr-2 h-4 w-4 text-slate-500" />
+                                Editar datos
                             </DropdownMenuItem>
                             
                             <DropdownMenuSeparator />
                             
+                            {/* BOTÓN DE ESTADO */}
                             <DropdownMenuItem 
-                              className={`cursor-pointer gap-2 ${obra.estadoObraSocial ? 'text-red-600 focus:text-red-700 focus:bg-red-50' : 'text-cyan-600 focus:text-cyan-700 focus:bg-cyan-50'}`}
+                              className="..."
                               onClick={() => handleOpenConfirm(obra.idObraSocial, obra.estadoObraSocial)}
                             >
-                              {obra.estadoObraSocial ? <Trash2 className="h-4 w-4" /> : <RefreshCcw className="h-4 w-4" />}
+                              {/* ... iconos trash/refresh ... */}
                               {obra.estadoObraSocial ? "Desactivar" : "Restaurar"}
                             </DropdownMenuItem>
                           </DropdownMenuContent>

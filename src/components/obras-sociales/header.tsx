@@ -1,5 +1,5 @@
 import CreateModalObraSocialComponent from "./createModalObraSocial";
-import { Layers } from "lucide-react";
+import { IdCard, Layers } from "lucide-react";
 
 export default function HeaderComponent({ onRefresh, loading = false }: { onRefresh: () => void, loading?: boolean }){
     return (
@@ -7,7 +7,7 @@ export default function HeaderComponent({ onRefresh, loading = false }: { onRefr
             <div className="space-y-1">
                 <div className="flex items-center gap-2">
                     <div className="p-2 bg-cyan-100 rounded-lg text-cyan-700">
-                        <Layers className="h-5 w-5" />
+                        <IdCard className="h-5 w-5" />
                     </div>
                     <h1 className="text-2xl font-bold tracking-tight text-slate-900">
                         Obras Sociales

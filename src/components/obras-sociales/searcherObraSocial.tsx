@@ -23,9 +23,7 @@ export default function SearcherObraSocialComponent({
   disabled
 }: SearcherProps) {
   return (
-    <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between bg-white p-1 rounded-xl">
-      
-      {/* Search Input Area */}
+    <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between p-1 rounded-xl">
       <div className="relative w-full sm:max-w-sm">
         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
             <Search className="h-4 w-4" />
@@ -58,8 +56,8 @@ export default function SearcherObraSocialComponent({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">Todos</SelectItem>
-            <SelectItem value="ACTIVA">Activas</SelectItem>
-            <SelectItem value="INACTIVA">Inactivas</SelectItem>
+            <SelectItem value="ACTIVA"><span className="w-1 h-1 rounded-xl bg-cyan-200"></span>Activas</SelectItem>
+            <SelectItem value="INACTIVA"><span className="w-1 h-1 rounded-xl bg-slate-100"></span>Inactivas</SelectItem>
           </SelectContent>
         </Select>
       </div>
