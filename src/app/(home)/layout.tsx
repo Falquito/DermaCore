@@ -1,6 +1,7 @@
 import { Header } from "@/components/header";
 import SideBar from "@/components/sideBar";
 import { SidebarProvider } from "@/components/ui/sidebar-context";
+import { ProtectedPage } from "@/components/auth/ProtectedPage";
 
 export default function HomeLayout({
   children,
@@ -8,12 +9,14 @@ export default function HomeLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <SidebarProvider>
-      <Header />
-      <SideBar>
-        {children}
-      </SideBar>
-    </SidebarProvider>
+    <ProtectedPage>
+      <SidebarProvider>
+        <Header />
+        <SideBar>
+          {children}
+        </SideBar>
+      </SidebarProvider>
+    </ProtectedPage>
   );
 }
 
