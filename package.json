@@ -86,6 +86,7 @@
   "overrides": {
     "ts-node": {
       "diff": "^8.0.3"
-    }
+    },
+    "cookie": "^0.7.0"
   }
 }
