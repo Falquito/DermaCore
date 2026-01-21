@@ -1,16 +1,21 @@
 import Link from "next/link";
 import { Users, IdCard, ArrowRight, Activity, Calendar, Shield } from "lucide-react";
+import LogoComponent from "@/components/Logo";
 
 export default function Home() {
   return (
     <div className="space-y-8">
       {/* Header de bienvenida */}
-      <div className="bg-gradient-to-r from-cyan-600 to-cyan-700 rounded-2xl p-8 text-white">
-        <h1 className="text-3xl font-bold mb-2">¡Bienvenido a Dermacor!</h1>
-        <p className="text-cyan-100 text-lg">
+      <div className="bg-gradient-to-r from-cyan-100/30 to-cyan-100/30 rounded-2xl p-8 text-cyan-600 text-cyan-500 shadow-lg">
+        <h1 className="text-3xl font-semibold flex items-center gap-2">
+          ¡Bienvenido a <LogoComponent size="md" />!
+        </h1>
+
+        <p className="text-cyan-600 mt-2">
           Sistema de gestión para consultorios dermatológicos
         </p>
       </div>
+
 
       {/* Accesos rápidos */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

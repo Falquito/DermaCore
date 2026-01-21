@@ -24,7 +24,7 @@ type SuccessToast = {
 function PacienteContent() {
   const [q, setQ] = useState("");
 
-  // ✅ default Activos
+
   const [estado, setEstado] = useState<EstadoPacienteFilter>("true");
 
   const [successToast, setSuccessToast] = useState<SuccessToast>({

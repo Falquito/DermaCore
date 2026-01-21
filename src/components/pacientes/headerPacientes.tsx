@@ -1,4 +1,4 @@
-import { User } from "lucide-react"
+import { User, Users } from "lucide-react"
 
 export default function HeaderPacientes() {
   return (
@@ -6,7 +6,9 @@ export default function HeaderPacientes() {
       <div>
         
         <div className="flex items-center gap-2">
-            <User className="w-8 h-8" />
+            <div className="p-3 bg-cyan-50 rounded-lg group-hover:bg-cyan-100 transition-colors">
+              <Users className="w-6 h-6 text-cyan-600" />
+            </div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">
                 Pacientes
             </h1>
