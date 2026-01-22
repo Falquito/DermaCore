@@ -46,8 +46,8 @@ async function main() {
     orderBy: { idObraSocial: "asc" },
   });
 
-  // 2) Pacientes (15)
-  const nombres: Array<[string, string]> = [
+  // 2) Pacientes (1000)
+  const nombresBase: Array<[string, string]> = [
     ["Juan", "Pérez"],
     ["María", "Gómez"],
     ["Lucas", "Fernández"],
@@ -63,32 +63,55 @@ async function main() {
     ["Franco", "Herrera"],
     ["Agustina", "Castro"],
     ["Nicolás", "Vega"],
+    ["Tomás", "Suárez"],
+    ["Julieta", "Molina"],
+    ["Ignacio", "Ramos"],
+    ["Florencia", "Silva"],
+    ["Gonzalo", "Navarro"],
+    ["Catalina", "Ríos"],
+    ["Federico", "Acosta"],
+    ["Brenda", "Medina"],
+    ["Ezequiel", "Ponce"],
+    ["Milagros", "Cabrera"],
+    ["Ramiro", "Paz"],
+    ["Micaela", "Sosa"],
+    ["Leandro", "Arias"],
+    ["Carolina", "Peralta"],
+    ["Alan", "Figueroa"],
   ];
 
+  const totalPacientes = 1000;
   const baseDni = 35000000;
 
-  const pacientes = [];
-  for (let i = 0; i < 15; i++) {
-    const [nombrePaciente, apellidoPaciente] = nombres[i];
+  const pacientesData = Array.from({ length: totalPacientes }).map((_, i) => {
+    const [nombrePaciente, apellidoPaciente] =
+      nombresBase[i % nombresBase.length];
+
     const dniPaciente = String(baseDni + i); // unique
-    const telefonoPaciente = `351${pad(1000000 + i, 7)}`;
+    const telefonoPaciente = `351${pad(1000000 + i, 7)}`; // unique
     const domicilioPaciente = `Calle ${i + 1} #${100 + i}`;
 
-    const p = await prisma.paciente.create({
-      data: {
-        nombrePaciente,
-        apellidoPaciente,
-        dniPaciente,
-        telefonoPaciente,
-        domicilioPaciente,
-        estadoPaciente: true,
-      },
-    });
+    return {
+      nombrePaciente,
+      apellidoPaciente,
+      dniPaciente,
+      telefonoPaciente,
+      domicilioPaciente,
+      estadoPaciente: true,
+    };
+  });
 
-    pacientes.push(p);
-  }
+  await prisma.paciente.createMany({
+    data: pacientesData,
+    skipDuplicates: true,
+  });
 
-  // 3) Consultas (15): 1 por paciente y 1 obra social
+  // Traemos IDs
+  const pacientes = await prisma.paciente.findMany({
+    orderBy: { idPaciente: "asc" },
+  });
+
+  // 3) Consultas: 100 por paciente
   const motivos = [
     "Control general",
     "Dolor de cabeza",
@@ -145,94 +168,62 @@ async function main() {
 
   const tiposConsulta = ["Primera vez", "Control", "Urgencia", "Seguimiento"];
 
+  const consultasPorPaciente = 100; // ✅ acá el cambio tranqui
+  const BATCH_SIZE = 2000; // recomendado
+
+  const now = Date.now();
+  let buffer: any[] = [];
+  let totalInsertadas = 0;
+
+  console.log("⏳ Creando 100.000 consultas (en batches)...");
+
   for (let i = 0; i < pacientes.length; i++) {
     const paciente = pacientes[i];
-    const obra = obrasSociales[i % obrasSociales.length];
 
-    await prisma.consultas.create({
-      data: {
+    for (let j = 0; j < consultasPorPaciente; j++) {
+      const obra = obrasSociales[(i + j) % obrasSociales.length];
+
+      // Fecha: cada consulta 2 días hacia atrás (100 consultas = 200 días de historial)
+      const fechaHoraConsulta = new Date(now - j * 2 * 24 * 60 * 60 * 1000);
+
+      const idx = (i + j) % motivos.length;
+
+      buffer.push({
         idPaciente: paciente.idPaciente,
         idObraSocial: obra.idObraSocial,
+        fechaHoraConsulta,
 
-        motivoConsulta: motivos[i],
-        diagnosticoConsulta: diagnosticos[i],
-        tratamientoConsulta: tratamientos[i],
+        motivoConsulta: motivos[idx],
+        diagnosticoConsulta: diagnosticos[idx],
+        tratamientoConsulta: tratamientos[idx],
 
-        // Campos extra del schema actual
         nroAfiliado: `AF-${obra.idObraSocial}-${pad(paciente.idPaciente, 4)}`,
-        tipoConsulta: tiposConsulta[i % tiposConsulta.length],
-        montoConsulta: 5000 + i * 750, // ejemplo
-      },
-    });
+        tipoConsulta: tiposConsulta[(i + j) % tiposConsulta.length],
+        montoConsulta: 5000 + ((i + j) % 20) * 750,
+      });
+
+      if (buffer.length >= BATCH_SIZE) {
+        await prisma.consultas.createMany({
+          data: buffer,
+          skipDuplicates: true,
+        });
+        totalInsertadas += buffer.length;
+        buffer = [];
+
+        if (totalInsertadas % 20000 === 0) {
+          console.log(`… ${totalInsertadas.toLocaleString("es-AR")} insertadas`);
+        }
+      }
+    }
   }
 
-  // Agregar múltiples consultas para el paciente con id 14 (índice 13) con fechas variadas
-  const paciente14 = pacientes[13]; // Agustina Castro, índice 13
-
-  const fechasAnteriores = [
-    new Date("2025-12-15T10:30:00Z"), // 15 diciembre 2025
-    new Date("2025-12-01T14:00:00Z"), // 1 diciembre 2025
-    new Date("2025-11-20T09:15:00Z"), // 20 noviembre 2025
-    new Date("2025-11-05T16:45:00Z"), // 5 noviembre 2025
-    new Date("2025-10-25T11:20:00Z"), // 25 octubre 2025
-    new Date("2025-10-10T13:30:00Z"), // 10 octubre 2025
-    new Date("2025-09-30T10:00:00Z"), // 30 septiembre 2025
-    new Date("2025-09-15T15:10:00Z"), // 15 septiembre 2025
-  ];
-
-  const motivosExtras = [
-    "Control de presión arterial",
-    "Revisión de laboratorio",
-    "Dolor en la zona lumbar",
-    "Consulta por alergia estacional",
-    "Seguimiento de medicación",
-    "Dolor de cabeza recurrente",
-    "Chequeo preventivo",
-    "Control de colesterol",
-  ];
-
-  const diagnosticosExtras = [
-    "Hipertensión controlada",
-    "Resultados normales",
-    "Lumbalgia mecánica",
-    "Alergia estacional confirmada",
-    "Situación estable",
-    "Cefalea tensional",
-    "Sin hallazgos",
-    "Dislipidemia leve",
-  ];
-
-  const tratamientosExtras = [
-    "Continuar medicación",
-    "Próximo control en 3 meses",
-    "Ejercicios y reposo",
-    "Antihistamínico según síntomas",
-    "Monitoreo de presión",
-    "Analgésico si es necesario",
-    "Revisión anual",
-    "Dieta balanceada y ejercicio",
-  ];
-
-  // Crear consultas adicionales para el paciente 14
-  for (let i = 0; i < fechasAnteriores.length; i++) {
-    const obra = obrasSociales[i % obrasSociales.length];
-    const fecha = fechasAnteriores[i];
-
-    await prisma.consultas.create({
-      data: {
-        idPaciente: paciente14.idPaciente,
-        idObraSocial: obra.idObraSocial,
-        fechaHoraConsulta: fecha,
-
-        motivoConsulta: motivosExtras[i],
-        diagnosticoConsulta: diagnosticosExtras[i],
-        tratamientoConsulta: tratamientosExtras[i],
-
-        nroAfiliado: `AF-${obra.idObraSocial}-${pad(paciente14.idPaciente, 4)}`,
-        tipoConsulta: tiposConsulta[i % tiposConsulta.length],
-        montoConsulta: 6000 + i * 500,
-      },
+  // flush final
+  if (buffer.length > 0) {
+    await prisma.consultas.createMany({
+      data: buffer,
+      skipDuplicates: true,
     });
+    totalInsertadas += buffer.length;
   }
 
   const countOS = await prisma.obraSocial.count();
@@ -244,6 +235,7 @@ async function main() {
     obrasSociales: countOS,
     pacientes: countPac,
     consultas: countCons,
+    consultasInsertadas: totalInsertadas,
   });
 }
 

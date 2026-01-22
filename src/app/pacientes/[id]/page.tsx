@@ -10,8 +10,8 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { formatFechaAR } from "@/lib/utils";
-import RegistrarConsultaForm from "@/components/pacientes/registrarConsultaForm";
-import HistorialConsultasLista from "@/components/pacientes/historialConsultasLista";
+import RegistrarConsultaForm from "@/components/consultas/registrarConsultaForm";
+import HistorialConsultasLista from "@/components/consultas/historialConsultasLista";
 import type { Consulta } from "@/types/consulta";
 
 type Paciente = {
