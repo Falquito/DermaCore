@@ -1,7 +1,13 @@
 import { Download, FileText } from "lucide-react";
 
+interface Lesson {
+    id: number;
+    title: string;
+    videoId: string;
+}
+
 interface FooterProps {
-    activeLesson: any;
+    activeLesson: Lesson;
     activeTab: string;
     setActiveTab: (tab: string) => void;
 }

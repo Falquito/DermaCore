@@ -287,35 +287,19 @@ export default function RegisterClient() {
                 </div>
               </div>
 
-              {/* Botón submit */}
+              {/* Botón crear cuenta - Deshabilitado temporalmente */}
               <button
-                type="submit"
-                disabled={loading}
+                type="button"
+                disabled={true}
                 className="group relative w-full py-3.5 sm:py-4 px-6 rounded-xl overflow-hidden
-                         bg-linear-to-r from-cyan-600 to-sky-500 
+                         bg-linear-to-r from-gray-400 to-gray-500 
                          text-white font-bold text-base sm:text-lg 
-                         shadow-lg shadow-cyan-500/25 
-                         transition-all duration-300 ease-out
-                         hover:shadow-xl hover:shadow-cyan-500/30 hover:scale-[1.02]
-                         active:scale-[0.98] 
-                         disabled:opacity-70 disabled:cursor-not-allowed disabled:shadow-none disabled:hover:scale-100
+                         shadow-lg shadow-gray-500/25 
+                         cursor-not-allowed opacity-70
                          flex items-center justify-center gap-2 mt-6"
               >
-                {/* Efecto de brillo animado */}
-                <span className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent 
-                               translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700 ease-in-out" />
-                
-                {loading ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span>Creando cuenta...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Crear cuenta</span>
-                    <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform duration-200" />
-                  </>
-                )}
+                <span>Crear cuenta</span>
+                <ArrowRight size={20} />
               </button>
             </form>
 

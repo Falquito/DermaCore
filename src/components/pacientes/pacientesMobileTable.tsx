@@ -39,7 +39,7 @@ type Props = {
 
 function Item({
   paciente,
-  onVerHistoria,
+  onVerHistoria: _onVerHistoria,
   onChanged,
   onEditSuccess,
 }: {

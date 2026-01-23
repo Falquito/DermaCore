@@ -7,7 +7,6 @@ import { useStore } from "@/hooks/use-store";
 import { cn } from "@/lib/utils";
 import { PanelsTopLeft } from "lucide-react";
 import Link from "next/link";
-import { Header } from "../header";
 
 export function Sidebar() {
   const sidebar = useStore(useSidebar, (x) => x);

@@ -48,7 +48,7 @@ type PacienteCardProps = {
 
 export default function PacienteCard({
   paciente,
-  onVerHistoria,
+  onVerHistoria: _onVerHistoria,
   onChanged,
   onEditSuccess,
 }: PacienteCardProps) {

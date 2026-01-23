@@ -1,8 +1,6 @@
 import { 
   MoreHorizontal, 
   Building2, 
-  Trash2,
-  RefreshCcw,
   SearchX,
   Pencil
 } from 'lucide-react'

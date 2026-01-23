@@ -7,7 +7,13 @@ import { DefaultVideoLayout, defaultLayoutIcons } from '@vidstack/react/player/l
 import '@vidstack/react/player/styles/default/theme.css';
 import '@vidstack/react/player/styles/default/layouts/video.css';
 
-export default function ReproductorVideo({ activeLesson }: { activeLesson: any }) {
+interface Lesson {
+    id: number;
+    title: string;
+    videoId: string;
+}
+
+export default function ReproductorVideo({ activeLesson }: { activeLesson: Lesson }) {
 
   return (
     <div className="relative w-full aspect-video group">

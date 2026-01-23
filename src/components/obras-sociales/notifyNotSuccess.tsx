@@ -1,4 +1,4 @@
-import { CheckCircle2Icon, Frown } from "lucide-react";
+import { Frown } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 
 export default function NotifyNotSuccessComponent({

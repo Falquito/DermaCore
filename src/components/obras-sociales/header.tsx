@@ -1,5 +1,5 @@
 import CreateModalObraSocialComponent from "./createModalObraSocial";
-import { IdCard, Layers } from "lucide-react";
+import { IdCard } from "lucide-react";
 
 export default function HeaderComponent({ onRefresh, loading = false }: { onRefresh: () => void, loading?: boolean }){
     return (

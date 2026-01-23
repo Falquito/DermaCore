@@ -1,6 +1,6 @@
 "use client";
 
-import { Linkedin, Phone, MapPin, ExternalLink, Code2, Heart } from "lucide-react";
+import { Linkedin, Phone, ExternalLink, Code2, Heart } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -83,7 +83,7 @@ export function Footer() {
       <div className="border-t border-slate-100 bg-slate-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-xs text-slate-500 text-center md:text-left">
-            &copy; {currentYear} Dermacor. Todos los derechos reservados.
+            &copy; {currentYear} DermaCore. Todos los derechos reservados.
           </p>
           
           <div className="flex items-center gap-1 text-xs text-slate-400">

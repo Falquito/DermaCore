@@ -1,10 +1,23 @@
 import { CheckCircle2, PlayCircle, ChevronDown, ChevronUp } from "lucide-react";
 
+interface Lesson {
+    id: number;
+    title: string;
+    videoId: string;
+    duration: string;
+    completed: boolean;
+}
+
+interface Module {
+    title: string;
+    lessons: Lesson[];
+}
+
 // Definimos qué props espera recibir este componente
 interface SideBarProps {
-    courseContent: any[]; // Idealmente usa el tipo Module[]
-    activeLesson: any;    // Idealmente usa el tipo Lesson
-    setActiveLesson: (lesson: any) => void;
+    courseContent: Module[];
+    activeLesson: Lesson;
+    setActiveLesson: (lesson: Lesson) => void;
     openModules: number[];
     toggleModule: (index: number) => void;
 }
@@ -45,7 +58,7 @@ export default function SideBar({
                             {/* Lecciones del Módulo */}
                             {isOpen && (
                                 <div className="flex flex-col">
-                                    {module.lessons.map((lesson: any) => {
+                                    {module.lessons.map((lesson: Lesson) => {
                                         const isActive = activeLesson.id === lesson.id;
                                         
                                         return (
