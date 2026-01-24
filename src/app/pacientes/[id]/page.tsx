@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Phone, IdCard, MapPin, CreditCard } from "lucide-react";
 import Link from "next/link";
 import { formatFechaAR } from "@/lib/utils";
 import RegistrarConsultaForm from "@/components/consultas/registrarConsultaForm";
@@ -68,15 +68,8 @@ function PacienteDetailContent() {
         setLoading(true);
         setError(null);
 
-        // Calcular fechas: últimos 6 meses
-        const toDate = new Date();
-        const fromDate = new Date();
-        fromDate.setMonth(fromDate.getMonth() - 6);
-
-        // Construir URL con parámetros de fecha para últimos 6 meses
+        // Construir URL sin parámetros iniciales para que la API calcule el rango basado en la última consulta
         const consultasUrl = new URL(`/api/pacientes/${id}/consultas`, window.location.origin);
-        consultasUrl.searchParams.set("from", fromDate.toISOString());
-        consultasUrl.searchParams.set("to", toDate.toISOString());
 
         const [pacienteRes, consultasRes, ultimaObraSocialRes] = await Promise.all([
           fetch(`/api/pacientes/${id}`),
@@ -201,24 +194,29 @@ function PacienteDetailContent() {
                 {paciente.nombrePaciente} {paciente.apellidoPaciente}
               </p>
             </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">DNI</p>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <IdCard className="h-4 w-4" />
+                DNI
+              </p>
               <p className="text-lg font-semibold text-foreground">
                 {paciente.dniPaciente}
               </p>
             </div>
           </div>
           <div className="space-y-4">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Phone className="h-4 w-4" />
                 Teléfono
               </p>
               <p className="text-lg font-semibold text-foreground">
                 {formatPhoneNumber(paciente.telefonoPaciente)}
               </p>
             </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
                 Domicilio
               </p>
               <p className="text-lg font-semibold text-foreground">
@@ -258,15 +256,16 @@ function PacienteDetailContent() {
             </h4>
             {ultimaObraSocial?.ultimaObraSocial ? (
               <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
                     Obra Social
                   </p>
                   <p className="text-lg font-semibold text-foreground">
                     {ultimaObraSocial.ultimaObraSocial.nombreObraSocial}
                   </p>
                 </div>
-                <div>
+                <div className="space-y-1">
                   <p className="text-sm font-medium text-muted-foreground">
                     Nro. de Afiliado
                   </p>
@@ -299,9 +298,14 @@ function PacienteDetailContent() {
 
         {/* Historial de Consultas - Ocupará 3 columnas en pantallas grandes */}
         <div className="lg:col-span-3 lg:order-1">
-          <h2 className="text-2xl font-bold text-foreground mb-6">
-            Historial de Consultas
-          </h2>
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-foreground mb-2">
+              Historial de Consultas
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Mostrando últimos 6 meses desde la última consulta
+            </p>
+          </div>
           <HistorialConsultasLista
             consultas={consultas}
             idPaciente={paciente.idPaciente}

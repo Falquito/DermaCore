@@ -39,12 +39,34 @@ export async function GET(request: NextRequest, { params }: Ctx): Promise<Respon
     const fromParam = searchParams.get("from");
     const toParam = searchParams.get("to");
 
-    // Calcular rango de fechas
-    const toDate = toParam ? new Date(toParam) : new Date();
-    // Si no hay fecha "desde", calcular 1 mes atrás
-    const fromDate = fromParam
-      ? new Date(fromParam)
-      : new Date(toDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+    let fromDate: Date;
+    let toDate: Date;
+
+    // Si hay parámetros de fecha, usarlos
+    if (fromParam && toParam) {
+      fromDate = new Date(fromParam);
+      toDate = new Date(toParam);
+    } else {
+      // Si no hay parámetros, buscar la última consulta y calcular 6 meses hacia atrás
+      const ultimaConsulta = await prisma.consultas.findFirst({
+        where: { idPaciente },
+        orderBy: { fechaHoraConsulta: "desc" },
+        select: { fechaHoraConsulta: true },
+      });
+
+      if (ultimaConsulta) {
+        // Usar la fecha de la última consulta como fecha "hasta"
+        toDate = new Date(ultimaConsulta.fechaHoraConsulta);
+        // Retroceder 6 meses desde la última consulta
+        fromDate = new Date(toDate);
+        fromDate.setMonth(fromDate.getMonth() - 6);
+      } else {
+        // Si no hay consultas, usar rango por defecto (últimos 6 meses desde hoy)
+        toDate = new Date();
+        fromDate = new Date();
+        fromDate.setMonth(fromDate.getMonth() - 6);
+      }
+    }
 
     // Obtener consultas en el rango de fechas
     const consultas = await prisma.consultas.findMany({

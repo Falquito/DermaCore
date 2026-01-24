@@ -187,7 +187,7 @@ export default function HistorialConsultasLista({
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4 max-h-140 overflow-y-auto pr-4 custom-scrollbar">
+        <div className="space-y-4 max-h-132 overflow-y-auto pr-4 custom-scrollbar">
           {consultas.map((consulta) => (
         <Card
           key={consulta.idConsulta}
