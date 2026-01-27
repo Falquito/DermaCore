@@ -6,11 +6,15 @@ import { DefaultVideoLayout, defaultLayoutIcons } from '@vidstack/react/player/l
 // Estilos base
 import '@vidstack/react/player/styles/default/theme.css';
 import '@vidstack/react/player/styles/default/layouts/video.css';
+import React,{ CSSProperties } from 'react';
 
 interface Lesson {
     id: number;
     title: string;
     videoId: string;
+}
+interface CustomCSSProperties extends CSSProperties {
+    [key: `--${string}`]: string | number | undefined;
 }
 
 export default function ReproductorVideo({ activeLesson }: { activeLesson: Lesson }) {
@@ -47,7 +51,7 @@ export default function ReproductorVideo({ activeLesson }: { activeLesson: Lesso
             '--video-slider-thumb-bg': '#fff',
             '--video-slider-thumb-border': '2px solid #06b6d4',
             '--video-controls-color': '#ffffff',
-        } as React.CSSProperties}
+        } as CustomCSSProperties}
       >
         <MediaProvider />
         
