@@ -36,10 +36,13 @@ export async function PUT(request: NextRequest, { params }: Ctx): Promise<Respon
       motivoConsulta,
       diagnosticoConsulta,
       tratamientoConsulta,
+      estudiosComplementarios,
       nroAfiliado,
       tipoConsulta,
+      tieneCoseguro,
       montoConsulta,
       idObraSocial,
+      idCoseguro,
     } = body;
 
     // Validaciones
@@ -85,6 +88,30 @@ export async function PUT(request: NextRequest, { params }: Ctx): Promise<Respon
           { status: 400 }
         );
       }
+      // Validar tieneCoseguro
+      if (tieneCoseguro !== null && tieneCoseguro !== undefined && typeof tieneCoseguro !== "boolean") {
+        return NextResponse.json(
+          { error: "tieneCoseguro debe ser booleano o null" },
+          { status: 400 }
+        );
+      }
+      // Si tiene coseguro, validar que idCoseguro sea válido
+      if (tieneCoseguro === true) {
+        if (!idCoseguro || !Number.isInteger(idCoseguro)) {
+          return NextResponse.json(
+            { error: "El coseguro es requerido cuando tieneCoseguro es true" },
+            { status: 400 }
+          );
+        }
+      } else if (tieneCoseguro === false) {
+        // Si no tiene coseguro, validar que montoConsulta sea un número
+        if (!montoConsulta || typeof montoConsulta !== "number") {
+          return NextResponse.json(
+            { error: "El monto es requerido cuando no tiene coseguro" },
+            { status: 400 }
+          );
+        }
+      }
     }
 
     // Verificar que el paciente existe
@@ -123,6 +150,20 @@ export async function PUT(request: NextRequest, { params }: Ctx): Promise<Respon
           { status: 404 }
         );
       }
+
+      // Verificar que el coseguro existe (si es necesario)
+      if (idCoseguro) {
+        const coseguro = await prisma.coseguro.findUnique({
+          where: { idCoseguro },
+        });
+
+        if (!coseguro) {
+          return NextResponse.json(
+            { error: "Coseguro no encontrado" },
+            { status: 404 }
+          );
+        }
+      }
     }
 
     // Actualizar la consulta
@@ -136,21 +177,38 @@ export async function PUT(request: NextRequest, { params }: Ctx): Promise<Respon
         tratamientoConsulta: tratamientoConsulta
           ? tratamientoConsulta.trim()
           : null,
+        estudiosComplementarios: estudiosComplementarios
+          ? estudiosComplementarios.trim()
+          : null,
         nroAfiliado:
           tipoConsulta === "obra-social" && nroAfiliado
             ? nroAfiliado.trim()
             : null,
         tipoConsulta: tipoConsulta,
+        tieneCoseguro:
+          tipoConsulta === "obra-social" ? tieneCoseguro : null,
         montoConsulta:
-          tipoConsulta === "particular" ? parseFloat(montoConsulta) : null,
+          tipoConsulta === "particular" || (tipoConsulta === "obra-social" && !tieneCoseguro)
+            ? montoConsulta
+            : null,
         idObraSocial:
           tipoConsulta === "obra-social" ? idObraSocial : null,
+        idCoseguro:
+          tipoConsulta === "obra-social" && tieneCoseguro && idCoseguro
+            ? idCoseguro
+            : null,
       },
       include: {
         obraSocial: {
           select: {
             idObraSocial: true,
             nombreObraSocial: true,
+          },
+        },
+        coseguro: {
+          select: {
+            idCoseguro: true,
+            nombreCoseguro: true,
           },
         },
       },

@@ -19,6 +19,9 @@ import { Loader2 } from "lucide-react";
 import ObraSocialComboBox, {
   type ObraSocialOption,
 } from "@/components/pacientes/obraSocialComboBox";
+import CoseguroComboBox, {
+  type CoseguroOption,
+} from "@/components/consultas/coseguroComboBox";
 import NotifySuccessComponent from "@/components/pacientes/notifySuccessPaciente";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -47,8 +50,10 @@ export default function RegistrarConsultaForm({
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [loadingObras, setLoadingObras] = useState(true);
+  const [loadingCoseguros, setLoadingCoseguros] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [obras, setObras] = useState<ObraSocialOption[]>([]);
+  const [coseguros, setCoseguros] = useState<CoseguroOption[]>([]);
   const [successOpen, setSuccessOpen] = useState(false);
   const [usarUltimaObraSocial, setUsarUltimaObraSocial] = useState(false);
 
@@ -56,13 +61,28 @@ export default function RegistrarConsultaForm({
   const [selectedObraSocial, setSelectedObraSocial] =
     useState<ObraSocialOption | null>(null);
 
+  // Para el combobox de coseguro
+  const [selectedCoseguro, setSelectedCoseguro] =
+    useState<CoseguroOption | null>(null);
+
+  // Estado para "¿Tiene coseguro?"
+  const [tieneCoseguro, setTieneCoseguro] = useState<"si" | "no" | null>(null);
+
+  // Determinar si la obra social seleccionada admite coseguro
+  const obraAdmiteCoseguro =
+    selectedObraSocial &&
+    obras.find((o) => o.idObraSocial === selectedObraSocial.idObraSocial)
+      ?.admiteCoseguro === true;
+
   const [formData, setFormData] = useState({
     motivoConsulta: "",
     diagnosticoConsulta: "",
     tratamientoConsulta: "",
+    estudiosComplementarios: "",
     nroAfiliado: "",
     tipoConsultaType: "obra-social", // "particular" o "obra-social"
-    montoConsulta: "",
+    montoConsulta: "", // monto para consultas particulares
+    montoConsultaCoseguro: "", // monto si elige "No" en coseguro
   });
 
   // Cargar obras sociales al montar
@@ -83,8 +103,27 @@ export default function RegistrarConsultaForm({
     }
   };
 
+  // Cargar coseguros
+  const fetchCoseguros = async () => {
+    try {
+      setLoadingCoseguros(true);
+      const response = await fetch("/api/coseguro");
+      if (!response.ok) throw new Error("No se pudo cargar los coseguros");
+
+      const data = await response.json();
+      const cosegurosData = Array.isArray(data) ? data : data.coseguros || [];
+      // Filtrar solo activos
+      setCoseguros(cosegurosData.filter((c: CoseguroOption & { estadoCoseguro?: boolean }) => c.estadoCoseguro !== false));
+    } catch (err) {
+      console.error("Error al cargar coseguros:", err);
+    } finally {
+      setLoadingCoseguros(false);
+    }
+  };
+
   React.useEffect(() => {
     fetchObras();
+    fetchCoseguros();
   }, []);
 
   const handleChange = (
@@ -107,14 +146,16 @@ export default function RegistrarConsultaForm({
     // Limpiar obra social o monto según el tipo
     if (value === "particular") {
       setSelectedObraSocial(null);
+      setSelectedCoseguro(null);
+      setTieneCoseguro(null);
     } else {
-      setFormData((prev) => ({ ...prev, montoConsulta: "" }));
+      setFormData((prev) => ({ ...prev, montoConsultaCoseguro: "" }));
     }
     // Limpiar errores relacionados
     setFieldErrors((prev) => {
       const newErrors = { ...prev };
       delete newErrors.tipoConsultaType;
-      delete newErrors.montoConsulta;
+      delete newErrors.montoConsultaCoseguro;
       delete newErrors.nroAfiliado;
       return newErrors;
     });
@@ -130,15 +171,38 @@ export default function RegistrarConsultaForm({
     }
 
     if (formData.tipoConsultaType === "particular") {
-      if (!formData.montoConsulta) {
-        errors.montoConsulta = "El monto es requerido para consultas particulares";
+      // Validar monto para consultas particulares
+      if (!formData.montoConsulta.trim()) {
+        errors.montoConsulta = "El monto es requerido";
       }
     } else {
+      // Es obra social
       if (!selectedObraSocial) {
         errors.idObraSocial = "La obra social es requerida";
       }
       if (!formData.nroAfiliado.trim()) {
         errors.nroAfiliado = "El número de afiliado es requerido";
+      }
+
+      // Si la obra social admite coseguro, debe elegir si tiene o no
+      if (obraAdmiteCoseguro) {
+        if (tieneCoseguro === null) {
+          errors.tieneCoseguro = "Debe seleccionar si tiene coseguro o no";
+        } else if (tieneCoseguro === "si") {
+          // Si elige "Sí", debe seleccionar un coseguro
+          if (!selectedCoseguro) {
+            errors.idCoseguro = "Debe seleccionar un coseguro";
+          } else if (!selectedCoseguro.idCoseguro) {
+            errors.idCoseguro = "El coseguro seleccionado no tiene ID válido";
+          }
+        } else if (tieneCoseguro === "no") {
+          // Si elige "No", pedir monto
+          if (!formData.montoConsultaCoseguro) {
+            errors.montoConsultaCoseguro = "El monto es requerido";
+          } else if (isNaN(parseFloat(formData.montoConsultaCoseguro))) {
+            errors.montoConsultaCoseguro = "El monto debe ser un número válido";
+          }
+        }
       }
     }
 
@@ -155,6 +219,28 @@ export default function RegistrarConsultaForm({
           ? selectedObraSocial?.idObraSocial
           : null;
 
+      const idCoseguro =
+        formData.tipoConsultaType === "obra-social" &&
+        obraAdmiteCoseguro &&
+        tieneCoseguro === "si" &&
+        selectedCoseguro
+          ? selectedCoseguro.idCoseguro
+          : null;
+
+      // Calcular el monto según el tipo de consulta
+      let montoConsultaFinal: number | null = null;
+      if (formData.tipoConsultaType === "particular") {
+        montoConsultaFinal = formData.montoConsulta
+          ? parseFloat(formData.montoConsulta)
+          : null;
+      } else if (
+        obraAdmiteCoseguro &&
+        tieneCoseguro === "no" &&
+        formData.montoConsultaCoseguro
+      ) {
+        montoConsultaFinal = parseFloat(formData.montoConsultaCoseguro);
+      }
+
       const response = await fetch(
         `/api/pacientes/${idPaciente}/consultas`,
         {
@@ -164,13 +250,13 @@ export default function RegistrarConsultaForm({
             motivoConsulta: formData.motivoConsulta.trim(),
             diagnosticoConsulta: formData.diagnosticoConsulta.trim() || null,
             tratamientoConsulta: formData.tratamientoConsulta.trim() || null,
+            estudiosComplementarios: formData.estudiosComplementarios.trim() || null,
             nroAfiliado: formData.nroAfiliado.trim() || null,
             tipoConsulta: formData.tipoConsultaType,
-            montoConsulta:
-              formData.tipoConsultaType === "particular"
-                ? parseFloat(formData.montoConsulta)
-                : null,
+            tieneCoseguro: obraAdmiteCoseguro ? (tieneCoseguro === "si") : null,
+            montoConsulta: montoConsultaFinal,
             idObraSocial,
+            idCoseguro,
           }),
         }
       );
@@ -191,12 +277,16 @@ export default function RegistrarConsultaForm({
         motivoConsulta: "",
         diagnosticoConsulta: "",
         tratamientoConsulta: "",
+        estudiosComplementarios: "",
         nroAfiliado: "",
         tipoConsultaType: "obra-social",
         montoConsulta: "",
+        montoConsultaCoseguro: "",
       });
       setSelectedObraSocial(null);
+      setSelectedCoseguro(null);
       setUsarUltimaObraSocial(false);
+      setTieneCoseguro(null);
 
       setTimeout(() => setSuccessOpen(false), 3000);
     } catch (err) {
@@ -362,6 +452,93 @@ export default function RegistrarConsultaForm({
             </div>
           )}
 
+          {/* Coseguros - Pregunta Sí o No (solo si obra social admite coseguro) */}
+          {formData.tipoConsultaType === "obra-social" && 
+           selectedObraSocial && 
+           obraAdmiteCoseguro && (
+            <div className="space-y-2">
+              <Label className="text-cyan-900">¿Tiene Coseguro? *</Label>
+              <Select
+                value={tieneCoseguro || ""}
+                onValueChange={(value) => {
+                  setTieneCoseguro(value as "si" | "no");
+                  setSelectedCoseguro(null);
+                  setFormData((prev) => ({ ...prev, montoConsultaCoseguro: "" }));
+                  // Limpiar errores
+                  setFieldErrors((prev) => {
+                    const newErrors = { ...prev };
+                    delete newErrors.tieneCoseguro;
+                    delete newErrors.idCoseguro;
+                    delete newErrors.montoConsultaCoseguro;
+                    return newErrors;
+                  });
+                }}
+                disabled={loading}
+              >
+                <SelectTrigger className="border-cyan-200 focus:border-cyan-500">
+                  <SelectValue placeholder="Selecciona..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="si">Sí</SelectItem>
+                  <SelectItem value="no">No</SelectItem>
+                </SelectContent>
+              </Select>
+              {fieldErrors.tieneCoseguro && (
+                <p className="text-xs text-red-600">{fieldErrors.tieneCoseguro}</p>
+              )}
+            </div>
+          )}
+
+          {/* Combobox de Coseguros (si elige "Sí") */}
+          {formData.tipoConsultaType === "obra-social" && 
+           selectedObraSocial && 
+           obraAdmiteCoseguro && 
+           tieneCoseguro === "si" && (
+            <div className="space-y-2">
+              <Label className="text-cyan-900">Coseguro *</Label>
+              <div className={`border rounded-md ${fieldErrors.idCoseguro ? "border-red-500" : "border-cyan-200"}`}>
+                <CoseguroComboBox
+                  options={coseguros}
+                  value={selectedCoseguro}
+                  onChange={setSelectedCoseguro}
+                  disabled={loading || loadingCoseguros}
+                  placeholder="Selecciona el coseguro"
+                />
+              </div>
+              {fieldErrors.idCoseguro && (
+                <p className="text-xs text-red-600">{fieldErrors.idCoseguro}</p>
+              )}
+            </div>
+          )}
+
+          {/* Monto (si elige "No") */}
+          {formData.tipoConsultaType === "obra-social" &&
+           selectedObraSocial &&
+           obraAdmiteCoseguro &&
+           tieneCoseguro === "no" && (
+            <div className="space-y-2">
+              <Label htmlFor="montoConsultaCoseguro" className="text-cyan-900">
+                Monto *
+              </Label>
+              <Input
+                id="montoConsultaCoseguro"
+                name="montoConsultaCoseguro"
+                type="number"
+                placeholder="Ej: 150.00"
+                step="0.01"
+                value={formData.montoConsultaCoseguro}
+                onChange={handleChange}
+                disabled={loading}
+                className={`border-cyan-200 focus:border-cyan-500 ${
+                  fieldErrors.montoConsultaCoseguro ? "border-red-500 focus:border-red-500" : ""
+                }`}
+              />
+              {fieldErrors.montoConsultaCoseguro && (
+                <p className="text-xs text-red-600">{fieldErrors.montoConsultaCoseguro}</p>
+              )}
+            </div>
+          )}
+
           {/* Nro. Afiliado (solo si tipo es "obra-social") */}
           {formData.tipoConsultaType === "obra-social" && (
             <div className="space-y-2">
@@ -412,6 +589,23 @@ export default function RegistrarConsultaForm({
               name="tratamientoConsulta"
               placeholder="Medicación, indicaciones, recomendaciones..."
               value={formData.tratamientoConsulta}
+              onChange={handleChange}
+              disabled={loading}
+              className="border-cyan-200 focus:border-cyan-500 resize-none"
+              rows={2}
+            />
+          </div>
+
+          {/* Estudios Complementarios */}
+          <div className="space-y-2">
+            <Label htmlFor="estudiosComplementarios" className="text-cyan-900">
+              Estudios Complementarios
+            </Label>
+            <Textarea
+              id="estudiosComplementarios"
+              name="estudiosComplementarios"
+              placeholder="Ej: Radiografía de tórax, Análisis de sangre..."
+              value={formData.estudiosComplementarios}
               onChange={handleChange}
               disabled={loading}
               className="border-cyan-200 focus:border-cyan-500 resize-none"

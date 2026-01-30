@@ -47,14 +47,16 @@ model Coseguro {
 }
 
 model Consultas {
-  idConsulta          Int      @id @default(autoincrement())
-  motivoConsulta      String
-  diagnosticoConsulta String?
-  tratamientoConsulta String?
-  fechaHoraConsulta   DateTime @default(now())
-  nroAfiliado        String?
-  tipoConsulta       String 
-  montoConsulta      Float?
+  idConsulta                  Int      @id @default(autoincrement())
+  motivoConsulta              String
+  diagnosticoConsulta         String?
+  tratamientoConsulta         String?
+  estudiosComplementarios     String?
+  fechaHoraConsulta           DateTime @default(now())
+  nroAfiliado                String?
+  tipoConsulta               String 
+  tieneCoseguro              Boolean?
+  montoConsulta              Float?
 
   // FK
   idPaciente    Int

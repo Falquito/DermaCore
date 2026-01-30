@@ -29,6 +29,8 @@ import { AlertCircle, Loader2 } from "lucide-react";
 export type ObraSocialOption = {
   idObraSocial: number;
   nombreObraSocial: string;
+  admiteCoseguro?: boolean;
+  estadoObraSocial?: boolean;
 };
 
 type ObraSocialComboBoxProps = {

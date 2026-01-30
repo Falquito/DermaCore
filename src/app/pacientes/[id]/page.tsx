@@ -35,6 +35,20 @@ type UltimaObraSocial = {
   mensaje?: string;
 };
 
+type UltimoCoseguro = {
+  ultimoCoseguro: {
+    idCoseguro: number;
+    nombreCoseguro: string;
+  } | null;
+  ultimaObraSocial: {
+    idObraSocial: number;
+    nombreObraSocial: string;
+  } | null;
+  nroAfiliado: string | null;
+  fechaConsulta?: string;
+  mensaje?: string;
+};
+
 // Función para formatear teléfono
 function formatPhoneNumber(phone: string | null): string {
   if (!phone) return "No registrado";
@@ -59,6 +73,7 @@ function PacienteDetailContent() {
   const [paciente, setPaciente] = useState<Paciente | null>(null);
   const [consultas, setConsultas] = useState<Consulta[]>([]);
   const [ultimaObraSocial, setUltimaObraSocial] = useState<UltimaObraSocial | null>(null);
+  const [ultimoCoseguro, setUltimoCoseguro] = useState<UltimoCoseguro | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,23 +86,27 @@ function PacienteDetailContent() {
         // Construir URL sin parámetros iniciales para que la API calcule el rango basado en la última consulta
         const consultasUrl = new URL(`/api/pacientes/${id}/consultas`, window.location.origin);
 
-        const [pacienteRes, consultasRes, ultimaObraSocialRes] = await Promise.all([
+        const [pacienteRes, consultasRes, ultimaObraSocialRes, ultimoCoseguroRes] = await Promise.all([
           fetch(`/api/pacientes/${id}`),
           fetch(consultasUrl.toString()),
           fetch(`/api/pacientes/${id}/ultima-obra-social`),
+          fetch(`/api/pacientes/${id}/ultimo-coseguro`),
         ]);
 
         if (!pacienteRes.ok) throw new Error("No se pudo cargar el paciente");
         if (!consultasRes.ok) throw new Error("No se pudo cargar las consultas");
         if (!ultimaObraSocialRes.ok) throw new Error("No se pudo cargar última obra social");
+        if (!ultimoCoseguroRes.ok) throw new Error("No se pudo cargar último coseguro");
 
         const pacienteData = await pacienteRes.json();
         const consultasData = await consultasRes.json();
         const ultimaObraSocialData = await ultimaObraSocialRes.json();
+        const ultimoCoseguroData = await ultimoCoseguroRes.json();
 
         setPaciente(pacienteData);
         setConsultas(consultasData.consultas || []);
         setUltimaObraSocial(ultimaObraSocialData);
+        setUltimoCoseguro(ultimoCoseguroData);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error desconocido");
       } finally {
@@ -280,6 +299,8 @@ function PacienteDetailContent() {
               </p>
             )}
           </div>
+
+
         </CardContent>
       </Card>
 

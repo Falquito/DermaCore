@@ -187,7 +187,7 @@ export default function HistorialConsultasLista({
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4 max-h-132 overflow-y-auto pr-4 custom-scrollbar">
+        <div className="space-y-4 max-h-200 overflow-y-auto pr-4 custom-scrollbar">
           {consultas.map((consulta) => (
         <Card
           key={consulta.idConsulta}
@@ -271,17 +271,49 @@ export default function HistorialConsultasLista({
                   </div>
                 )
               ) : (
-                // Para consultas de obra social: mostrar nro de afiliado
-                consulta.nroAfiliado && (
-                  <div className="pt-2 border-t border-cyan-100">
-                    <p className="text-xs font-medium text-muted-foreground">
-                      Nro. Afiliado:
-                    </p>
-                    <p className="text-sm text-foreground">
-                      {consulta.nroAfiliado}
-                    </p>
-                  </div>
-                )
+                // Para consultas de obra social: mostrar nro de afiliado, coseguro y monto
+                <div className="pt-2 border-t border-cyan-100 space-y-2">
+                  {consulta.nroAfiliado && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Nro. Afiliado:
+                      </p>
+                      <p className="text-sm text-foreground">
+                        {consulta.nroAfiliado}
+                      </p>
+                    </div>
+                  )}
+                  {consulta.tieneCoseguro && consulta.coseguro && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Coseguro:
+                      </p>
+                      <p className="text-sm font-semibold text-cyan-700">
+                        {consulta.coseguro.nombreCoseguro}
+                      </p>
+                    </div>
+                  )}
+                  {consulta.montoConsulta && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Monto:
+                      </p>
+                      <p className="text-sm font-semibold text-cyan-700">
+                        ${consulta.montoConsulta.toFixed(2)}
+                      </p>
+                    </div>
+                  )}
+                  {consulta.estudiosComplementarios && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Estudios Complementarios:
+                      </p>
+                      <p className="text-sm text-foreground line-clamp-2">
+                        {consulta.estudiosComplementarios}
+                      </p>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </CardContent>
