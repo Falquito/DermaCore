@@ -10,16 +10,20 @@ import Link from "next/link";
 
 export function Sidebar() {
   const sidebar = useStore(useSidebar, (x) => x);
+  
+  // No renderizar nada hasta que el estado esté hidratado
   if (!sidebar) return null;
+  
   const { isOpen, toggleOpen, getOpenState, setIsHover, settings } = sidebar;
+  const openState = getOpenState();
+  
   return (
-    <>
     <aside
       className={cn(
         // CAMBIO 1: 'top-0' por 'top-16'
         // CAMBIO 2: 'h-screen' por 'h-[calc(100vh-4rem)]' (4rem es lo mismo que h-16)
         "fixed top-16 left-0 z-20 h-[calc(100vh-4rem)] -translate-x-full lg:translate-x-0 transition-[width] ease-in-out duration-300",
-        !getOpenState() ? "w-[90px]" : "w-72",
+        !openState ? "w-[90px]" : "w-72",
         settings.disabled && "hidden"
       )}
     >
@@ -27,12 +31,12 @@ export function Sidebar() {
       <div
         onMouseEnter={() => setIsHover(true)}
         onMouseLeave={() => setIsHover(false)}
-        className="relative h-full flex flex-col px-3 py-4 overflow-y-auto shadow-md dark:shadow-zinc-800"
+        className="relative h-full flex flex-col px-3 py-4 overflow-y-auto border-r border-border bg-background"
         >
         <Button
           className={cn(
             "transition-transform ease-in-out duration-300 mb-1",
-            !getOpenState() ? "translate-x-1" : "translate-x-0"
+            !openState ? "translate-x-1" : "translate-x-0"
           )}
           variant="link"
           asChild
@@ -42,7 +46,7 @@ export function Sidebar() {
             <h1
               className={cn(
                 "font-bold text-lg whitespace-nowrap transition-[transform,opacity,display] ease-in-out duration-300",
-                !getOpenState()
+                !openState
                 ? "-translate-x-96 opacity-0 hidden"
                 : "translate-x-0 opacity-100"
               )}
@@ -51,9 +55,8 @@ export function Sidebar() {
             </h1>
           </Link>
         </Button>
-        <Menu isOpen={getOpenState()} />
+        <Menu isOpen={openState} />
       </div>
     </aside>
-    </>
   );
 }

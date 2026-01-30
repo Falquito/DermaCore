@@ -32,7 +32,7 @@ const MENU_ITEMS = [
   { name: "Inicio", url: "/", icon: Home },
   { name: "Pacientes", url: "/pacientes", icon: Users },
   { name: "Obras Sociales", url: "/obras-sociales", icon: IdCard },
-  { name: "Coseguros", url: "/coseguros", icon: ShieldPlus }, // ✅ Nuevo
+  { name: "Coseguros", url: "/coseguros", icon: ShieldPlus },
 ];
 
 interface SideBarProps {
@@ -44,10 +44,13 @@ export default function SideBar({ children }: SideBarProps) {
   const { user, isAuthenticated, logout } = useAuth();
 
   // Usamos el contexto para mobile y colapso desktop
-  const { isMobileOpen, closeMobileMenu, isCollapsed, toggleCollapsed } = useSidebarContext();
+  const { isMobileOpen, closeMobileMenu, isCollapsed, toggleCollapsed, isReady } = useSidebarContext();
 
   // Estado para el modal de configuración
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Calcular el ancho del sidebar
+  const sidebarWidth = isCollapsed && !isMobileOpen ? "md:w-20" : "w-64";
 
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden relative">
@@ -61,27 +64,28 @@ export default function SideBar({ children }: SideBarProps) {
 
       {/* --- SIDEBAR --- */}
       <aside
+        style={{
+          // Desactivar transición hasta que esté listo para evitar animación inicial
+          transitionProperty: isReady ? "all" : "none",
+        }}
         className={cn(
-          // 1. CLASES BASE (Posicionamiento y Flex)
-          "fixed left-0 z-50 flex flex-col border-r bg-white transition-all duration-300 ease-out",
+          // 1. CLASES BASE
+          "fixed left-0 z-50 flex flex-col border-r bg-white duration-300 ease-out",
 
-          // 2. CORRECCIÓN MOBILE:
-          // En lugar de h-full, le decimos: "Empieza en el top-16 (debajo del header) y termina en bottom-0 (final de pantalla)"
-          // Esto obliga al contenedor a tener la altura exacta disponible, permitiendo que el scroll interno funcione.
+          // 2. MOBILE: posición fija debajo del header
           "top-16 bottom-0",
 
-          // 3. RESET DESKTOP:
-          // En PC, quitamos el anclaje top/bottom y dejamos que se comporte normal
+          // 3. DESKTOP: posición relativa
           "md:relative md:top-0 md:bottom-auto md:h-full",
 
-          // 4. LÓGICA DE APERTURA/CIERRE
+          // 4. APERTURA/CIERRE mobile
           isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
 
           // 5. ANCHO
-          isCollapsed && !isMobileOpen ? "md:w-20" : "w-64"
+          sidebarWidth
         )}
       >
-        {/* CABECERA SIDEBAR MOBILE (Opcional, ya que tenemos botón cerrar) */}
+        {/* CABECERA SIDEBAR MOBILE */}
         <div className="md:hidden flex items-center justify-between p-4 border-b">
           <span className="font-bold text-lg text-cyan-700">Menú</span>
           <button
@@ -92,16 +96,18 @@ export default function SideBar({ children }: SideBarProps) {
           </button>
         </div>
 
-        {/* BOTÓN COLAPSAR DESKTOP */}
-        <div className="hidden md:block absolute -right-3 top-6 z-10">
+        {/* BOTÓN COLAPSAR DESKTOP - Movido fuera del aside para evitar la línea */}
+        <div 
+          className="hidden md:flex absolute -right-4 top-6 z-60 items-center justify-center"
+        >
           <button
             onClick={toggleCollapsed}
-            className="flex h-6 w-6 items-center justify-center rounded-full border bg-white shadow-md hover:bg-gray-100 hover:shadow-lg transition-all duration-200 hover:scale-110"
+            className="flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 bg-white shadow-md hover:bg-gray-50 hover:shadow-lg transition-shadow duration-200"
           >
             <ChevronLeft 
               size={14} 
               className={cn(
-                "transition-transform duration-300 ease-out",
+                "text-gray-600 transition-transform duration-300 ease-out",
                 isCollapsed ? "rotate-180" : "rotate-0"
               )}
             />
@@ -177,7 +183,7 @@ export default function SideBar({ children }: SideBarProps) {
                 >
                   {/* Avatar */}
                   <div className={cn(
-                    "rounded-full bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center text-white shadow-sm shrink-0 transition-all duration-300",
+                    "rounded-full bg-linear-to-br from-cyan-500 to-cyan-600 flex items-center justify-center text-white shadow-sm shrink-0 transition-all duration-300",
                     isCollapsed && !isMobileOpen ? "h-9 w-9" : "h-10 w-10"
                   )}>
                     <User size={isCollapsed && !isMobileOpen ? 18 : 20} />
