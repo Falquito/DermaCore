@@ -20,9 +20,15 @@ type Props = {
   variacionPct?: number | null;
 };
 
-function label(v: number | null | undefined) {
+function pctLabel(v: number | null | undefined) {
   if (v === null || v === undefined) return "—";
   return `${v > 0 ? "+" : ""}${v}%`;
+}
+
+function cambioLabel(delta: number) {
+  if (delta > 0) return `Aumentó en ${delta} consultas`;
+  if (delta < 0) return `Bajó en ${Math.abs(delta)} consultas`;
+  return "Sin cambios";
 }
 
 export default function VariacionConsultasCard({
@@ -34,6 +40,8 @@ export default function VariacionConsultasCard({
   const CYAN = "#0891b2";
   const CYAN_SOFT = "rgba(8,145,178,0.22)";
 
+  const deltaAbs = mesActual - mesAnterior;
+
   const chartData = [
     { name: "Anterior", value: mesAnterior, fill: CYAN_SOFT },
     { name: "Actual", value: mesActual, fill: CYAN },
@@ -42,13 +50,14 @@ export default function VariacionConsultasCard({
   return (
     <Card className="shadow-sm h-full">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-base">Comparacion de Consultas</CardTitle>
+        <CardTitle className="text-xl">Comparación de Consultas (Mes)</CardTitle>
 
         {isLoading ? (
           <Skeleton className="h-5 w-16" />
         ) : (
           <Badge className="bg-cyan-100 text-cyan-700 hover:bg-cyan-100">
-            {label(variacionPct)}
+            <span className="mr-1 font-medium">Mes</span>
+            {pctLabel(variacionPct)}
           </Badge>
         )}
       </CardHeader>
@@ -62,21 +71,22 @@ export default function VariacionConsultasCard({
         ) : (
           <>
             <div>
-              <div className="text-xl font-semibold leading-none">
-                Mes actual: {mesActual}
+              <div className="text-lg font-semibold leading-none">
+                {cambioLabel(deltaAbs)}
               </div>
-            </div>
 
-            <div className="text-s text-muted-foreground">
-              Mes anterior: <span className="font-medium">{mesAnterior}</span>
-              {variacionPct === null ? " · sin base de comparación" : ""}
+              <div className="mt-1 text-xs text-muted-foreground">
+                Actual: <span className="font-medium">{mesActual}</span> · Anterior:{" "}
+                <span className="font-medium">{mesAnterior}</span>
+                {variacionPct === null ? " · sin base de comparación" : ""}
+              </div>
             </div>
 
             <div className="flex-1 min-h-[11rem] rounded-md border bg-white">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={chartData}
-                  margin={{ top: 16, right: 20, bottom: 0, left: 20 }} 
+                  margin={{ top: 16, right: 20, bottom: 0, left: 20 }}
                   barCategoryGap={32}
                 >
                   <CartesianGrid vertical={false} stroke={CYAN_SOFT} />
@@ -86,8 +96,8 @@ export default function VariacionConsultasCard({
                     tick={{ fontSize: 13, fill: CYAN }}
                     tickLine={false}
                     axisLine={false}
-                    tickMargin={0}   
-                    height={20}    
+                    tickMargin={0}
+                    height={20}
                   />
 
                   <YAxis
@@ -110,17 +120,13 @@ export default function VariacionConsultasCard({
                     labelStyle={{ color: CYAN, fontWeight: 600 }}
                   />
 
-                  <Bar
-                    dataKey="value"
-                    radius={[10, 10, 0, 0]}
-                    maxBarSize={72}
-                  />
+                  <Bar dataKey="value" radius={[10, 10, 0, 0]} maxBarSize={72} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
 
             <div className="pt-1 text-xs text-muted-foreground">
-              Comparación directa entre el total del mes actual y el mes anterior.
+              Comparación mensual entre el total del mes actual y el mes anterior.
             </div>
           </>
         )}

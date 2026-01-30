@@ -19,7 +19,6 @@ function startOfNextMonth(d: Date) {
   return new Date(d.getFullYear(), d.getMonth() + 1, 1, 0, 0, 0, 0);
 }
 function formatYYYYMMDD(d: Date) {
-  // para usar como key en series
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
@@ -47,7 +46,7 @@ export async function GET() {
       prisma.paciente.count({ where: { estadoPaciente: false } }),
     ]);
 
-    // 2) Consultas mes actual / anterior
+    // 2) Consultas mes actual / anterior (comparación mensual)
     const [mesActual, mesAnterior] = await Promise.all([
       prisma.consultas.count({
         where: { fechaHoraConsulta: { gte: monthStart, lt: nextMonthStart } },
@@ -58,7 +57,9 @@ export async function GET() {
     ]);
 
     const variacionPct =
-      mesAnterior === 0 ? null : Math.round(((mesActual - mesAnterior) / mesAnterior) * 100);
+      mesAnterior === 0
+        ? null
+        : Math.round(((mesActual - mesAnterior) / mesAnterior) * 100);
 
     // Helper para armar serie diaria completa (rellenando 0)
     function buildEmptySeries30d() {
@@ -70,8 +71,7 @@ export async function GET() {
       return arr;
     }
 
-    // 3) Serie consultas últimos 30 días (groupBy)
-    // Agrupo por día trayendo las fechas y luego las mapeo a keys YYYY-MM-DD
+    // 3) Serie consultas últimos 30 días
     const consultas30Raw = await prisma.consultas.findMany({
       where: { fechaHoraConsulta: { gte: last30Start, lt: tomorrowStart } },
       select: { fechaHoraConsulta: true },
@@ -88,7 +88,30 @@ export async function GET() {
       count: consultasMap.get(p.date) ?? 0,
     }));
 
-    // 4) Pacientes nuevos últimos 30 días (por fechaHoraPaciente)
+    // ✅ NUEVO: métricas “últimos 30 días” (para que no repita el mesActual)
+    const totalUltimos30d = consultasUltimos30Dias.reduce((acc, x) => acc + (x.count ?? 0), 0);
+    const promedioDiario30d = totalUltimos30d / 30;
+    const maxDiario30d = consultasUltimos30Dias.reduce((m, x) => Math.max(m, x.count ?? 0), 0);
+
+    // Tendencia últimos 7 días vs 7 anteriores (ritmo reciente)
+    const counts = consultasUltimos30Dias.map((x) => x.count ?? 0);
+    const last7 = counts.slice(-7);
+    const prev7 = counts.slice(-14, -7);
+
+    const avg = (arr: number[]) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
+    const last7Avg = avg(last7);
+    const prev7Avg = avg(prev7);
+
+    const tendencia7dPct =
+      prev7.length < 7
+        ? null
+        : prev7Avg === 0
+        ? last7Avg === 0
+          ? 0
+          : 100
+        : Math.round(((last7Avg - prev7Avg) / prev7Avg) * 100);
+
+    // 4) Pacientes nuevos últimos 30 días
     const pacientes30Raw = await prisma.paciente.findMany({
       where: { fechaHoraPaciente: { gte: last30Start, lt: tomorrowStart } },
       select: { fechaHoraPaciente: true },
@@ -116,7 +139,11 @@ export async function GET() {
       consultas: {
         mesActual,
         mesAnterior,
-        variacionPct,
+        variacionPct, // mensual
+        totalUltimos30d, // ✅ nuevo
+        promedioDiario30d: Number(promedioDiario30d.toFixed(2)), // ✅ nuevo
+        maxDiario30d, // ✅ nuevo
+        tendencia7dPct, // ✅ nuevo
       },
       series: {
         consultasUltimos30Dias,
@@ -130,9 +157,6 @@ export async function GET() {
     return NextResponse.json(response);
   } catch (error) {
     console.error("GET /api/estadisticas/home error:", error);
-    return NextResponse.json(
-      { message: "Error obteniendo estadísticas" },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: "Error obteniendo estadísticas" }, { status: 500 });
   }
 }

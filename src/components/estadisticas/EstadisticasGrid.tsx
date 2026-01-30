@@ -14,11 +14,11 @@ export default function EstadisticasGrid() {
   const { data, isLoading, error, refetch } = useEstadisticasHome();
 
   return (
-    <section className="space-y-4">
-      {/* Header del bloque */}
-      <div className="flex items-center justify-between gap-2">
+    <section className="space-y-6">
+
+      <div className="bg-white rounded-xl p-4 border border-gray-100 flex items-center justify-between gap-2">
         <div className="space-y-0.5">
-          <h2 className="text-lg font-semibold tracking-tight">Estadísticas</h2>
+          <h2 className="text-xl font-semibold tracking-tight">Estadísticas</h2>
           <p className="text-sm text-muted-foreground">
             Resumen general del sistema en base a los últimos datos.
           </p>
@@ -29,11 +29,12 @@ export default function EstadisticasGrid() {
         </Button>
       </div>
 
-      {/* Error */}
       {error && !isLoading ? (
         <Card className="border-destructive/30">
           <CardHeader>
-            <CardTitle className="text-base">No se pudieron cargar las estadísticas</CardTitle>
+            <CardTitle className="text-base">
+              No se pudieron cargar las estadísticas
+            </CardTitle>
           </CardHeader>
           <CardContent className="flex items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">{error}</p>
@@ -42,7 +43,6 @@ export default function EstadisticasGrid() {
         </Card>
       ) : null}
 
-      {/* Grid de cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <PacientesActivosInactivosCard
           isLoading={isLoading}
@@ -52,9 +52,10 @@ export default function EstadisticasGrid() {
 
         <ConsultasMesCard
           isLoading={isLoading}
-          mesActual={data?.consultas.mesActual ?? 0}
-          mesAnterior={data?.consultas.mesAnterior ?? 0}
-          variacionPct={data?.consultas.variacionPct ?? null}
+          totalUltimos30d={data?.consultas.totalUltimos30d ?? 0}
+          promedioDiario30d={data?.consultas.promedioDiario30d ?? 0}
+          maxDiario30d={data?.consultas.maxDiario30d ?? 0}
+          tendencia7dPct={data?.consultas.tendencia7dPct ?? null}
           serieUltimos30Dias={data?.series.consultasUltimos30Dias ?? []}
         />
 

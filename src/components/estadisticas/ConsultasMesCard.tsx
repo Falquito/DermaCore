@@ -18,36 +18,37 @@ type Serie = { date: string; count: number | string };
 
 type Props = {
   isLoading?: boolean;
-  mesActual?: number;
-  mesAnterior?: number;
-  variacionPct?: number | null;
+
+  totalUltimos30d?: number;
+  promedioDiario30d?: number;
+  maxDiario30d?: number;
+  tendencia7dPct?: number | null;
+
   serieUltimos30Dias?: Serie[];
 };
 
-const MONTHS_ES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const MONTHS_ES = [
+  "ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"
+];
 
 function formatDateShort(dateStr: string) {
   const d = new Date(`${dateStr}T00:00:00`);
   const day = String(d.getDate()).padStart(2, "0");
   const mon = MONTHS_ES[d.getMonth()] ?? "??";
-  return `${day}-${mon}`; // ej: 31-dic
+  return `${day}-${mon}`;
 }
 
-function deltaLabel(v: number | null | undefined) {
+function pctLabel(v: number | null | undefined) {
   if (v === null || v === undefined) return "—";
   return `${v > 0 ? "+" : ""}${v}%`;
 }
 
-function avg(arr: number[]) {
-  if (arr.length === 0) return 0;
-  return arr.reduce((a, b) => a + b, 0) / arr.length;
-}
-
 export default function ConsultasMesCard({
   isLoading = false,
-  mesActual = 0,
-  mesAnterior = 0,
-  variacionPct = null,
+  totalUltimos30d = 0,
+  promedioDiario30d = 0,
+  maxDiario30d = 0,
+  tendencia7dPct = null,
   serieUltimos30Dias = [],
 }: Props) {
   const data = (serieUltimos30Dias ?? []).map((p) => ({
@@ -58,48 +59,45 @@ export default function ConsultasMesCard({
   const CYAN = "#0891b2";
   const CYAN_SOFT = "rgba(8,145,178,0.18)";
 
-  // Tendencia (últimos 7 vs 7 anteriores)
-  const counts = data.map((d) => (Number.isFinite(d.count) ? d.count : 0));
-  const last7 = counts.slice(-7);
-  const prev7 = counts.slice(-14, -7);
-
-  const last7Avg = avg(last7);
-  const prev7Avg = avg(prev7);
-
-  const trendPct =
-    prev7Avg === 0
-      ? last7Avg === 0
-        ? 0
-        : 100
-      : ((last7Avg - prev7Avg) / prev7Avg) * 100;
-
-  const isUp = trendPct > 5;
-  const isDown = trendPct < -5;
-  const isFlat = !isUp && !isDown;
+  const isUp = tendencia7dPct !== null && tendencia7dPct > 5;
+  const isDown = tendencia7dPct !== null && tendencia7dPct < -5;
+  const isFlat = tendencia7dPct === null || (!isUp && !isDown);
 
   const TrendIcon = isUp ? TrendingUp : isDown ? TrendingDown : Minus;
-  const trendLabel = isUp
-    ? "Tendencia al alza"
-    : isDown
-    ? "Tendencia a la baja"
-    : "Tendencia estable";
 
-  const trendText =
-    prev7.length < 7
+  const badgeClasses = isUp
+    ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+    : isDown
+    ? "bg-rose-100 text-rose-700 hover:bg-rose-100"
+    : "bg-slate-100 text-slate-700 hover:bg-slate-100";
+
+  const badgeTitle =
+    "Comparación del promedio diario de consultas de la semana actual con la semana anterior";
+
+  const trendLabel =
+    tendencia7dPct === null
       ? "Tendencia (se necesitan más datos)"
-      : `${trendLabel} (${trendPct > 0 ? "+" : ""}${Math.round(trendPct)}%)`;
+      : isUp
+      ? `Tendencia al alza (${pctLabel(tendencia7dPct)})`
+      : isDown
+      ? `Tendencia a la baja (${pctLabel(tendencia7dPct)})`
+      : `Tendencia estable (${pctLabel(tendencia7dPct)})`;
 
   return (
     <Card className="shadow-sm">
       <CardHeader className="space-y-0">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Consultas Realizadas (Últimos 30 dias)</CardTitle>
+          <CardTitle className="text-xl">
+            Consultas Realizadas (Últimos 30 días)
+          </CardTitle>
 
           {isLoading ? (
             <Skeleton className="h-5 w-16" />
           ) : (
-            <Badge className="bg-cyan-100 text-cyan-700 hover:bg-cyan-100">
-              {deltaLabel(variacionPct)}
+            <Badge className={badgeClasses} title={badgeTitle}>
+              <span className="mr-1 font-medium">Semana actual</span>
+              <TrendIcon className="mr-1 h-4 w-4" />
+              {pctLabel(tendencia7dPct)}
             </Badge>
           )}
         </div>
@@ -114,18 +112,18 @@ export default function ConsultasMesCard({
           </div>
         ) : (
           <div className="space-y-2">
-
             <div>
               <div className="text-3xl font-semibold tracking-tight leading-none">
-                {mesActual}
+                {totalUltimos30d}
               </div>
+
               <div className="mt-1 text-xs text-muted-foreground">
-                Mes anterior: <span className="font-medium">{mesAnterior}</span>
-                {variacionPct === null ? " · sin base de comparación" : ""}
+                Total últimos 30 días · Promedio:{" "}
+                <span className="font-medium">{promedioDiario30d}</span>/día · Máx día:{" "}
+                <span className="font-medium">{maxDiario30d}</span>
               </div>
             </div>
 
-            {/* Chart */}
             <div className="h-32 rounded-md border bg-white">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
@@ -168,7 +166,12 @@ export default function ConsultasMesCard({
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     isAnimationActive={false}
-                    activeDot={{ r: 4, fill: CYAN, stroke: "#ffffff", strokeWidth: 2 }}
+                    activeDot={{
+                      r: 4,
+                      fill: CYAN,
+                      stroke: "#ffffff",
+                      strokeWidth: 2,
+                    }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -176,7 +179,7 @@ export default function ConsultasMesCard({
 
             <div className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
               <TrendIcon className="h-4 w-4" style={{ color: CYAN }} />
-              <span>{trendText}</span>
+              <span>{trendLabel}</span>
             </div>
           </div>
         )}

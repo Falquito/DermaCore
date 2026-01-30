@@ -143,7 +143,7 @@ export default function Home() {
       </div>
 
       {/* Estadísticas */}
-      <div className="pt-2">
+      <div>
         <EstadisticasGrid />
       </div>
     </div>

@@ -1,6 +1,3 @@
-
-export type SerieDiaria = { date: string; count: number };
-
 export type EstadisticasHomeResponse = {
   pacientes: {
     activos: number;
@@ -11,10 +8,16 @@ export type EstadisticasHomeResponse = {
     mesActual: number;
     mesAnterior: number;
     variacionPct: number | null;
+
+    // ✅ nuevos (últimos 30 días)
+    totalUltimos30d: number;
+    promedioDiario30d: number;
+    maxDiario30d: number;
+    tendencia7dPct: number | null;
   };
   series: {
-    consultasUltimos30Dias: SerieDiaria[];
-    pacientesNuevosUltimos30Dias: SerieDiaria[];
+    consultasUltimos30Dias: Array<{ date: string; count: number }>;
+    pacientesNuevosUltimos30Dias: Array<{ date: string; count: number }>;
   };
   resumen: {
     pacientesNuevos30d: number;
