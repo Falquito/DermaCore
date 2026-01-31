@@ -172,7 +172,7 @@ export default function PacienteCard({
           </p>
 
           <Button
-            className="mt-3 w-full rounded-lg bg-cyan-400 hover:bg-cyan-500"
+            className="mt-3 w-full rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white shadow-sm transition-all hover:shadow-md"
             onClick={() => router.push(`/pacientes/${idPaciente}`)}
           >
             Ver Historia Clínica

@@ -13,7 +13,7 @@ export default function CreatePacienteButton({
   return (
     <Button
       onClick={onClick}
-      className="flex items-center gap-2 bg-cyan-300 text-cyan-800 hover:bg-cyan-500"
+      className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white shadow-sm transition-all hover:shadow-md"
     >
       <Plus className="h-4 w-4" />
       Nuevo paciente
