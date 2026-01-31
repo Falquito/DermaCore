@@ -293,7 +293,11 @@ function PacienteDetailContent() {
         {/* Formulario de Nueva Consulta - En mobile aparece primero (order-first en lg), 2 columnas en lg */}
         <div className="lg:col-span-2 lg:order-2">
           <div className="mb-6">
-            <DescargarHistorialPdfButton idPaciente={paciente.idPaciente} />
+            <DescargarHistorialPdfButton
+              idPaciente={paciente.idPaciente}
+              nombrePaciente={paciente.nombrePaciente}
+              apellidoPaciente={paciente.apellidoPaciente}
+            />
           </div>
           <RegistrarConsultaForm
             idPaciente={paciente.idPaciente}

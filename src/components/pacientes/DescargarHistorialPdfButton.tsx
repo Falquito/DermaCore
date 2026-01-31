@@ -6,9 +6,15 @@ import { Download } from "lucide-react";
 
 type Props = {
   idPaciente: number;
+  nombrePaciente: string;
+  apellidoPaciente: string;
 };
 
-export default function DescargarHistorialPdfButton({ idPaciente }: Props) {
+export default function DescargarHistorialPdfButton({
+  idPaciente,
+  nombrePaciente,
+  apellidoPaciente,
+}: Props) {
   const [loading, setLoading] = useState(false);
 
   async function handleDownload() {
@@ -28,7 +34,7 @@ export default function DescargarHistorialPdfButton({ idPaciente }: Props) {
 
       const a = document.createElement("a");
       a.href = url;
-      a.download = `paciente-${idPaciente}-historial.pdf`;
+      a.download = `${apellidoPaciente} ${nombrePaciente} - Historia Clinica.pdf`;
       document.body.appendChild(a);
       a.click();
 
@@ -47,10 +53,14 @@ export default function DescargarHistorialPdfButton({ idPaciente }: Props) {
       variant="outline"
       onClick={handleDownload}
       disabled={loading}
-      className="flex items-center gap-2"
+      className="
+        flex items-center gap-2
+        border-cyan-300
+        text-cyan-900
+      "
     >
       <Download className="h-4 w-4" />
-      {loading ? "Generando PDF..." : "Descargar historial"}
+      {loading ? "Generando PDF..." : "Descargar Historia Clinica"}
     </Button>
   );
 }
