@@ -34,7 +34,7 @@ export default function PacientesActivosInactivosCard({
   return (
     <Card className="shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-xl">
+        <CardTitle className="text-base sm:text-xl">
           Pacientes Activos / Inactivos
         </CardTitle>
 
