@@ -87,7 +87,7 @@ export default function ConsultasMesCard({
     <Card className="shadow-sm">
       <CardHeader className="space-y-0">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-xl">
+          <CardTitle className="text-base sm:text-xl">
             Consultas Realizadas (Últimos 30 días)
           </CardTitle>
 

@@ -47,7 +47,7 @@ export default function PacientesNuevos30DiasCard({
   return (
     <Card className="shadow-sm">
       <CardHeader className="space-y-0">
-        <CardTitle className="text-xl">
+        <CardTitle className="text-base sm:text-xl">
           Pacientes Nuevos (últimos 30 días)
         </CardTitle>
       </CardHeader>

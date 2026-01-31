@@ -50,7 +50,7 @@ export default function VariacionConsultasCard({
   return (
     <Card className="shadow-sm h-full">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-xl">Comparación de Consultas (Mes)</CardTitle>
+        <CardTitle className="text-base sm:text-xl">Comparación de Consultas (Mes)</CardTitle>
 
         {isLoading ? (
           <Skeleton className="h-5 w-16" />
