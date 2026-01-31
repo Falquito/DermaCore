@@ -13,6 +13,7 @@ import { formatFechaAR } from "@/lib/utils";
 import RegistrarConsultaForm from "@/components/consultas/registrarConsultaForm";
 import HistorialConsultasLista from "@/components/consultas/historialConsultasLista";
 import type { Consulta } from "@/types/consulta";
+import DescargarHistorialPdfButton from "@/components/pacientes/DescargarHistorialPdfButton";
 
 type Paciente = {
   idPaciente: number;
@@ -291,6 +292,9 @@ function PacienteDetailContent() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Formulario de Nueva Consulta - En mobile aparece primero (order-first en lg), 2 columnas en lg */}
         <div className="lg:col-span-2 lg:order-2">
+          <div className="mb-6">
+            <DescargarHistorialPdfButton idPaciente={paciente.idPaciente} />
+          </div>
           <RegistrarConsultaForm
             idPaciente={paciente.idPaciente}
             onConsultaCreated={handleConsultaCreated}
