@@ -21,6 +21,7 @@ coverage/
 # production
 /build
 dist/
+*:Zone.Identifier
 
 # logs & debug
 **/*.log
