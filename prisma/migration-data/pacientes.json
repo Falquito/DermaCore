@@ -889,6 +889,59 @@
     "domicilioPaciente": "10 de Octubre 369",
     "fechaNacimiento": "1989-09-12",
     "estadoPaciente": true
+  },{
+    "dniPaciente": "44879194",
+    "nombrePaciente": "Tiara Martina",
+    "apellidoPaciente": "Yañez",
+    "telefonoPaciente": "3874815438",
+    "domicilioPaciente": "B° Universitario Salvador Mazza 233",
+    "fechaNacimiento": "2003-06-11",
+    "estadoPaciente": true
+  },
+  {
+    "dniPaciente": "26897711",
+    "nombrePaciente": "Stella Maris",
+    "apellidoPaciente": "Yapura",
+    "telefonoPaciente": "3875046838",
+    "domicilioPaciente": "Villa Esmeralda Ple Rub 749",
+    "fechaNacimiento": "1978-11-23",
+    "estadoPaciente": true
+  },
+  {
+    "dniPaciente": "42813226",
+    "nombrePaciente": "Lara",
+    "apellidoPaciente": "Zanini",
+    "telefonoPaciente": "3873609628",
+    "domicilioPaciente": "Coronel Suarez 340",
+    "fechaNacimiento": "2000-09-29",
+    "estadoPaciente": true
+  },
+  {
+    "dniPaciente": "20247617",
+    "nombrePaciente": "Claudia Marcela",
+    "apellidoPaciente": "Zisner",
+    "telefonoPaciente": "152174544",
+    "domicilioPaciente": "Pasaje Baldomero Castro 1860",
+    "fechaNacimiento": "1968-05-20",
+    "estadoPaciente": true
+  },
+  {
+    "dniPaciente": "29276955",
+    "nombrePaciente": "Roberto",
+    "apellidoPaciente": "Zarate",
+    "telefonoPaciente": "3875120378",
+    "domicilioPaciente": "San Martin 2175",
+    "fechaNacimiento": "1982-08-25",
+    "estadoPaciente": true
+  },
+  {
+    "dniPaciente": "31194268",
+    "nombrePaciente": "Sandra",
+    "apellidoPaciente": "Zarate",
+    "telefonoPaciente": "155020544",
+    "domicilioPaciente": "San Ignacio Mza 24 C3",
+    "fechaNacimiento": "1984-11-23",
+    "estadoPaciente": true
   },
   {
     "dniPaciente": "",
