@@ -21,6 +21,8 @@ type InputsEditPaciente = {
   telefonoPaciente?: string;
   domicilioPaciente?: string;
   dniPaciente: string;
+
+  fechaNacimiento?: string;
 };
 
 type Props = {
@@ -51,6 +53,7 @@ export default function EditPacienteModal({
       telefonoPaciente: "",
       domicilioPaciente: "",
       dniPaciente: "",
+      fechaNacimiento: "",
     },
   });
 
@@ -58,12 +61,18 @@ export default function EditPacienteModal({
     if (!open) return;
 
     setDniServerError(null);
+
+    const fechaNacValue = paciente.fechaNacimiento
+      ? String(paciente.fechaNacimiento).slice(0, 10)
+      : "";
+
     reset({
       nombrePaciente: paciente.nombrePaciente ?? "",
       apellidoPaciente: paciente.apellidoPaciente ?? "",
       telefonoPaciente: paciente.telefonoPaciente ?? "",
       domicilioPaciente: paciente.domicilioPaciente ?? "",
       dniPaciente: paciente.dniPaciente ?? "",
+      fechaNacimiento: fechaNacValue,
     });
   }, [open, paciente, reset]);
 
@@ -79,6 +88,8 @@ export default function EditPacienteModal({
         dniPaciente: data.dniPaciente,
         telefonoPaciente: data.telefonoPaciente || null,
         domicilioPaciente: data.domicilioPaciente || null,
+
+        fechaNacimiento: data.fechaNacimiento ? data.fechaNacimiento : null,
       });
 
       onSaved?.();
@@ -135,6 +146,18 @@ export default function EditPacienteModal({
           {errors.apellidoPaciente && (
             <p className="text-sm text-red-500">El apellido es obligatorio</p>
           )}
+
+          {/* Fecha nacimiento */}
+          <div className="space-y-2">
+            <Input
+              type="date"
+              className="focus-visible:ring-cyan-500"
+              {...register("fechaNacimiento")}
+            />
+            <p className="text-xs text-muted-foreground">
+              Fecha de nacimiento (opcional)
+            </p>
+          </div>
 
           <Input
             placeholder="Teléfono"

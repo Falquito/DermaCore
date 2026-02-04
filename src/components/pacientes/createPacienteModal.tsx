@@ -60,11 +60,14 @@ export default function CreatePacienteModal({ onCreated, onSuccess }: Props) {
                   dniPaciente: data.dniPaciente,
                   telefonoPaciente: data.telefonoPaciente || null,
                   domicilioPaciente: data.domicilioPaciente || null,
+
+                  fechaNacimiento: data.fechaNacimiento
+                    ? data.fechaNacimiento
+                    : null,
                 });
 
                 onCreated?.();
                 setOpen(false);
-
                 onSuccess?.();
               } catch (e: unknown) {
                 const error = e as { message?: string };

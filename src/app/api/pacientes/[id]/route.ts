@@ -8,6 +8,10 @@ function parseId(id: string) {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+function toUtcDateFromYYYYMMDD(value: string) {
+  return new Date(value + "T00:00:00.000Z");
+}
+
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(req: NextRequest, { params }: Ctx): Promise<Response> {
@@ -27,6 +31,9 @@ export async function GET(req: NextRequest, { params }: Ctx): Promise<Response> 
       dniPaciente: true,
       telefonoPaciente: true,
       domicilioPaciente: true,
+
+      fechaNacimiento: true,
+
       fechaHoraPaciente: true,
       estadoPaciente: true,
     },
@@ -48,10 +55,17 @@ export async function PUT(req: NextRequest, { params }: Ctx): Promise<Response> 
   const parsed = validateUpdatePaciente(body);
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
 
+  const data: Record<string, unknown> = { ...parsed.data };
+  if ("fechaNacimiento" in parsed.data) {
+    data.fechaNacimiento = parsed.data.fechaNacimiento
+      ? toUtcDateFromYYYYMMDD(parsed.data.fechaNacimiento)
+      : null;
+  }
+
   try {
     const updated = await prisma.paciente.update({
       where: { idPaciente },
-      data: parsed.data,
+      data,
       select: {
         idPaciente: true,
         nombrePaciente: true,
@@ -59,6 +73,9 @@ export async function PUT(req: NextRequest, { params }: Ctx): Promise<Response> 
         dniPaciente: true,
         telefonoPaciente: true,
         domicilioPaciente: true,
+
+        fechaNacimiento: true,
+
         fechaHoraPaciente: true,
         estadoPaciente: true,
       },

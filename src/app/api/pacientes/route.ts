@@ -8,6 +8,11 @@ function parsePositiveInt(value: string | null, fallback: number) {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
 }
 
+function toUtcDateFromYYYYMMDD(value: string) {
+  // value: "YYYY-MM-DD"
+  return new Date(value + "T00:00:00.000Z");
+}
+
 export async function GET(req: NextRequest): Promise<Response> {
   const auth = await verifyAuth(req);
   if (auth.error) return auth.response;
@@ -50,6 +55,9 @@ export async function GET(req: NextRequest): Promise<Response> {
         dniPaciente: true,
         telefonoPaciente: true,
         domicilioPaciente: true,
+
+        fechaNacimiento: true,
+
         fechaHoraPaciente: true,
         estadoPaciente: true,
 
@@ -96,7 +104,15 @@ export async function POST(req: NextRequest): Promise<Response> {
   try {
     const created = await prisma.paciente.create({
       data: {
-        ...parsed.data,
+        nombrePaciente: parsed.data.nombrePaciente,
+        apellidoPaciente: parsed.data.apellidoPaciente,
+        dniPaciente: parsed.data.dniPaciente,
+        telefonoPaciente: parsed.data.telefonoPaciente ?? null,
+        domicilioPaciente: parsed.data.domicilioPaciente ?? null,
+
+        fechaNacimiento: parsed.data.fechaNacimiento
+          ? toUtcDateFromYYYYMMDD(parsed.data.fechaNacimiento)
+          : null,
       },
       select: {
         idPaciente: true,
@@ -105,6 +121,9 @@ export async function POST(req: NextRequest): Promise<Response> {
         dniPaciente: true,
         telefonoPaciente: true,
         domicilioPaciente: true,
+
+        fechaNacimiento: true,
+
         fechaHoraPaciente: true,
         estadoPaciente: true,
       },

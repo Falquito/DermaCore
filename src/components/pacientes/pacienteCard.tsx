@@ -14,10 +14,11 @@ import {
   Pencil,
   CornerDownRight,
   IdCard,
+  CalendarDays,
 } from "lucide-react";
 
 import type { PacienteConObras } from "@/types/pacienteConObras";
-import { setEstadoPaciente, formatFechaAR } from "@/lib/utils";
+import { setEstadoPaciente, formatFechaAR, formatFechaNacimientoAR } from "@/lib/utils";
 
 import {
   DropdownMenu,
@@ -62,6 +63,7 @@ export default function PacienteCard({
     domicilioPaciente,
     estadoPaciente,
     consultas,
+    fechaNacimiento,
   } = paciente;
 
   const [openEdit, setOpenEdit] = useState(false);
@@ -132,6 +134,13 @@ export default function PacienteCard({
           </div>
 
           <div className="mt-5 space-y-3 text-sm">
+
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CalendarDays className="h-4 w-4" />
+              <span>
+                Fecha nac.: {formatFechaNacimientoAR(fechaNacimiento)}
+              </span>
+            </div>
 
             <div className="flex items-center gap-3">
               <CreditCard className="h-4 w-4 text-muted-foreground" />

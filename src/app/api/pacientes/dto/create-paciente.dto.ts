@@ -4,7 +4,15 @@ export type CreatePacienteDto = {
   dniPaciente: string;
   telefonoPaciente?: string | null;
   domicilioPaciente?: string | null;
+
+  fechaNacimiento?: string | null;
 };
+
+function isValidYYYYMMDD(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const d = new Date(value + "T00:00:00.000Z");
+  return !Number.isNaN(d.getTime());
+}
 
 export function validateCreatePaciente(
   body: unknown
@@ -32,6 +40,16 @@ export function validateCreatePaciente(
   const domicilioPaciente =
     b.domicilioPaciente == null ? null : String(b.domicilioPaciente).trim();
 
+  const rawFechaNacimiento =
+    b.fechaNacimiento == null ? null : String(b.fechaNacimiento).trim();
+
+  const fechaNacimiento =
+    rawFechaNacimiento && rawFechaNacimiento.length > 0 ? rawFechaNacimiento : null;
+
+  if (fechaNacimiento && !isValidYYYYMMDD(fechaNacimiento)) {
+    return { ok: false, error: "fechaNacimiento inválida (formato YYYY-MM-DD)" };
+  }
+
   return {
     ok: true,
     data: {
@@ -40,6 +58,7 @@ export function validateCreatePaciente(
       dniPaciente,
       telefonoPaciente: telefonoPaciente || null,
       domicilioPaciente: domicilioPaciente || null,
+      fechaNacimiento,
     },
   };
 }

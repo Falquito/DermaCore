@@ -28,7 +28,7 @@ import {
 import { MoreHorizontal, Pencil, CornerDownRight } from "lucide-react";
 
 import EditPacienteModal from "@/components/pacientes/editPacienteModal";
-import { setEstadoPaciente, formatFechaAR } from "@/lib/utils";
+import { setEstadoPaciente, formatFechaAR, formatFechaNacimientoAR } from "@/lib/utils";
 
 type Props = {
   pacientes: PacienteConObras[];
@@ -58,6 +58,7 @@ function Item({
     domicilioPaciente,
     estadoPaciente,
     consultas,
+    fechaNacimiento,
   } = paciente;
 
   const [openEdit, setOpenEdit] = useState(false);
@@ -76,7 +77,6 @@ function Item({
   return (
     <>
       <div className="px-4 py-3">
-        {/* Header fila */}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="font-semibold truncate">
@@ -128,8 +128,12 @@ function Item({
           </div>
         </div>
 
-        {/* Detalles (modo lista) */}
         <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+          <div className="text-muted-foreground">
+            <span className="font-medium text-foreground/70">Fecha nac: </span>
+            {formatFechaNacimientoAR(fechaNacimiento)}
+          </div>
+
           <div className="text-muted-foreground">
             <span className="font-medium text-foreground/70">Tel: </span>
             {telefonoPaciente ?? "Sin teléfono"}
@@ -156,7 +160,6 @@ function Item({
           </div>
         </div>
 
-        {/* CTA */}
         <Button
           type="button"
           variant="outline"
@@ -167,10 +170,8 @@ function Item({
         </Button>
       </div>
 
-      {/* Separador */}
       <div className="h-px bg-border" />
 
-      {/* Modal editar */}
       <EditPacienteModal
         open={openEdit}
         onOpenChange={setOpenEdit}
@@ -181,7 +182,6 @@ function Item({
         }}
       />
 
-      {/* Confirm alta/baja */}
       <AlertDialog open={openConfirmEstado} onOpenChange={setOpenConfirmEstado}>
         <AlertDialogContent>
           <AlertDialogHeader>

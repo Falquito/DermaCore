@@ -15,9 +15,12 @@ export type Paciente = {
   dniPaciente: string;
   telefonoPaciente: string | null;
   domicilioPaciente: string | null;
+
+  fechaNacimiento: string | null;
+
   fechaHoraPaciente: string;
   estadoPaciente: boolean;
 
-  // Relación 
+  // Relación
   pacienteXObra: PacienteXObraMini[];
 };
