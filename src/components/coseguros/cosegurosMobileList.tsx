@@ -24,7 +24,7 @@ export default function CosegurosMobileList({
   return (
     <div className="space-y-3 md:hidden">
       {coseguros.map((c) => (
-        <Card key={c.idCoseguro} className="border-slate-200 shadow-sm p-4">
+        <Card key={c.idCoseguro} className="border-slate-200 shadow-sm p-4 ">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
               <div
@@ -38,7 +38,7 @@ export default function CosegurosMobileList({
 
               <div className="min-w-0">
                 <p
-                  className={`font-medium truncate ${
+                  className={`font-medium  ${
                     c.estadoCoseguro ? "text-slate-900" : "text-slate-500 line-through decoration-slate-300"
                   }`}
                 >

@@ -153,15 +153,13 @@ export default function ListadoCoseguro({ coseguros, onRefresh, isFiltered }: Li
                             </div>
 
                             <div>
-                              <span
-                                className={`block font-medium capitalize ${
-                                  c.estadoCoseguro
-                                    ? "text-slate-900"
-                                    : "text-slate-500 decoration-slate-300"
-                                }`}
-                              >
-                                {c.nombreCoseguro}
-                              </span>
+                              <p
+                  className={`font-medium  ${
+                    c.estadoCoseguro ? "text-slate-900" : "text-slate-500 line-through decoration-slate-300"
+                  }`}
+                >
+                  {c.nombreCoseguro}
+                </p>
                             </div>
                           </div>
                         </TableCell>

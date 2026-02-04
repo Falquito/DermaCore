@@ -22,7 +22,7 @@ interface SideBarProps {
     toggleModule: (index: number) => void;
 }
 
-export default function SideBar({ 
+export default function CourseSideBar({ 
     courseContent, 
     activeLesson, 
     setActiveLesson, 

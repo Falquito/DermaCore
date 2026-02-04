@@ -1,7 +1,6 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
-import { usePathname } from "next/navigation";
 
 interface SidebarContextType {
   isMobileOpen: boolean;
@@ -13,6 +12,7 @@ interface SidebarContextType {
   isReady: boolean;
   resetSidebar: () => void;
 }
+
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
@@ -34,8 +34,8 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsedState] = useState<boolean>(() => getStoredCollapsed());
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isReady, setIsReady] = useState(false);
-  const pathname = usePathname();
-
+  
+  
   // Marcar como listo después de la hidratación
   useEffect(() => {
     // Re-sincronizar con localStorage después de la hidratación
@@ -48,9 +48,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Cerrar menú automáticamente al cambiar de ruta (solo mobile)
-  useEffect(() => {
-    setIsMobileOpen(false);
-  }, [pathname]);
+ 
 
   const setIsCollapsed = useCallback((collapsed: boolean) => {
     setIsCollapsedState(collapsed);
@@ -107,8 +105,20 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 // Hook personalizado para usarlo fácil
 export function useSidebarContext() {
   const context = useContext(SidebarContext);
-  if (!context) {
-    throw new Error("useSidebarContext debe usarse dentro de un SidebarProvider");
+  
+  // Si el contexto no existe (porque se está destruyendo), 
+  // devolvemos un objeto "mock" en lugar de lanzar un Error.
+  if (context === undefined) {
+    return {
+      isMobileOpen: false,
+      toggleMobileMenu: () => {},
+      closeMobileMenu: () => {},
+      isCollapsed: false,
+      setIsCollapsed: () => {},
+      toggleCollapsed: () => {},
+      isReady: false,
+      resetSidebar: () => {}
+    };
   }
   return context;
 }

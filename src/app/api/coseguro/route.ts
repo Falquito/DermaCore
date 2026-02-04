@@ -30,7 +30,7 @@ export async function POST(req: NextRequest): Promise<Response> {
 
     const nuevoCoseguro = await prisma.coseguro.create({
       data: {
-        nombreCoseguro: body.nombreCoseguro.toLowerCase(),
+        nombreCoseguro: body.nombreCoseguro,
         estadoCoseguro: body.estadoCoseguro ?? true
       }
     })

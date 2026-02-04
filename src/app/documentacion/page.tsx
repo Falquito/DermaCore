@@ -1,9 +1,18 @@
 "use client"
 import { useState } from "react";
-import ReproductorVideo from "@/components/documentacion/ReproductorVideo";
 import FooterReproductorVideo from "@/components/documentacion/FooterReproductorVideo";
-import SideBar from "@/components/documentacion/SideBar";
 import { courseContent } from "../../../contentDocumentacion/contenidoDelCurso";
+import CourseSideBar from "@/components/documentacion/SideBar";
+import dynamic from "next/dynamic";
+
+
+const ReproductorVideo = dynamic(
+  () => import("@/components/documentacion/ReproductorVideo"),
+  { 
+    ssr: false,
+    loading: () => <div className="w-full aspect-video bg-slate-900 animate-pulse rounded-xl" /> 
+  }
+);
 
 export default function DocumentacionPage() {
   const [activeLesson, setActiveLesson] = useState(courseContent[0].lessons[0]);
@@ -31,7 +40,7 @@ export default function DocumentacionPage() {
         />
       </div>
 
-      <SideBar 
+      <CourseSideBar 
           courseContent={courseContent}
           activeLesson={activeLesson}
           setActiveLesson={setActiveLesson}

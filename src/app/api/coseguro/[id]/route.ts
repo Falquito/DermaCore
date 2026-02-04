@@ -21,7 +21,7 @@ export async function PATCH(
     const coseguroActualizado = await prisma.coseguro.update({
       where: { idCoseguro: +id },
       data: {
-        nombreCoseguro: body.nombreCoseguro.toLowerCase()
+        nombreCoseguro: body.nombreCoseguro
       }
     })
 
