@@ -1,0 +1,10 @@
+[
+  {
+    "nombreCoseguro": "Integral",
+    "estadoCoseguro": true
+  },
+  {
+    "nombreCoseguro": "",
+    "estadoCoseguro": true
+  }
+]

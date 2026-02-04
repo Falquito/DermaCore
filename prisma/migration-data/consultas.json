@@ -1,0 +1,16 @@
+[
+  {
+    "dniPaciente": "EJEMPLO",
+    "fechaHoraConsulta": "2026-01-15T10:30:00.000Z",
+    "tipoConsulta": "PARTICULAR",
+    "motivoConsulta": "Control",
+    "diagnosticoConsulta": null,
+    "tratamientoConsulta": "Crema X 1 vez al día",
+    "estudiosComplementarios": null,
+    "montoConsulta": 10000,
+    "nombreObraSocial": null,
+    "nroAfiliado": null,
+    "tieneCoseguro": null,
+    "nombreCoseguro": null
+  }
+]
