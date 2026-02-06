@@ -22,6 +22,7 @@ type Paciente = {
   dniPaciente: string;
   telefonoPaciente: string | null;
   domicilioPaciente: string | null;
+  fechaNacimiento: string | null;
   fechaHoraPaciente: string;
   estadoPaciente: boolean;
 };
@@ -204,6 +205,16 @@ function PacienteDetailContent() {
                 {paciente.dniPaciente}
               </p>
             </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">
+                Fecha de Nacimiento
+              </p>
+              <p className="text-lg font-semibold text-foreground">
+                {paciente.fechaNacimiento 
+                  ? formatFechaAR(paciente.fechaNacimiento) 
+                  : "No registrada"}
+              </p>
+            </div>
           </div>
           <div className="space-y-4">
             <div className="space-y-1">
@@ -297,6 +308,7 @@ function PacienteDetailContent() {
               idPaciente={paciente.idPaciente}
               nombrePaciente={paciente.nombrePaciente}
               apellidoPaciente={paciente.apellidoPaciente}
+              tieneConsultas={consultas.length > 0}
             />
           </div>
           <RegistrarConsultaForm
