@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import fs from "node:fs";
 import path from "node:path";
+import bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
 const DATA_DIR = path.join(process.cwd(), "prisma", "migration-data");
@@ -25,9 +26,6 @@ function toDateOrNull(v: unknown): Date | null {
   const s = normStr(v);
   if (!s) return null;
 
-  // Soporta "YYYY-MM-DD" o ISO "YYYY-MM-DDTHH:mm:ss.sssZ"
-  // Si viene "YYYY-MM-DD", JS lo interpreta como UTC o local según entorno,
-  // pero para fechaNacimiento normalmente no importa la hora.
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return null;
   return d;
@@ -36,10 +34,41 @@ function toDateOrNull(v: unknown): Date | null {
 async function main() {
   console.log("▶ Import JSON - inicio");
 
+  // ✅ NUEVO: users
+  const users = readJson<any>("users.json");
+
   const pacientes = readJson<any>("pacientes.json");
   const obras = readJson<any>("obras_sociales.json");
   const coseguros = readJson<any>("coseguros.json");
   const consultas = readJson<any>("consultas.json");
+
+  // 0) Users (upsert por email + hash password)
+  console.log(`▶ Users: ${users.length}`);
+  for (const u of users) {
+    const email = normStr(u.email).toLowerCase();
+    const passwordPlain = normStr(u.password);
+
+    if (!email || !passwordPlain) {
+      throw new Error(`User inválido (falta email o password): ${JSON.stringify(u)}`);
+    }
+
+    const hashed = await bcrypt.hash(passwordPlain, 10);
+
+    await prisma.user.upsert({
+      where: { email },
+      update: {
+        name: u.name ?? null,
+        role: u.role ?? "USER",
+        password: hashed,
+      },
+      create: {
+        email,
+        password: hashed,
+        name: u.name ?? null,
+        role: u.role ?? "USER",
+      },
+    });
+  }
 
   // 1) Pacientes (upsert por DNI)
   console.log(`▶ Pacientes: ${pacientes.length}`);

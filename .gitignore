@@ -67,3 +67,6 @@ docker-data/
 
 # Ignore local bcrypt hash tool page
 src/app/tools/hash/page.tsx
+
+# Prisma migration data
+prisma/migration-data/
