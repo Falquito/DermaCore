@@ -22,7 +22,7 @@ export const courseContent = [
       { id: 302, title: "Crear un paciente", duration: "00:57", videoId: "jOH-PY-7cgk", completed: false },
       { id: 303, title: "Editar un paciente", duration: "00:34", videoId: "Wuf7Jxi5avA", completed: false },
       { id: 304, title: "Dar de alta y baja a un paciente", duration: "00:48", videoId: "vWQmoMZZksE", completed: false },
-      { id: 305, title: "Ver historial clinico y guardar consulta", duration: "", videoId: "vWQmoMZZksE", completed: false }
+      { id: 305, title: "Ver historial clinico y guardar consulta", duration: "00:59", videoId: "YEdlGoWn4ME", completed: false }
     ]
   }
 ];
